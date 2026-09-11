@@ -1,0 +1,301 @@
+<?php
+/**
+ * SAMS - Student Management Controller
+ */
+
+namespace SAMS\Controllers;
+
+use SAMS\Config\Database;
+use SAMS\Middleware\AuthMiddleware;
+use SAMS\Middleware\RoleMiddleware;
+use SAMS\Services\AttendanceService;
+use SAMS\Services\AuditService;
+use SAMS\Utils\Response;
+use SAMS\Utils\Validator;
+use PDO;
+use Exception;
+
+class StudentController
+{
+    /**
+     * List Students with Search, Filters, and Pagination
+     * GET /api/students
+     */
+    public static function index(): void
+    {
+        $user = AuthMiddleware::authenticate();
+        // Students cannot list all other students
+        if ($user['role_name'] === 'STUDENT') {
+            Response::forbidden("Students cannot view the institution-wide student directory.");
+        }
+
+        $pdo = Database::getConnection();
+
+        $search = trim($_GET['search'] ?? '');
+        $deptId = !empty($_GET['department_id']) ? (int)$_GET['department_id'] : null;
+        $classId = !empty($_GET['class_id']) ? (int)$_GET['class_id'] : null;
+        $divisionId = !empty($_GET['division_id']) ? (int)$_GET['division_id'] : null;
+        $status = $_GET['status'] ?? null;
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(50, max(10, (int)($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+
+        $conditions = ["1=1"];
+        $params = [];
+
+        if ($search !== '') {
+            $conditions[] = "(LOWER(s.full_name) LIKE :q OR LOWER(s.roll_number) LIKE :q OR LOWER(s.email) LIKE :q OR LOWER(s.student_uid) LIKE :q)";
+            $params[':q'] = '%' . strtolower($search) . '%';
+        }
+        if ($deptId !== null) {
+            $conditions[] = "s.department_id = :dept";
+            $params[':dept'] = $deptId;
+        }
+        if ($classId !== null) {
+            $conditions[] = "s.class_id = :cid";
+            $params[':cid'] = $classId;
+        }
+        if ($divisionId !== null) {
+            $conditions[] = "s.division_id = :did";
+            $params[':did'] = $divisionId;
+        }
+        if ($status !== null && in_array($status, ['ACTIVE', 'INACTIVE', 'SUSPENDED'], true)) {
+            $conditions[] = "s.status = :stat";
+            $params[':stat'] = $status;
+        }
+
+        $whereClause = implode(' AND ', $conditions);
+
+        // Count total
+        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM students s WHERE {$whereClause}");
+        $countStmt->execute($params);
+        $totalCount = (int)$countStmt->fetchColumn();
+
+        // Fetch page
+        $stmt = $pdo->prepare("
+            SELECT 
+                s.student_id,
+                s.roll_number,
+                s.student_uid,
+                s.full_name,
+                s.email,
+                s.phone,
+                s.gender,
+                s.batch,
+                s.status,
+                s.face_verification_status,
+                dept.department_code,
+                dept.department_name,
+                c.class_name,
+                c.class_code,
+                d.division_name
+            FROM students s
+            JOIN departments dept ON s.department_id = dept.department_id
+            JOIN classes c ON s.class_id = c.class_id
+            JOIN divisions d ON s.division_id = d.division_id
+            WHERE {$whereClause}
+            ORDER BY s.roll_number ASC
+            LIMIT {$limit} OFFSET {$offset}
+        ");
+        $stmt->execute($params);
+        $students = $stmt->fetchAll();
+
+        Response::success([
+            'students' => $students,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $limit,
+                'total_records' => $totalCount,
+                'total_pages' => ceil($totalCount / $limit)
+            ]
+        ], 'Students retrieved.');
+    }
+
+    /**
+     * Show Single Student Profile & Attendance Overview
+     * GET /api/students/{id}
+     */
+    public static function show(int $studentId): void
+    {
+        $user = AuthMiddleware::authenticate();
+
+        // STRICT ACCESS CONTROL: Student A cannot view Student B
+        if ($user['role_name'] === 'STUDENT' && (int)$user['student_id'] !== $studentId) {
+            Response::forbidden("Access denied: You cannot view attendance or profile information for another student.");
+        }
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare("
+            SELECT 
+                s.student_id, s.user_id, s.roll_number, s.student_uid, s.full_name, s.email, s.phone,
+                s.date_of_birth, s.gender, s.batch, s.admission_year, s.status, s.face_verification_status,
+                dept.department_id, dept.department_name, dept.department_code,
+                c.class_id, c.class_name, c.class_code,
+                d.division_id, d.division_name
+            FROM students s
+            JOIN departments dept ON s.department_id = dept.department_id
+            JOIN classes c ON s.class_id = c.class_id
+            JOIN divisions d ON s.division_id = d.division_id
+            WHERE s.student_id = :sid
+        ");
+        $stmt->execute([':sid' => $studentId]);
+        $student = $stmt->fetch();
+
+        if (!$student) {
+            Response::notFound("Student #{$studentId} not found.");
+        }
+
+        $stats = AttendanceService::getStudentStats($studentId);
+        $breakdown = AttendanceService::getStudentSubjectBreakdown($studentId);
+
+        Response::success([
+            'student' => $student,
+            'attendance_stats' => $stats,
+            'subject_breakdown' => $breakdown
+        ], 'Student details retrieved.');
+    }
+
+    /**
+     * Add Student (Admin Only)
+     * POST /api/students
+     */
+    public static function store(): void
+    {
+        $admin = RoleMiddleware::adminOnly();
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
+        $validator = Validator::make($input)
+            ->required('full_name', 'email', 'roll_number', 'student_uid', 'department_id', 'class_id', 'division_id')
+            ->email('email')
+            ->numeric('department_id')
+            ->numeric('class_id')
+            ->numeric('division_id');
+
+        if ($validator->fails()) {
+            Response::validationError($validator->errors());
+        }
+
+        $email = strtolower(trim($input['email']));
+        $roll = trim($input['roll_number']);
+        $uid = trim($input['student_uid']);
+        $name = trim($input['full_name']);
+        $phone = $input['phone'] ?? null;
+        $gender = $input['gender'] ?? 'Other';
+        $deptId = (int)$input['department_id'];
+        $classId = (int)$input['class_id'];
+        $divId = (int)$input['division_id'];
+        $batch = $input['batch'] ?? 'General';
+        $admYear = (int)($input['admission_year'] ?? date('Y'));
+
+        $pdo = Database::getConnection();
+
+        // Check uniqueness of email and roll number
+        $chk = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email");
+        $chk->execute([':email' => $email]);
+        if ($chk->fetch()) {
+            Response::conflict("An account with email '{$email}' already exists.");
+        }
+
+        $chkRoll = $pdo->prepare("SELECT student_id FROM students WHERE roll_number = :roll");
+        $chkRoll->execute([':roll' => $roll]);
+        if ($chkRoll->fetch()) {
+            Response::conflict("Roll number '{$roll}' is already assigned to another student.");
+        }
+
+        $pdo->beginTransaction();
+        try {
+            // Default password for newly enrolled student: Student@12345
+            $pwdHash = password_hash('Student@12345', PASSWORD_BCRYPT);
+            $uStmt = $pdo->prepare("
+                INSERT INTO users (role_id, email, password_hash, status)
+                VALUES (3, :email, :pwd, 'ACTIVE')
+            ");
+            $uStmt->execute([':email' => $email, ':pwd' => $pwdHash]);
+            $newUserId = (int)$pdo->lastInsertId();
+
+            $sStmt = $pdo->prepare("
+                INSERT INTO students (user_id, roll_number, student_uid, full_name, email, phone, gender, department_id, course_id, class_id, division_id, batch, admission_year, status, face_verification_status)
+                VALUES (:uid, :roll, :suid, :name, :email, :phone, :gender, :dept, 1, :cid, :did, :batch, :yr, 'ACTIVE', 'NOT_ENROLLED')
+            ");
+            $sStmt->execute([
+                ':uid' => $newUserId,
+                ':roll' => $roll,
+                ':suid' => $uid,
+                ':name' => $name,
+                ':email' => $email,
+                ':phone' => $phone,
+                ':gender' => $gender,
+                ':dept' => $deptId,
+                ':cid' => $classId,
+                ':did' => $divId,
+                ':batch' => $batch,
+                ':yr' => $admYear
+            ]);
+            $newStudentId = (int)$pdo->lastInsertId();
+
+            $pdo->commit();
+            AuditService::log($admin['user_id'], 'STUDENT_CREATED', 'students', (string)$newStudentId, ['roll_number' => $roll]);
+
+            Response::success([
+                'student_id' => $newStudentId,
+                'roll_number' => $roll,
+                'full_name' => $name,
+                'email' => $email
+            ], 'Student registered successfully. Initial credentials generated.', 201);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            Response::error("Failed to create student: " . $e->getMessage(), 'DATABASE_ERROR', 500);
+        }
+    }
+
+    /**
+     * Update Student
+     * PUT /api/students/{id}
+     */
+    public static function update(int $studentId): void
+    {
+        $admin = RoleMiddleware::adminOnly();
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare("SELECT student_id, user_id FROM students WHERE student_id = :sid");
+        $stmt->execute([':sid' => $studentId]);
+        $student = $stmt->fetch();
+
+        if (!$student) {
+            Response::notFound("Student #{$studentId} not found.");
+        }
+
+        $name = trim($input['full_name'] ?? '');
+        $phone = trim($input['phone'] ?? '');
+        $status = $input['status'] ?? 'ACTIVE';
+
+        $upd = $pdo->prepare("
+            UPDATE students 
+            SET full_name = COALESCE(NULLIF(:name, ''), full_name),
+                phone = COALESCE(NULLIF(:phone, ''), phone),
+                status = :status
+            WHERE student_id = :sid
+        ");
+        $upd->execute([':name' => $name, ':phone' => $phone, ':status' => $status, ':sid' => $studentId]);
+
+        AuditService::log($admin['user_id'], 'STUDENT_UPDATED', 'students', (string)$studentId);
+        Response::success(null, "Student details updated successfully.");
+    }
+
+    /**
+     * Deactivate / Delete Student
+     * DELETE /api/students/{id}
+     */
+    public static function destroy(int $studentId): void
+    {
+        $admin = RoleMiddleware::adminOnly();
+        $pdo = Database::getConnection();
+
+        $upd = $pdo->prepare("UPDATE students SET status = 'INACTIVE' WHERE student_id = :sid");
+        $upd->execute([':sid' => $studentId]);
+
+        AuditService::log($admin['user_id'], 'STUDENT_DEACTIVATED', 'students', (string)$studentId);
+        Response::success(null, "Student status marked as INACTIVE.");
+    }
+}

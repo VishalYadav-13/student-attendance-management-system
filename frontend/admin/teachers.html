@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faculty Directory — SAMS Admin</title>
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">SAMS</div>
+        <div>
+          <div class="sidebar-title">SAMS Admin</div>
+          <div class="sidebar-tagline">Institution Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Core Management</div>
+        <a href="/frontend/admin/dashboard.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/admin/students.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Students
+        </a>
+        <a href="/frontend/admin/teachers.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+          Teachers
+        </a>
+        <a href="/frontend/admin/attendance.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          Attendance & Overrides
+        </a>
+        <a href="/frontend/admin/reports.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Reports & Analytics
+        </a>
+
+        <div class="nav-section-title">Administration</div>
+        <a href="/frontend/admin/settings.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          System Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">A</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Administrator</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">ADMIN</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
+          ⎋
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Faculty Management</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+          <button class="btn btn-primary btn-sm" onclick="UI.openModal('add-teacher-modal')">+ Register Faculty</button>
+        </div>
+      </header>
+
+      <main class="page-container">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Faculty Members</h1>
+            <p class="page-subtitle">Department faculty, course instructors, and timetable allocations</p>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <div class="table-toolbar">
+            <div class="table-search">
+              <input type="text" id="teacher-search-input" placeholder="Search by name, employee ID, email...">
+            </div>
+          </div>
+
+          <table class="sams-table">
+            <thead>
+              <tr>
+                <th>Emp ID</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th>Designation</th>
+                <th>Assigned Subjects</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="teachers-tbody">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">Loading faculty directory...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add Teacher Modal -->
+  <div id="add-teacher-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Register New Faculty</h3>
+        <button class="modal-close-btn" onclick="UI.closeModal('add-teacher-modal')">&times;</button>
+      </div>
+      <form id="add-teacher-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="t-name">Full Name *</label>
+            <input type="text" id="t-name" class="form-control" placeholder="Dr. Jane Doe" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-email">Institutional Email *</label>
+            <input type="email" id="t-email" class="form-control" placeholder="jane.doe@sams.edu" required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label" for="t-empid">Employee ID *</label>
+              <input type="text" id="t-empid" class="form-control" placeholder="EMP-CO-05" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="t-dept">Department *</label>
+              <select id="t-dept" class="form-control" required>
+                <option value="1">Computer Engineering</option>
+                <option value="2">Information Technology</option>
+                <option value="3">Electronics</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="t-desig">Designation</label>
+            <input type="text" id="t-desig" class="form-control" placeholder="Assistant Professor / Lecturer">
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">
+            Initial temporary password will be set to: <code>Teacher@12345</code>.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UI.closeModal('add-teacher-modal')">Cancel</button>
+          <button type="submit" id="add-teacher-btn" class="btn btn-primary">Save Faculty</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('ADMIN');
+    Auth.renderUserProfile(currentUser);
+
+    async function loadTeachers() {
+      const search = document.getElementById('teacher-search-input').value.trim();
+      try {
+        const res = await API.get('/api/teachers', { search });
+        const tbody = document.getElementById('teachers-tbody');
+        if (!res || !res.data || res.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">No faculty records found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = res.data.map(t => `
+          <tr>
+            <td><strong>${t.employee_id}</strong></td>
+            <td><strong>${t.full_name}</strong></td>
+            <td>${t.email}</td>
+            <td>${t.department_name}</td>
+            <td>${t.designation}</td>
+            <td><span class="badge badge-enrolled">${t.assigned_subjects_count || 1} Subjects</span></td>
+            <td><span class="badge badge-present">Active</span></td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        UI.toast("Failed to load teachers: " + err.message, "error");
+      }
+    }
+
+    document.getElementById('add-teacher-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('add-teacher-btn');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      const payload = {
+        full_name: document.getElementById('t-name').value.trim(),
+        email: document.getElementById('t-email').value.trim(),
+        employee_id: document.getElementById('t-empid').value.trim(),
+        department_id: parseInt(document.getElementById('t-dept').value),
+        designation: document.getElementById('t-desig').value.trim()
+      };
+
+      try {
+        await API.post('/api/teachers', payload);
+        UI.toast(`Faculty ${payload.full_name} registered successfully!`, 'success');
+        UI.closeModal('add-teacher-modal');
+        document.getElementById('add-teacher-form').reset();
+        loadTeachers();
+      } catch (err) {
+        UI.toast(err.message, 'error');
+      } finally {
+        btn.textContent = 'Save Faculty';
+        btn.disabled = false;
+      }
+    });
+
+    let debounce = null;
+    document.getElementById('teacher-search-input').addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(loadTeachers, 300);
+    });
+
+    document.addEventListener('DOMContentLoaded', loadTeachers);
+  </script>
+</body>
+</html>

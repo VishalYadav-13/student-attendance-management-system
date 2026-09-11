@@ -1,0 +1,36 @@
+# Environment Secrets
+.env
+.env.local
+.env.*.local
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Logs and cache
+logs/
+*.log
+.cache/
+tmp/
+temp/
+
+# Storage / uploads
+uploads/private/
+uploads/biometrics/
+storage/logs/
+
+# IDE and OS
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Database SQLite dev files (if created during local offline dev)
+database/*.sqlite
+database/*.sqlite3
+database/*.db

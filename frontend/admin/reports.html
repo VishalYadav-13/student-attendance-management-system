@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Reports & Exports — SAMS Admin</title>
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">SAMS</div>
+        <div>
+          <div class="sidebar-title">SAMS Admin</div>
+          <div class="sidebar-tagline">Institution Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Core Management</div>
+        <a href="/frontend/admin/dashboard.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/admin/students.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Students
+        </a>
+        <a href="/frontend/admin/teachers.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+          Teachers
+        </a>
+        <a href="/frontend/admin/attendance.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          Attendance & Overrides
+        </a>
+        <a href="/frontend/admin/reports.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Reports & Analytics
+        </a>
+
+        <div class="nav-section-title">Administration</div>
+        <a href="/frontend/admin/settings.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          System Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">A</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Administrator</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">ADMIN</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
+          ⎋
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Institutional Reports</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+        </div>
+      </header>
+
+      <main class="page-container">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Attendance Reports & AI Analytics</h1>
+            <p class="page-subtitle">Generate official institutional records, shortage warning rosters, and compliance downloads</p>
+          </div>
+          <div class="page-actions">
+            <button id="ai-insights-btn" class="btn btn-secondary" onclick="generateAiInsights()">✨ Gemini Insights</button>
+            <a href="/api/reports/export-csv" class="btn btn-primary" target="_blank">📥 Export CSV</a>
+          </div>
+        </div>
+
+        <!-- Filter Card -->
+        <div class="card" style="margin-bottom: 24px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="rep-start">Start Date</label>
+              <input type="date" id="rep-start" class="form-control" value="2026-08-01">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="rep-end">End Date</label>
+              <input type="date" id="rep-end" class="form-control">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="rep-dept">Department</label>
+              <select id="rep-dept" class="form-control">
+                <option value="">All Departments</option>
+                <option value="1">Computer Engineering</option>
+                <option value="2">Information Technology</option>
+                <option value="3">Electronics</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadReport()">Generate Report</button>
+          </div>
+        </div>
+
+        <!-- AI Insights Modal / Container -->
+        <div id="ai-insights-box" class="ai-insights-banner" style="display: none;">
+          <div class="ai-icon-badge">✨</div>
+          <div class="ai-content" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h4 id="insights-title">Google Gemini Institutional Insights</h4>
+              <span id="insights-engine" class="badge badge-enrolled">Gemini 1.5</span>
+            </div>
+            <p id="insights-summary" style="margin-top: 6px;">Generating analytical observations...</p>
+            <ul id="insights-list" class="ai-bullets"></ul>
+            <div id="insights-rec" style="margin-top: 10px; font-weight: 600; font-size: 0.88rem; color: var(--primary-accent);"></div>
+          </div>
+        </div>
+
+        <!-- Report Table -->
+        <div class="table-container">
+          <div class="table-toolbar">
+            <div id="report-summary-text" style="font-weight: 700; font-size: 0.95rem;">
+              Showing institutional summary
+            </div>
+            <span id="deficit-count-badge" class="badge badge-risk">2 Deficit Students (<75%)</span>
+          </div>
+
+          <table class="sams-table">
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Full Name</th>
+                <th>Class & Div</th>
+                <th>Dept</th>
+                <th>Conducted</th>
+                <th>Present</th>
+                <th>Late</th>
+                <th>Absent</th>
+                <th>Attendance %</th>
+                <th>Exam Eligibility</th>
+              </tr>
+            </thead>
+            <tbody id="report-tbody">
+              <tr>
+                <td colspan="10" style="text-align: center; padding: 24px; color: var(--text-muted);">Generating report data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('ADMIN');
+    Auth.renderUserProfile(currentUser);
+
+    // Set default end date to today
+    document.getElementById('rep-end').value = new Date().toISOString().split('T')[0];
+
+    async function loadReport() {
+      const start = document.getElementById('rep-start').value;
+      const end = document.getElementById('rep-end').value;
+      const dept = document.getElementById('rep-dept').value;
+
+      try {
+        const res = await API.get('/api/reports/attendance', {
+          start_date: start,
+          end_date: end,
+          department_id: dept
+        });
+
+        if (!res || !res.data) return;
+
+        const { records, summary, filters } = res.data;
+        document.getElementById('report-summary-text').textContent = 
+          `Attendance Record: ${filters.start_date} to ${filters.end_date} (${summary.total_students} Students)`;
+        document.getElementById('deficit-count-badge').textContent = 
+          `${summary.low_attendance_students} Students Below 75% Threshold`;
+
+        const tbody = document.getElementById('report-tbody');
+        if (!records || records.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--text-muted);">No records found in selected range.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = records.map(r => {
+          const isEligible = !r.is_low;
+          const statusBadge = isEligible
+            ? '<span class="badge badge-present">Eligible</span>'
+            : '<span class="badge badge-absent">Shortage (Risk)</span>';
+
+          return `
+            <tr>
+              <td><strong>${r.roll_number}</strong></td>
+              <td>${r.full_name}</td>
+              <td>${r.class}</td>
+              <td>${r.department}</td>
+              <td>${r.total_conducted}</td>
+              <td><span style="color:var(--success); font-weight:600;">${r.present}</span></td>
+              <td><span style="color:var(--warning); font-weight:600;">${r.late}</span></td>
+              <td><span style="color:var(--danger); font-weight:600;">${r.absent}</span></td>
+              <td>
+                <span style="font-weight:700; color:${r.is_low ? 'var(--danger)' : 'var(--success)'};">${r.percentage}%</span>
+                <div class="progress-bar-wrap" style="width: 80px;">
+                  <div class="progress-bar-fill ${r.is_low ? 'fill-danger' : 'fill-success'}" style="width: ${r.percentage}%;"></div>
+                </div>
+              </td>
+              <td>${statusBadge}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        UI.toast("Failed to generate report: " + err.message, "error");
+      }
+    }
+
+    async function generateAiInsights() {
+      const box = document.getElementById('ai-insights-box');
+      const btn = document.getElementById('ai-insights-btn');
+      box.style.display = 'flex';
+      document.getElementById('insights-summary').textContent = 'Connecting to Google Gemini API server-side...';
+      document.getElementById('insights-list').innerHTML = '';
+      document.getElementById('insights-rec').textContent = '';
+
+      btn.disabled = true;
+      try {
+        const res = await API.get('/api/reports/ai-insights');
+        if (res && res.data) {
+          const d = res.data;
+          document.getElementById('insights-summary').textContent = d.summary || 'Insights generated successfully.';
+          document.getElementById('insights-engine').textContent = d.powered_by || 'Gemini 1.5';
+          
+          const ul = document.getElementById('insights-list');
+          (d.key_findings || []).forEach(f => {
+            const li = document.createElement('li');
+            li.textContent = f;
+            ul.appendChild(li);
+          });
+
+          if (d.recommendation) {
+            document.getElementById('insights-rec').textContent = '💡 Recommendation: ' + d.recommendation;
+          }
+        }
+      } catch (err) {
+        document.getElementById('insights-summary').textContent = 'Unable to fetch AI insights: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadReport);
+  </script>
+</body>
+</html>

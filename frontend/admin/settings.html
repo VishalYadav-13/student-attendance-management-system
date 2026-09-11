@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Settings — SAMS Admin</title>
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">SAMS</div>
+        <div>
+          <div class="sidebar-title">SAMS Admin</div>
+          <div class="sidebar-tagline">Institution Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Core Management</div>
+        <a href="/frontend/admin/dashboard.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/admin/students.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Students
+        </a>
+        <a href="/frontend/admin/teachers.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+          Teachers
+        </a>
+        <a href="/frontend/admin/attendance.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          Attendance & Overrides
+        </a>
+        <a href="/frontend/admin/reports.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Reports & Analytics
+        </a>
+
+        <div class="nav-section-title">Administration</div>
+        <a href="/frontend/admin/settings.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          System Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">A</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Administrator</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">ADMIN</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
+          ⎋
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Institutional Settings</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+        </div>
+      </header>
+
+      <main class="page-container">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Institution Policies & Biometrics</h1>
+            <p class="page-subtitle">Configure thresholds, AI verification rules, and academic rules</p>
+          </div>
+        </div>
+
+        <form id="settings-form" style="max-width: 760px;">
+          <!-- Card 1: Academic Identity -->
+          <div class="card" style="margin-bottom: 20px;">
+            <h3 class="card-title" style="margin-bottom: 16px;">Institution Details</h3>
+            <div class="form-group">
+              <label class="form-label" for="inst-name">Institution Name</label>
+              <input type="text" id="inst-name" class="form-control" value="Demo Polytechnic Institute">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" for="inst-code">Institution / Board Code</label>
+                <input type="text" id="inst-code" class="form-control" value="DPI-4021">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="acad-year">Active Academic Year</label>
+                <input type="text" id="acad-year" class="form-control" value="2026-27">
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Attendance Policies -->
+          <div class="card" style="margin-bottom: 20px;">
+            <h3 class="card-title" style="margin-bottom: 16px;">Attendance Thresholds & Rules</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" for="threshold">Mandatory Attendance Threshold (%)</label>
+                <input type="number" id="threshold" class="form-control" value="75" min="50" max="95" step="1">
+                <span style="font-size:0.75rem; color:var(--text-muted);">Shortage alert triggers when student drops below this percentage.</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="grace-mins">Late Arrival Grace Window (Minutes)</label>
+                <input type="number" id="grace-mins" class="form-control" value="15" min="0" max="45">
+                <span style="font-size:0.75rem; color:var(--text-muted);">Marked as Late if verified after this window.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: AI & Face Verification Controls -->
+          <div class="card" style="margin-bottom: 24px;">
+            <h3 class="card-title" style="margin-bottom: 16px;">AI & Facial Recognition Parameters</h3>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm);">
+                <div>
+                  <div style="font-weight: 600; font-size: 0.9rem;">Enable AI Face Verification</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Allow camera biometric verification during classroom sessions.</div>
+                </div>
+                <input type="checkbox" id="face-toggle" checked style="width: 18px; height: 18px;">
+              </label>
+
+              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm);">
+                <div>
+                  <div style="font-weight: 600; font-size: 0.9rem;">Require Liveness & Quality Challenge</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Requires student to blink or re-orient face to mitigate printed photo spoofing.</div>
+                </div>
+                <input type="checkbox" id="liveness-toggle" checked style="width: 18px; height: 18px;">
+              </label>
+
+              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm);">
+                <div>
+                  <div style="font-weight: 600; font-size: 0.9rem;">Allow Manual Teacher Overrides</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Permits faculty to adjust attendance status with mandatory audit explanation.</div>
+                </div>
+                <input type="checkbox" id="override-toggle" checked style="width: 18px; height: 18px;">
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" id="save-settings-btn" class="btn btn-primary" style="padding: 12px 24px;">
+            Save Institutional Settings
+          </button>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('ADMIN');
+    Auth.renderUserProfile(currentUser);
+
+    async function loadSettings() {
+      try {
+        const res = await API.get('/api/settings');
+        if (!res || !res.data) return;
+
+        const s = res.data;
+        if (s.institution_name) document.getElementById('inst-name').value = s.institution_name;
+        if (s.institution_code) document.getElementById('inst-code').value = s.institution_code;
+        if (s.academic_year) document.getElementById('acad-year').value = s.academic_year;
+        if (s.attendance_threshold) document.getElementById('threshold').value = s.attendance_threshold;
+        if (s.late_grace_minutes) document.getElementById('grace-mins').value = s.late_grace_minutes;
+        if (s.face_verification_enabled !== undefined) {
+          document.getElementById('face-toggle').checked = s.face_verification_enabled === 'true';
+        }
+        if (s.liveness_required !== undefined) {
+          document.getElementById('liveness-toggle').checked = s.liveness_required === 'true';
+        }
+        if (s.manual_override_allowed !== undefined) {
+          document.getElementById('override-toggle').checked = s.manual_override_allowed === 'true';
+        }
+      } catch (err) {
+        UI.toast("Failed to load settings: " + err.message, "error");
+      }
+    }
+
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('save-settings-btn');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      const payload = {
+        institution_name: document.getElementById('inst-name').value.trim(),
+        institution_code: document.getElementById('inst-code').value.trim(),
+        academic_year: document.getElementById('acad-year').value.trim(),
+        attendance_threshold: document.getElementById('threshold').value,
+        late_grace_minutes: document.getElementById('grace-mins').value,
+        face_verification_enabled: document.getElementById('face-toggle').checked ? 'true' : 'false',
+        liveness_required: document.getElementById('liveness-toggle').checked ? 'true' : 'false',
+        manual_override_allowed: document.getElementById('override-toggle').checked ? 'true' : 'false'
+      };
+
+      try {
+        await API.post('/api/settings', payload);
+        UI.toast("Institutional settings updated successfully.", "success");
+      } catch (err) {
+        UI.toast(err.message, "error");
+      } finally {
+        btn.textContent = 'Save Institutional Settings';
+        btn.disabled = false;
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', loadSettings);
+  </script>
+</body>
+</html>

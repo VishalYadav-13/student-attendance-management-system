@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Profile & Biometrics — SAMS</title>
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">SAMS</div>
+        <div>
+          <div class="sidebar-title">SAMS Student</div>
+          <div class="sidebar-tagline">Academic Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">My Academics</div>
+        <a href="/frontend/student/dashboard.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/student/calendar.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Attendance Calendar
+        </a>
+        <a href="/frontend/student/profile.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Profile & Biometrics
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">S</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Student User</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">STUDENT</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
+          ⎋
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">My Profile & Biometrics</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+        </div>
+      </header>
+
+      <main class="page-container" style="max-width: 900px;">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Personal Academic Profile</h1>
+            <p class="page-subtitle">Verify your institutional registration details and manage facial biometric enrollment</p>
+          </div>
+        </div>
+
+        <!-- Academic Info Card -->
+        <div class="card" style="margin-bottom: 24px;">
+          <h3 class="card-title" style="margin-bottom: 18px;">Registration Details</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; font-size: 0.9rem;">
+            <div>
+              <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Full Name</span>
+              <div id="prof-name" style="font-weight: 700; font-size: 1.05rem; margin-top: 2px;">Loading...</div>
+            </div>
+            <div>
+              <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Roll Number</span>
+              <div id="prof-roll" style="font-weight: 700; font-size: 1.05rem; margin-top: 2px;">—</div>
+            </div>
+            <div>
+              <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Student UID</span>
+              <div id="prof-uid" style="font-weight: 700; font-size: 1.05rem; margin-top: 2px;">—</div>
+            </div>
+            <div>
+              <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Institutional Email</span>
+              <div id="prof-email" style="font-weight: 600; margin-top: 2px;">—</div>
+            </div>
+            <div>
+              <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Department</span>
+              <div id="prof-dept" style="font-weight: 600; margin-top: 2px;">—</div>
+            </div>
+            <div>
+              <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Class & Division</span>
+              <div id="prof-class" style="font-weight: 600; margin-top: 2px;">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Biometrics & Privacy Card -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Facial Biometrics & Consent Management</h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+                Required for automated AI attendance verification in lecture halls.
+              </p>
+            </div>
+            <span id="prof-face-badge" class="badge badge-enrolled">Checking status...</span>
+          </div>
+
+          <!-- Privacy statement -->
+          <div style="padding: 16px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); margin-bottom: 20px;">
+            <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 6px;">🔒 Biometric Privacy & Purpose Limitation Notice</h4>
+            <p style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.5;">
+              In accordance with educational privacy regulations, your camera image is converted into an encrypted 128-point mathematical feature descriptor. <strong>Raw photos or camera recordings are never permanently stored on servers.</strong> You retain the absolute right to purge your biometric profile at any time.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button id="enroll-face-btn" class="btn btn-primary" onclick="openEnrollmentModal()">
+              📷 Enroll / Update Face Profile
+            </button>
+            <button id="delete-face-btn" class="btn btn-danger" onclick="confirmDeleteBiometrics()">
+              🗑️ Delete Biometric Data (Right to Erasure)
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Face Enrollment Modal -->
+  <div id="enrollment-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3>Facial Biometric Enrollment</h3>
+        <button class="modal-close-btn" onclick="closeEnrollmentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="camera-container" style="max-width: 100%; aspect-ratio: 4/3;">
+          <video id="enroll-video" class="camera-video" playsinline muted autoplay></video>
+          <div class="face-guide-overlay" id="enroll-overlay">
+            <div class="scan-laser"></div>
+          </div>
+          <div class="camera-status-pill" id="enroll-status-pill">
+            Position face in oval frame
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer;">
+            <input type="checkbox" id="enroll-consent-check" style="margin-top: 3px;">
+            <span>I explicitly consent to Demo Polytechnic Institute processing my encrypted facial landmarks solely for classroom attendance roll-calls.</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeEnrollmentModal()">Cancel</button>
+        <button type="button" id="capture-enroll-btn" class="btn btn-primary" onclick="captureAndEnroll()">
+          📸 Capture & Enroll
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script src="/frontend/assets/js/camera.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('STUDENT');
+    Auth.renderUserProfile(currentUser);
+
+    let studentData = null;
+
+    async function loadProfile() {
+      try {
+        const res = await API.get('/api/dashboard/student');
+        if (!res || !res.data) return;
+
+        studentData = res.data.student;
+
+        document.getElementById('prof-name').textContent = studentData.full_name;
+        document.getElementById('prof-roll').textContent = studentData.roll_number;
+        document.getElementById('prof-uid').textContent = currentUser.student_uid || 'UID2026001';
+        document.getElementById('prof-email').textContent = currentUser.email;
+        document.getElementById('prof-dept').textContent = currentUser.department_name || 'Computer Engineering';
+        document.getElementById('prof-class').textContent = `${studentData.class_name} — Division ${studentData.division}`;
+
+        const badge = document.getElementById('prof-face-badge');
+        if (studentData.face_status === 'ENROLLED') {
+          badge.className = 'badge badge-present';
+          badge.textContent = '✓ Biometrics Enrolled';
+          document.getElementById('delete-face-btn').style.display = 'inline-flex';
+        } else {
+          badge.className = 'badge badge-risk';
+          badge.textContent = '⚠ Not Enrolled';
+          document.getElementById('delete-face-btn').style.display = 'none';
+        }
+      } catch (err) {
+        UI.toast("Failed to load profile: " + err.message, "error");
+      }
+    }
+
+    async function openEnrollmentModal() {
+      UI.openModal('enrollment-modal');
+      const video = document.getElementById('enroll-video');
+      try {
+        await Camera.start(video, 'user');
+        document.getElementById('enroll-status-pill').textContent = 'Camera active. Center your face.';
+      } catch (err) {
+        UI.toast(err.message, 'error', 5000);
+        closeEnrollmentModal();
+      }
+    }
+
+    function closeEnrollmentModal() {
+      Camera.stop();
+      UI.closeModal('enrollment-modal');
+    }
+
+    async function captureAndEnroll() {
+      const consent = document.getElementById('enroll-consent-check').checked;
+      if (!consent) {
+        UI.toast("You must check the consent box to proceed with enrollment.", "warning");
+        return;
+      }
+
+      const btn = document.getElementById('capture-enroll-btn');
+      btn.textContent = 'Analyzing & Enrolling...';
+      btn.disabled = true;
+
+      try {
+        const frameData = Camera.captureFrame();
+        const res = await API.post('/api/face/enroll', {
+          student_id: studentData.student_id,
+          image: frameData,
+          consent: true
+        });
+
+        UI.toast("✓ Biometric face profile enrolled successfully!", "success");
+        closeEnrollmentModal();
+        loadProfile();
+      } catch (err) {
+        UI.toast(err.message || "Enrollment failed. Please ensure good lighting and face visibility.", "error", 5000);
+      } finally {
+        btn.textContent = '📸 Capture & Enroll';
+        btn.disabled = false;
+      }
+    }
+
+    function confirmDeleteBiometrics() {
+      UI.confirm({
+        title: 'Delete Biometric Face Data',
+        message: 'Are you sure you wish to delete your enrolled facial recognition data? You will need to re-enroll or use manual attendance.',
+        confirmText: 'Purge Biometrics',
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await API.delete(`/api/face/${studentData.student_id}`);
+            UI.toast("Your facial biometric data has been completely erased.", "info");
+            loadProfile();
+          } catch (err) {
+            UI.toast(err.message, "error");
+          }
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProfile);
+  </script>
+</body>
+</html>

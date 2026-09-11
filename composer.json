@@ -1,0 +1,28 @@
+{
+  "name": "sams/student-attendance-management-system",
+  "description": "Production-Ready Student Attendance Management System with AI-Assisted Face Verification and PostgreSQL",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Vishal Yadav",
+      "email": "dev@sams.edu"
+    }
+  ],
+  "require": {
+    "php": ">=8.1",
+    "ext-pdo": "*",
+    "ext-json": "*",
+    "ext-curl": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "SAMS\\": "backend/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  }
+}

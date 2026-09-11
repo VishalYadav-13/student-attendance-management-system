@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Attendance — SAMS Student Portal</title>
+  <meta name="description" content="View your attendance percentage, subject breakdown, and attendance history in the SAMS student portal.">
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">S</div>
+        <div>
+          <div class="sidebar-title">SAMS Student</div>
+          <div class="sidebar-tagline">Academic Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">My Academics</div>
+        <a href="/frontend/student/dashboard.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/student/calendar.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Attendance Calendar
+        </a>
+        <a href="/frontend/student/profile.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Profile & Biometrics
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">S</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Student</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">STUDENT</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Sign Out" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 6px;" aria-label="Sign Out">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">Student Attendance Portal</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode"></button>
+          <span class="badge badge-enrolled" id="header-student-roll" style="font-size: 0.8rem;">Roll: —</span>
+        </div>
+      </header>
+
+      <main class="page-container">
+
+        <!-- Low Attendance Alert (conditionally shown) -->
+        <div id="low-attendance-alert" class="alert-banner alert-banner-danger" style="display: none;">
+          <div class="alert-banner-icon">⚠️</div>
+          <div style="flex:1;">
+            <div class="alert-banner-title">Low Attendance Warning — Immediate Action Required</div>
+            <p class="alert-banner-msg" id="shortage-alert-msg">
+              Your cumulative attendance is below the mandatory institutional threshold.
+            </p>
+          </div>
+        </div>
+
+        <div class="page-header">
+          <div>
+            <h1 class="page-title" id="student-welcome-heading">Welcome back, Student</h1>
+            <p class="page-subtitle" id="student-class-subtitle">Loading your academic details...</p>
+          </div>
+          <div class="page-actions">
+            <a href="/frontend/student/calendar.html" class="btn btn-secondary btn-sm">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              Calendar View
+            </a>
+          </div>
+        </div>
+
+        <!-- Hero Attendance Ring + KPIs -->
+        <div style="display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start; margin-bottom: 24px;" class="attendance-hero-grid">
+          <!-- Ring -->
+          <div class="card" style="min-width: 200px;">
+            <div class="attendance-ring-wrapper">
+              <div style="position: relative; width: 160px; height: 160px;">
+                <svg class="attendance-ring-svg" width="160" height="160" viewBox="0 0 160 160">
+                  <circle class="ring-bg" cx="80" cy="80" r="65"/>
+                  <circle id="ring-fill-el" class="ring-fill ring-danger" cx="80" cy="80" r="65"
+                    stroke-dasharray="408.41"
+                    stroke-dashoffset="408.41"/>
+                </svg>
+                <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                  <div class="ring-center-text" id="ring-pct-text">0%</div>
+                  <div class="ring-center-label">Overall</div>
+                </div>
+              </div>
+              <div style="text-align:center; font-size: 0.82rem; color: var(--text-muted); font-weight: 600;" id="ring-status-label">Loading...</div>
+            </div>
+          </div>
+
+          <!-- KPI Boxes -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <div class="stat-card">
+              <div class="stat-info">
+                <span class="stat-label">Conducted Lectures</span>
+                <span id="stat-total-classes" class="stat-value">—</span>
+                <span class="stat-subtext">Total Tracked</span>
+              </div>
+              <div class="stat-icon icon-blue">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info">
+                <span class="stat-label">Present</span>
+                <span id="stat-present-count" class="stat-value" style="color: var(--success);">—</span>
+                <span id="stat-late-subtext" class="stat-subtext">+ 0 Late Arrivals</span>
+              </div>
+              <div class="stat-icon icon-green">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info">
+                <span class="stat-label">Absent</span>
+                <span id="stat-absent-count" class="stat-value" style="color: var(--danger);">—</span>
+                <span class="stat-subtext">Missed Sessions</span>
+              </div>
+              <div class="stat-icon icon-red">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info">
+                <span class="stat-label">Late Arrivals</span>
+                <span id="stat-late-count" class="stat-value" style="color: var(--warning);">—</span>
+                <span class="stat-subtext">Partially Counted</span>
+              </div>
+              <div class="stat-icon icon-amber">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subject Wise Attendance Breakdown -->
+        <div class="card" style="margin-bottom: 24px;">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Subject-wise Attendance Breakdown</h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;" id="subject-breakdown-subtitle">
+                Maintain at least 75% in every individual theory & practical course.
+              </p>
+            </div>
+          </div>
+
+          <div id="student-subjects-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; padding: 4px 0;">
+            <!-- Skeleton loading -->
+            <div class="card skeleton" style="height: 100px;"></div>
+            <div class="card skeleton" style="height: 100px;"></div>
+            <div class="card skeleton" style="height: 100px;"></div>
+          </div>
+        </div>
+
+        <!-- Recent Attendance Timeline -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Recent Lecture Attendance</h3>
+            <a href="/frontend/student/calendar.html" class="btn btn-secondary btn-sm">Full Calendar →</a>
+          </div>
+
+          <div class="table-container" style="border:none; box-shadow:none;">
+            <table class="sams-table">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Subject</th>
+                  <th>Faculty</th>
+                  <th>Status</th>
+                  <th>Verification</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="student-history-tbody">
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                    <div style="font-size: 1.5rem; opacity: 0.4; margin-bottom: 8px;">📋</div>
+                    Loading recent attendance records...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('STUDENT');
+    Auth.renderUserProfile(currentUser);
+
+    function animateRing(percentage, threshold) {
+      const el = document.getElementById('ring-fill-el');
+      const circumference = 2 * Math.PI * 65; // r=65
+      const dashOffset = circumference * (1 - (percentage / 100));
+
+      // Set color class
+      el.className = 'ring-fill';
+      if (percentage >= threshold) {
+        el.classList.add('ring-success');
+      } else if (percentage >= threshold - 10) {
+        el.classList.add('ring-warning');
+      } else {
+        el.classList.add('ring-danger');
+      }
+
+      // Animate
+      el.style.strokeDasharray = circumference;
+      el.style.strokeDashoffset = circumference; // Start from 0
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.style.strokeDashoffset = dashOffset;
+        });
+      });
+    }
+
+    async function loadStudentDashboard() {
+      try {
+        const res = await API.get('/api/dashboard/student');
+        if (!res || !res.data) throw new Error('Invalid server response.');
+
+        const { student, stats, subject_breakdown, recent_history } = res.data;
+        const threshold = stats.threshold || 75;
+
+        // Page header
+        document.getElementById('student-welcome-heading').textContent = `Welcome back, ${student.full_name.split(' ')[0]}`;
+        document.getElementById('student-class-subtitle').textContent = `${student.class_name} • Division ${student.division} • Roll No. ${student.roll_number}`;
+        document.getElementById('header-student-roll').textContent = `Roll: ${student.roll_number}`;
+        document.getElementById('subject-breakdown-subtitle').textContent =
+          `Maintain at least ${threshold}% in every individual theory & practical course.`;
+
+        // Ring + KPIs
+        const pct = parseFloat(stats.percentage);
+        document.getElementById('ring-pct-text').textContent = `${pct.toFixed(1)}%`;
+        document.getElementById('ring-status-label').textContent = stats.status_label || '';
+        animateRing(pct, threshold);
+
+        UI.animateCounter(document.getElementById('stat-total-classes'), stats.total_classes);
+        UI.animateCounter(document.getElementById('stat-present-count'), stats.present);
+        UI.animateCounter(document.getElementById('stat-absent-count'), stats.absent);
+        UI.animateCounter(document.getElementById('stat-late-count'), stats.late);
+        document.getElementById('stat-late-subtext').textContent = `+ ${stats.late} Late Arrival${stats.late !== 1 ? 's' : ''}`;
+
+        // Shortage Warning Banner
+        if (stats.is_low_attendance) {
+          const alertBox = document.getElementById('low-attendance-alert');
+          alertBox.style.display = 'flex';
+          document.getElementById('shortage-alert-msg').textContent =
+            `Your attendance is ${pct.toFixed(1)}% — below the mandatory ${threshold}% threshold. ` +
+            `You have missed ${stats.absent} lecture${stats.absent !== 1 ? 's' : ''}. ` +
+            `Please contact your faculty advisor immediately to avoid examination debarment.`;
+        }
+
+        // Subject Breakdown Cards
+        const subGrid = document.getElementById('student-subjects-grid');
+        if (subject_breakdown && subject_breakdown.length > 0) {
+          subGrid.innerHTML = subject_breakdown.map(s => {
+            const isLow = s.below_threshold;
+            const fillColor = isLow ? 'fill-danger' : (s.percentage < threshold + 5 ? 'fill-warning' : 'fill-success');
+            return `
+              <div style="padding: 16px 18px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); border-left: 4px solid ${isLow ? 'var(--danger)' : 'var(--success)'};">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">${s.subject_name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1px;">${s.subject_code}</div>
+                  </div>
+                  <span class="badge ${isLow ? 'badge-risk' : 'badge-present'}" style="font-size: 0.82rem;">${s.percentage}%</span>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
+                  Attended <strong>${s.present}</strong> of <strong>${s.total_classes}</strong> lectures
+                  ${s.absent > 0 ? `<span style="color: var(--danger);">(${s.absent} absent)</span>` : ''}
+                </div>
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar-fill ${fillColor}" style="width: ${Math.min(100, s.percentage)}%;"></div>
+                </div>
+                ${isLow ? `<div style="font-size: 0.72rem; color: var(--danger); font-weight: 600; margin-top: 6px;">⚠ Below ${threshold}% threshold</div>` : ''}
+              </div>
+            `;
+          }).join('');
+        } else {
+          subGrid.innerHTML = `
+            <div style="grid-column: 1/-1;">
+              <div class="empty-state">
+                <div class="empty-state-icon">📚</div>
+                <div class="empty-state-title">No Subject Data Yet</div>
+                <div class="empty-state-desc">Attendance records for your subjects will appear here once your teacher begins marking attendance.</div>
+              </div>
+            </div>
+          `;
+        }
+
+        // Recent History Table
+        const histTbody = document.getElementById('student-history-tbody');
+        if (recent_history && recent_history.length > 0) {
+          histTbody.innerHTML = recent_history.map(r => {
+            const badgeMap = {
+              'PRESENT': '<span class="badge badge-present">Present</span>',
+              'ABSENT': '<span class="badge badge-absent">Absent</span>',
+              'LATE': '<span class="badge badge-late">Late</span>',
+              'EXCUSED': '<span class="badge badge-enrolled">Excused</span>',
+            };
+            const badge = badgeMap[r.status] || `<span class="badge">${r.status}</span>`;
+            const conf = r.confidence_score ? `${Math.round(r.confidence_score * 100)}%` : '—';
+            const dateFmt = new Date(r.session_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+            const methodLabel = {
+              'FACE_VERIFIED': '🤖 AI Verified',
+              'MANUAL': '✏️ Manual',
+              'FACE_MATCH': '🤖 Face Match',
+            }[r.verification_method] || (r.verification_method || 'Manual');
+
+            return `
+              <tr>
+                <td><strong>${dateFmt}</strong> <span style="font-size:0.75rem; color:var(--text-muted);">${(r.start_time || '').slice(0, 5)}</span></td>
+                <td><strong>${r.subject_name}</strong> <span style="font-size:0.75rem; color:var(--text-muted);">${r.subject_code || ''}</span></td>
+                <td>${r.teacher_name}</td>
+                <td>${badge}</td>
+                <td style="font-size: 0.82rem;">${methodLabel}</td>
+                <td style="font-size: 0.82rem;">${conf}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          histTbody.innerHTML = `
+            <tr><td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-title">No Recent Records</div>
+                <div class="empty-state-desc">Your recent lecture attendance records will appear here.</div>
+              </div>
+            </td></tr>
+          `;
+        }
+
+      } catch (err) {
+        console.error('[Student Dashboard Error]', err);
+        UI.toast('Failed to load dashboard: ' + err.message, 'error');
+        document.getElementById('student-subjects-grid').innerHTML = `
+          <div style="grid-column: 1/-1;">
+            <div class="error-state">
+              <p>${err.message}</p>
+              <button class="btn btn-secondary btn-sm" onclick="loadStudentDashboard()">Retry</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Mobile: stack ring and KPIs on small screens
+    const heroGrid = document.querySelector('.attendance-hero-grid');
+    if (heroGrid && window.innerWidth <= 640) {
+      heroGrid.style.gridTemplateColumns = '1fr';
+    }
+
+    document.addEventListener('DOMContentLoaded', loadStudentDashboard);
+  </script>
+</body>
+</html>

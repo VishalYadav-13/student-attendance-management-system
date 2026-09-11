@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Directory — SAMS Admin</title>
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">SAMS</div>
+        <div>
+          <div class="sidebar-title">SAMS Admin</div>
+          <div class="sidebar-tagline">Institution Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Core Management</div>
+        <a href="/frontend/admin/dashboard.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/admin/students.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Students
+        </a>
+        <a href="/frontend/admin/teachers.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+          Teachers
+        </a>
+        <a href="/frontend/admin/attendance.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          Attendance & Overrides
+        </a>
+        <a href="/frontend/admin/reports.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Reports & Analytics
+        </a>
+
+        <div class="nav-section-title">Administration</div>
+        <a href="/frontend/admin/settings.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          System Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">A</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Administrator</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">ADMIN</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
+          ⎋
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Student Roster</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+          <button class="btn btn-primary btn-sm" onclick="UI.openModal('add-student-modal')">+ Add New Student</button>
+        </div>
+      </header>
+
+      <main class="page-container">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Enrolled Students</h1>
+            <p class="page-subtitle">Manage students, verify biometric status, and audit individual records</p>
+          </div>
+          <div class="page-actions">
+            <a href="/api/reports/export-csv" class="btn btn-secondary btn-sm" target="_blank">📥 Export CSV</a>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="table-container">
+          <div class="table-toolbar">
+            <div class="table-search">
+              <input type="text" id="student-search-input" placeholder="Search by name, roll no, UID...">
+            </div>
+            <div class="table-filters">
+              <select id="dept-filter" class="select-filter">
+                <option value="">All Departments</option>
+                <option value="1">Computer Engineering (CO)</option>
+                <option value="2">Information Technology (IT)</option>
+                <option value="3">Electronics (EJ)</option>
+              </select>
+              <select id="status-filter" class="select-filter">
+                <option value="">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <table class="sams-table">
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Full Name</th>
+                <th>Institutional Email</th>
+                <th>Department</th>
+                <th>Class & Div</th>
+                <th>Face Biometrics</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="students-table-body">
+              <tr>
+                <td colspan="8" style="text-align:center; padding: 30px; color: var(--text-muted);">Loading student directory...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add Student Modal -->
+  <div id="add-student-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Register Enrolled Student</h3>
+        <button class="modal-close-btn" onclick="UI.closeModal('add-student-modal')">&times;</button>
+      </div>
+      <form id="add-student-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="add-name">Full Name *</label>
+            <input type="text" id="add-name" class="form-control" placeholder="e.g. Vishal Yadav" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="add-email">Institutional Email *</label>
+            <input type="email" id="add-email" class="form-control" placeholder="student.name@sams.edu" required>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label" for="add-roll">Roll Number *</label>
+              <input type="text" id="add-roll" class="form-control" placeholder="CO-2121" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="add-uid">Student UID *</label>
+              <input type="text" id="add-uid" class="form-control" placeholder="UID2026021" required>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label" for="add-dept">Department *</label>
+              <select id="add-dept" class="form-control" required>
+                <option value="1">Computer Engineering</option>
+                <option value="2">Information Technology</option>
+                <option value="3">Electronics</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="add-class">Class & Division *</label>
+              <select id="add-class" class="form-control" required>
+                <option value="1">SY CO - Division A</option>
+                <option value="2">SY CO - Division B</option>
+              </select>
+            </div>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;">
+            Default temporary password will be assigned: <code>Student@12345</code>. Student can change it upon initial login.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UI.closeModal('add-student-modal')">Cancel</button>
+          <button type="submit" id="add-student-submit-btn" class="btn btn-primary">Save Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Student Details & Attendance Summary Modal -->
+  <div id="student-view-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="view-student-name">Student Profile</h3>
+        <button class="modal-close-btn" onclick="UI.closeModal('student-view-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px;">
+          <div style="width: 54px; height: 54px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; justify-content: center;" id="view-student-avatar">V</div>
+          <div>
+            <h4 id="view-student-fullname" style="font-size: 1.15rem; font-weight: 700;">Full Name</h4>
+            <div id="view-student-meta" style="font-size: 0.85rem; color: var(--text-muted);">Roll: CO-2101 | UID: 2026001</div>
+          </div>
+        </div>
+
+        <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 18px;">
+          <div class="stat-card" style="padding: 14px;">
+            <div>
+              <span class="stat-label" style="font-size: 0.72rem;">Attendance</span>
+              <div id="view-student-pct" class="stat-value" style="font-size: 1.4rem;">0%</div>
+            </div>
+          </div>
+          <div class="stat-card" style="padding: 14px;">
+            <div>
+              <span class="stat-label" style="font-size: 0.72rem;">Present</span>
+              <div id="view-student-prs" class="stat-value" style="font-size: 1.4rem; color: var(--success);">0</div>
+            </div>
+          </div>
+          <div class="stat-card" style="padding: 14px;">
+            <div>
+              <span class="stat-label" style="font-size: 0.72rem;">Absent</span>
+              <div id="view-student-abs" class="stat-value" style="font-size: 1.4rem; color: var(--danger);">0</div>
+            </div>
+          </div>
+        </div>
+
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 10px;">Subject Breakdown</h4>
+        <div id="view-student-subjects" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="UI.closeModal('student-view-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('ADMIN');
+    Auth.renderUserProfile(currentUser);
+
+    // Read optional search query from URL (e.g. from dashboard click)
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSearch = urlParams.get('search') || '';
+    if (initialSearch) {
+      document.getElementById('student-search-input').value = initialSearch;
+    }
+
+    async function loadStudents() {
+      const search = document.getElementById('student-search-input').value.trim();
+      const deptId = document.getElementById('dept-filter').value;
+      const status = document.getElementById('status-filter').value;
+
+      try {
+        const res = await API.get('/api/students', {
+          search,
+          department_id: deptId,
+          status
+        });
+
+        const tbody = document.getElementById('students-table-body');
+        if (!res || !res.data || !res.data.students || res.data.students.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">No matching student records found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = res.data.students.map(s => {
+          let bioBadge = '<span class="badge" style="background:#f1f5f9;color:#64748b;">Not Enrolled</span>';
+          if (s.face_verification_status === 'ENROLLED') {
+            bioBadge = '<span class="badge badge-enrolled">✓ Enrolled</span>';
+          } else if (s.face_verification_status === 'PENDING') {
+            bioBadge = '<span class="badge badge-late">⏳ Pending</span>';
+          }
+
+          const statusBadge = s.status === 'ACTIVE'
+            ? '<span class="badge badge-present">Active</span>'
+            : '<span class="badge badge-absent">Inactive</span>';
+
+          return `
+            <tr>
+              <td><strong>${s.roll_number}</strong></td>
+              <td><strong>${s.full_name}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${s.student_uid}</span></td>
+              <td>${s.email}</td>
+              <td>${s.department_code}</td>
+              <td>${s.class_code} - Div ${s.division_name}</td>
+              <td>${bioBadge}</td>
+              <td>${statusBadge}</td>
+              <td>
+                <div style="display:flex; gap: 6px;">
+                  <button class="btn btn-secondary btn-sm" onclick="viewStudentDetails(${s.student_id})">View</button>
+                  <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deactivateStudent(${s.student_id}, '${s.full_name}')">Deactivate</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        UI.toast("Failed to load students: " + err.message, "error");
+      }
+    }
+
+    async function viewStudentDetails(studentId) {
+      try {
+        const res = await API.get(`/api/students/${studentId}`);
+        if (!res || !res.data) return;
+
+        const s = res.data.student;
+        const stats = res.data.attendance_stats;
+        const subjects = res.data.subject_breakdown || [];
+
+        document.getElementById('view-student-fullname').textContent = s.full_name;
+        document.getElementById('view-student-avatar').textContent = s.full_name.charAt(0);
+        document.getElementById('view-student-meta').textContent = `Roll: ${s.roll_number} | UID: ${s.student_uid} | ${s.department_name}`;
+        
+        document.getElementById('view-student-pct').textContent = `${stats.percentage}%`;
+        document.getElementById('view-student-pct').style.color = stats.is_low_attendance ? 'var(--danger)' : 'var(--success)';
+        document.getElementById('view-student-prs').textContent = stats.present;
+        document.getElementById('view-student-abs').textContent = stats.absent;
+
+        const subContainer = document.getElementById('view-student-subjects');
+        if (subjects.length === 0) {
+          subContainer.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">No lecture sessions recorded yet.</div>`;
+        } else {
+          subContainer.innerHTML = subjects.map(sub => `
+            <div style="padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-surface-subtle);">
+              <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 0.88rem;">
+                <span>${sub.subject_name} (${sub.subject_code})</span>
+                <span style="color: ${sub.below_threshold ? 'var(--danger)' : 'var(--success)'};">${sub.percentage}%</span>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin: 3px 0;">
+                Attended: ${sub.present} / ${sub.total_classes} (${sub.late} Late, ${sub.absent} Absent)
+              </div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill ${sub.below_threshold ? 'fill-danger' : 'fill-success'}" style="width: ${sub.percentage}%;"></div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        UI.openModal('student-view-modal');
+      } catch (err) {
+        UI.toast(err.message, 'error');
+      }
+    }
+
+    function deactivateStudent(id, name) {
+      UI.confirm({
+        title: 'Deactivate Student Account',
+        message: `Are you sure you want to deactivate ${name}? They will no longer be able to log in or mark attendance.`,
+        confirmText: 'Deactivate',
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await API.delete(`/api/students/${id}`);
+            UI.toast(`${name} has been deactivated.`, 'info');
+            loadStudents();
+          } catch (err) {
+            UI.toast(err.message, 'error');
+          }
+        }
+      });
+    }
+
+    // Add Student Form
+    document.getElementById('add-student-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('add-student-submit-btn');
+      submitBtn.textContent = 'Saving...';
+      submitBtn.disabled = true;
+
+      const payload = {
+        full_name: document.getElementById('add-name').value.trim(),
+        email: document.getElementById('add-email').value.trim(),
+        roll_number: document.getElementById('add-roll').value.trim(),
+        student_uid: document.getElementById('add-uid').value.trim(),
+        department_id: parseInt(document.getElementById('add-dept').value),
+        class_id: 1, // SY CO
+        division_id: parseInt(document.getElementById('add-class').value)
+      };
+
+      try {
+        await API.post('/api/students', payload);
+        UI.toast(`Student ${payload.full_name} enrolled successfully!`, 'success');
+        UI.closeModal('add-student-modal');
+        document.getElementById('add-student-form').reset();
+        loadStudents();
+      } catch (err) {
+        UI.toast(err.message, 'error');
+      } finally {
+        submitBtn.textContent = 'Save Student';
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Debounced search & filter listener
+    let searchDebounce = null;
+    document.getElementById('student-search-input').addEventListener('input', () => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(loadStudents, 300);
+    });
+    document.getElementById('dept-filter').addEventListener('change', loadStudents);
+    document.getElementById('status-filter').addEventListener('change', loadStudents);
+
+    document.addEventListener('DOMContentLoaded', loadStudents);
+  </script>
+</body>
+</html>

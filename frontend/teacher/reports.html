@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class Reports — SAMS Faculty</title>
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">SAMS</div>
+        <div>
+          <div class="sidebar-title">SAMS Faculty</div>
+          <div class="sidebar-tagline">Academic Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Teaching Workflows</div>
+        <a href="/frontend/teacher/dashboard.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/teacher/attendance.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Take Attendance (Camera / AI)
+        </a>
+        <a href="/frontend/teacher/reports.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Class Reports
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">T</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Faculty Member</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">TEACHER</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
+          ⎋
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Class Analytics & Performance</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+          <a href="/api/reports/export-csv" class="btn btn-primary btn-sm" target="_blank">📥 Export CSV</a>
+        </div>
+      </header>
+
+      <main class="page-container">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Subject Attendance Summaries</h1>
+            <p class="page-subtitle">Cumulative attendance percentage and lecture breakdown for your students</p>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="sams-table">
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Student Name</th>
+                <th>Subject</th>
+                <th>Lectures Conducted</th>
+                <th>Attended</th>
+                <th>Attendance %</th>
+                <th>Threshold Status</th>
+              </tr>
+            </thead>
+            <tbody id="t-report-tbody">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">Generating class report...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('TEACHER');
+    Auth.renderUserProfile(currentUser);
+
+    async function loadTeacherReport() {
+      try {
+        const res = await API.get('/api/reports/attendance', { class_id: 1, subject_id: 1 });
+        if (!res || !res.data) return;
+
+        const records = res.data.records || [];
+        const tbody = document.getElementById('t-report-tbody');
+
+        tbody.innerHTML = records.map(r => `
+          <tr>
+            <td><strong>${r.roll_number}</strong></td>
+            <td><strong>${r.full_name}</strong></td>
+            <td>Data Structures (22316)</td>
+            <td>${r.total_conducted}</td>
+            <td>${r.present} Present, ${r.late} Late</td>
+            <td>
+              <span style="font-weight:700; color:${r.is_low ? 'var(--danger)' : 'var(--success)'};">${r.percentage}%</span>
+              <div class="progress-bar-wrap" style="width: 80px;">
+                <div class="progress-bar-fill ${r.is_low ? 'fill-danger' : 'fill-success'}" style="width: ${r.percentage}%;"></div>
+              </div>
+            </td>
+            <td>
+              ${r.is_low 
+                ? '<span class="badge badge-risk">Shortage Alert</span>' 
+                : '<span class="badge badge-present">Satisfactory</span>'}
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        UI.toast("Failed to load report: " + err.message, "error");
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadTeacherReport);
+  </script>
+</body>
+</html>

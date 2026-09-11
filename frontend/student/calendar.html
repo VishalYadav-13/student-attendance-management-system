@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Calendar — SAMS</title>
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">SAMS</div>
+        <div>
+          <div class="sidebar-title">SAMS Student</div>
+          <div class="sidebar-tagline">Academic Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">My Academics</div>
+        <a href="/frontend/student/dashboard.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/student/calendar.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Attendance Calendar
+        </a>
+        <a href="/frontend/student/profile.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Profile & Biometrics
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">S</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Student User</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">STUDENT</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
+          ⎋
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Monthly Attendance Calendar</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+        </div>
+      </header>
+
+      <main class="page-container">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Attendance Activity Calendar</h1>
+            <p class="page-subtitle">Track your daily classroom presence and view verification methods</p>
+          </div>
+          <div class="page-actions">
+            <!-- Legend Indicators -->
+            <div style="display: flex; gap: 12px; font-size: 0.8rem; font-weight: 600;">
+              <span style="display:flex; align-items:center; gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--success);"></span> Present</span>
+              <span style="display:flex; align-items:center; gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--danger);"></span> Absent</span>
+              <span style="display:flex; align-items:center; gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--warning);"></span> Late</span>
+              <span style="display:flex; align-items:center; gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:#94a3b8;"></span> Holiday / Off</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Month Navigation Card -->
+        <div class="calendar-wrap">
+          <div class="calendar-header">
+            <h2 id="calendar-month-label" style="font-size: 1.3rem; font-weight: 700;">September 2026</h2>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">‹ Previous</button>
+              <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">Next ›</button>
+            </div>
+          </div>
+
+          <!-- Weekday Headers -->
+          <div class="calendar-grid" style="margin-bottom: 8px;">
+            <div class="calendar-weekday">Sun</div>
+            <div class="calendar-weekday">Mon</div>
+            <div class="calendar-weekday">Tue</div>
+            <div class="calendar-weekday">Wed</div>
+            <div class="calendar-weekday">Thu</div>
+            <div class="calendar-weekday">Fri</div>
+            <div class="calendar-weekday">Sat</div>
+          </div>
+
+          <!-- Days Grid -->
+          <div id="calendar-days-grid" class="calendar-grid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Day Detail Modal -->
+  <div id="day-detail-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="day-detail-date">Lecture Attendance Details</h3>
+        <button class="modal-close-btn" onclick="UI.closeModal('day-detail-modal')">&times;</button>
+      </div>
+      <div class="modal-body" id="day-detail-body">
+        <!-- Dynamically populated -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="UI.closeModal('day-detail-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('STUDENT');
+    Auth.renderUserProfile(currentUser);
+
+    let currentYear = 2026;
+    let currentMonth = 8; // September (0-indexed: 8 = September, 7 = August)
+
+    // Historical attendance records mapped by Date (from database seed)
+    const mockAttendanceMap = {
+      '2026-09-11': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI (Gemini Assisted)', conf: '97%' },
+      '2026-09-09': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'FACE_AI', conf: '93%' },
+      '2026-09-08': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '94%' },
+      '2026-09-07': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-09-04': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'HYBRID', conf: '95%' },
+      '2026-09-02': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'FACE_AI', conf: '92%' },
+      '2026-09-01': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '96%' },
+      // August entries
+      '2026-08-31': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-28': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '94%' },
+      '2026-08-26': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'HYBRID', conf: '91%' },
+      '2026-08-25': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-24': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '93%' },
+      '2026-08-21': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '97%' },
+      '2026-08-19': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-18': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '92%' },
+      '2026-08-17': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-14': { status: 'LATE', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:22 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-12': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'FACE_AI', conf: '95%' },
+      '2026-08-11': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-10': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '91%' },
+      '2026-08-07': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-05': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'MANUAL', conf: '—' },
+      '2026-08-04': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '96%' },
+      '2026-08-03': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '94%' }
+    };
+
+    function renderCalendar() {
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendar-month-label').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+      const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+      const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+      const grid = document.getElementById('calendar-days-grid');
+      grid.innerHTML = '';
+
+      // Blank slots before 1st of month
+      for (let i = 0; i < firstDayIndex; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-day-cell cell-weekend';
+        emptyCell.style.opacity = '0.3';
+        grid.appendChild(emptyCell);
+      }
+
+      // Populate day cells
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day-cell';
+
+        const record = mockAttendanceMap[dateStr];
+        let statusClass = '';
+
+        if (isWeekend) {
+          statusClass = 'cell-weekend';
+        } else if (record) {
+          if (record.status === 'PRESENT') statusClass = 'cell-present';
+          else if (record.status === 'ABSENT') statusClass = 'cell-absent';
+          else if (record.status === 'LATE') statusClass = 'cell-late';
+        }
+
+        if (statusClass) {
+          cell.classList.add(statusClass);
+        }
+
+        cell.innerHTML = `
+          <span class="calendar-day-num">${day}</span>
+          ${record ? `<span class="day-status-indicator"></span>` : ''}
+        `;
+
+        cell.addEventListener('click', () => {
+          showDayDetail(dateStr, record, isWeekend);
+        });
+
+        grid.appendChild(cell);
+      }
+    }
+
+    function showDayDetail(dateStr, record, isWeekend) {
+      document.getElementById('day-detail-date').textContent = `Attendance: ${dateStr}`;
+      const body = document.getElementById('day-detail-body');
+
+      if (isWeekend) {
+        body.innerHTML = `
+          <div style="text-align:center; padding: 20px; color: var(--text-muted);">
+            <div>🏖️</div>
+            <div style="font-weight: 600; margin-top: 6px;">Weekend / Institutional Recess</div>
+            <div style="font-size:0.85rem;">No academic sessions scheduled.</div>
+          </div>
+        `;
+      } else if (record) {
+        let badge = '<span class="badge badge-present">PRESENT</span>';
+        if (record.status === 'ABSENT') badge = '<span class="badge badge-absent">ABSENT</span>';
+        if (record.status === 'LATE') badge = '<span class="badge badge-late">LATE ARRIVAL</span>';
+
+        body.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h4 style="font-size:1.05rem; font-weight:700;">${record.subject}</h4>
+            ${badge}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:0.9rem;">
+            <div><strong>Faculty Instructor:</strong> ${record.teacher}</div>
+            <div><strong>Session Time:</strong> ${record.time}</div>
+            <div><strong>Verification Method:</strong> ${record.method}</div>
+            <div><strong>Biometric Confidence:</strong> ${record.conf}</div>
+          </div>
+        `;
+      } else {
+        body.innerHTML = `
+          <div style="text-align:center; padding: 20px; color: var(--text-muted);">
+            <div>📅</div>
+            <div style="font-weight: 600; margin-top: 6px;">No Session Records</div>
+            <div style="font-size:0.85rem;">No class attendance recorded for this date.</div>
+          </div>
+        `;
+      }
+
+      UI.openModal('day-detail-modal');
+    }
+
+    function changeMonth(delta) {
+      currentMonth += delta;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      } else if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      renderCalendar();
+    }
+
+    document.addEventListener('DOMContentLoaded', renderCalendar);
+  </script>
+</body>
+</html>

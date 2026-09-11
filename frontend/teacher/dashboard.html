@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faculty Dashboard — SAMS</title>
+  <meta name="description" content="SAMS Faculty Dashboard — today's class schedule, attendance statistics, and session management.">
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+</head>
+<body>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">S</div>
+        <div>
+          <div class="sidebar-title">SAMS Faculty</div>
+          <div class="sidebar-tagline">Academic Portal</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Teaching Workflows</div>
+        <a href="/frontend/teacher/dashboard.html" class="nav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="/frontend/teacher/attendance.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Take Attendance
+        </a>
+        <a href="/frontend/teacher/reports.html" class="nav-link">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Class Reports
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div id="sidebar-avatar" class="sidebar-avatar">T</div>
+          <div class="sidebar-user-info">
+            <div id="sidebar-user-name" class="sidebar-user-name">Faculty Member</div>
+            <div id="sidebar-user-role" class="sidebar-user-role">TEACHER</div>
+          </div>
+        </div>
+        <button onclick="Auth.logout()" title="Sign Out" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 6px;" aria-label="Sign Out">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">Faculty Workspace</div>
+        </div>
+        <div class="topbar-right">
+          <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode"></button>
+          <a href="/frontend/teacher/attendance.html" class="btn btn-primary btn-sm">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Take Attendance
+          </a>
+        </div>
+      </header>
+
+      <main class="page-container">
+
+        <!-- Active Session Alert -->
+        <div id="active-session-alert" style="display: none;" class="alert-banner alert-banner-warning" style="margin-bottom: 20px;">
+          <div class="alert-banner-icon">
+            <span class="session-live-badge"><span class="live-dot"></span> LIVE</span>
+          </div>
+          <div style="flex:1;">
+            <div class="alert-banner-title">Attendance Session In Progress</div>
+            <p class="alert-banner-msg" id="active-session-msg">An attendance session is currently open.</p>
+          </div>
+          <a href="/frontend/teacher/attendance.html" class="btn btn-primary btn-sm">Continue →</a>
+        </div>
+
+        <div class="page-header">
+          <div>
+            <h1 class="page-title" id="welcome-teacher-title">Welcome back, Professor</h1>
+            <p class="page-subtitle" id="teacher-meta-subtitle">Loading department and designation...</p>
+          </div>
+          <div class="page-actions">
+            <a href="/frontend/teacher/attendance.html" class="btn btn-primary">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+              Start New Session
+            </a>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Today's Lectures</span>
+              <span id="stat-today-classes" class="stat-value">—</span>
+              <span class="stat-subtext" id="stat-day-subtext">Loading schedule...</span>
+            </div>
+            <div class="stat-icon icon-blue">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Assigned Classes</span>
+              <span id="stat-assigned-classes" class="stat-value">—</span>
+              <span class="stat-subtext">Active Divisions</span>
+            </div>
+            <div class="stat-icon icon-purple">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Subject Attendance Avg</span>
+              <span id="stat-overall-att" class="stat-value" style="color: var(--success);">—</span>
+              <span class="stat-subtext">Across All Lectures</span>
+            </div>
+            <div class="stat-icon icon-green">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Active Session</span>
+              <span id="stat-active-session" class="stat-value" style="font-size: 1.1rem;">None</span>
+              <span class="stat-subtext">Attendance In-Progress</span>
+            </div>
+            <div class="stat-icon icon-amber">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Timetable as Class Cards -->
+        <div style="margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <div>
+              <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Today's Class Schedule</h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Scheduled lectures for <span id="today-day-label">today</span></p>
+            </div>
+            <span class="badge badge-enrolled" id="today-day-badge">—</span>
+          </div>
+
+          <div id="timetable-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+            <!-- Skeleton cards -->
+            <div class="class-card skeleton" style="height: 140px;"></div>
+            <div class="class-card skeleton" style="height: 140px;"></div>
+          </div>
+        </div>
+
+        <!-- Assigned Subject Courses -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Assigned Subject Courses</h3>
+            <a href="/frontend/teacher/reports.html" class="btn btn-secondary btn-sm">View Reports →</a>
+          </div>
+          <div id="assigned-courses-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; padding: 4px 0;">
+            <div class="skeleton skeleton-text w-full" style="height: 60px;"></div>
+            <div class="skeleton skeleton-text w-full" style="height: 60px;"></div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/api.js"></script>
+  <script src="/frontend/assets/js/auth.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
+  <script>
+    const currentUser = Auth.requireRole('TEACHER');
+    Auth.renderUserProfile(currentUser);
+
+    function formatTime(timeStr) {
+      if (!timeStr) return '';
+      const [h, m] = timeStr.split(':');
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const h12 = hour % 12 || 12;
+      return `${h12}:${m} ${ampm}`;
+    }
+
+    async function loadTeacherDashboard() {
+      try {
+        const res = await API.get('/api/dashboard/teacher');
+        if (!res || !res.data) throw new Error('Invalid server response.');
+
+        const { teacher, stats, today_day, timetable, assigned_classes, active_session } = res.data;
+
+        // Header
+        const firstName = (teacher.full_name || 'Professor').split(' ')[0];
+        document.getElementById('welcome-teacher-title').textContent = `Welcome back, ${firstName}`;
+        const designation = teacher.designation || '';
+        const dept = teacher.department || '';
+        document.getElementById('teacher-meta-subtitle').textContent =
+          [designation, dept].filter(Boolean).join(' • ') || 'Faculty Member';
+
+        document.getElementById('today-day-badge').textContent = today_day;
+        document.getElementById('today-day-label').textContent = today_day;
+        document.getElementById('stat-day-subtext').textContent = `${today_day} Schedule`;
+
+        UI.animateCounter(document.getElementById('stat-today-classes'), stats.today_classes_count);
+        UI.animateCounter(document.getElementById('stat-assigned-classes'), stats.assigned_classes_count);
+        UI.animateCounter(document.getElementById('stat-overall-att'), Math.round(stats.overall_attendance_percent), 900, '%');
+
+        const activeEl = document.getElementById('stat-active-session');
+        if (active_session) {
+          activeEl.textContent = `#${active_session.session_id}`;
+          activeEl.style.color = 'var(--success)';
+          // Show active session alert
+          const alertBox = document.getElementById('active-session-alert');
+          alertBox.style.display = 'flex';
+          document.getElementById('active-session-msg').textContent =
+            `Session #${active_session.session_id} is currently open. Continue marking attendance.`;
+        } else {
+          activeEl.textContent = 'None Active';
+          activeEl.style.color = 'var(--text-muted)';
+        }
+
+        // Timetable as Class Cards
+        const grid = document.getElementById('timetable-cards-grid');
+        if (!timetable || timetable.length === 0) {
+          grid.innerHTML = `
+            <div style="grid-column: 1/-1;">
+              <div class="empty-state">
+                <div class="empty-state-icon">📅</div>
+                <div class="empty-state-title">No Classes Scheduled Today</div>
+                <div class="empty-state-desc">No lecture sessions are scheduled for ${today_day}. Enjoy your day or review past reports.</div>
+              </div>
+            </div>
+          `;
+        } else {
+          grid.innerHTML = timetable.map(item => {
+            const startFmt = formatTime(item.start_time);
+            const endFmt = item.end_time ? formatTime(item.end_time) : '';
+            const timeRange = endFmt ? `${startFmt} – ${endFmt}` : startFmt;
+            return `
+              <div class="class-card">
+                <div class="class-card-header">
+                  <div>
+                    <div class="class-subject">${item.subject_name}</div>
+                    <div class="class-meta">${item.subject_code} • ${item.class_name}, Division ${item.division_name}</div>
+                  </div>
+                  <span class="class-time-pill">${timeRange}</span>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <span class="badge badge-enrolled">${item.class_name} Div ${item.division_name}</span>
+                  ${item.room_number ? `<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-main);">Room: ${item.room_number}</span>` : ''}
+                </div>
+                <div class="class-card-footer">
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">${item.subject_code}</span>
+                  <a href="/frontend/teacher/attendance.html?subject_id=${item.subject_id}&class_id=${item.class_id}&division_id=${item.division_id}" class="btn btn-primary btn-sm">
+                    Take Attendance →
+                  </a>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // Assigned Subject Courses
+        const coursesGrid = document.getElementById('assigned-courses-grid');
+        if (assigned_classes && assigned_classes.length > 0) {
+          coursesGrid.innerHTML = assigned_classes.map(c => `
+            <div style="padding: 14px 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface-subtle); display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+              <div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">${c.subject_name}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">${c.subject_code} • ${c.class_name} Div ${c.division_name}</div>
+              </div>
+              <a href="/frontend/teacher/attendance.html?class_id=${c.class_id}&division_id=${c.division_id}" style="font-size: 0.78rem; font-weight: 600; color: var(--primary-accent); white-space: nowrap;">
+                Roster →
+              </a>
+            </div>
+          `).join('');
+        } else {
+          coursesGrid.innerHTML = `<div class="empty-state" style="padding: 24px;"><div class="empty-state-desc">No assigned courses found. Contact administrator.</div></div>`;
+        }
+
+      } catch (err) {
+        console.error('[Teacher Dashboard Error]', err);
+        UI.toast('Failed to load dashboard: ' + err.message, 'error');
+        document.getElementById('timetable-cards-grid').innerHTML = `
+          <div style="grid-column: 1/-1;">
+            <div class="error-state">
+              <p>${err.message}</p>
+              <button class="btn btn-secondary btn-sm" onclick="loadTeacherDashboard()">Retry</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadTeacherDashboard);
+  </script>
+</body>
+</html>
