@@ -10,16 +10,29 @@ window.SAMS_CONFIG = {
   TAGLINE: "Smart Attendance. Better Academics.",
   INSTITUTION_NAME: "Demo Polytechnic Institute",
   
-  // API Base URL:
-  // - Local dev / Unified server: "" (empty string sends requests to /api/... on same host)
-  // - Split deployment (e.g. Vercel frontend + Railway/Render/AWS backend):
-  //   Set window.__SAMS_API_URL__ = "https://your-backend-api.com" in head, or configure below:
-  API_BASE_URL: window.__SAMS_API_URL__ || (
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '8000')
-      ? ""
-      : "" // Replace with your production API URL e.g. "https://api.your-sams-domain.com" if hosted separately
+  // API Base URL Configuration:
+  // - Priority 1: Injected runtime variable window.__SAMS_API_URL__
+  // - Priority 2: Browser stored override localStorage.getItem('sams_api_url')
+  // - Priority 3: Configured Render production backend URL below
+  // - Priority 4: Empty string "" for unified host / local development (localhost / 127.0.0.1:8000)
+  API_BASE_URL: (
+    window.__SAMS_API_URL__ ||
+    localStorage.getItem('sams_api_url') ||
+    (function() {
+      const isLocal = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' || 
+                      window.location.port === '8000';
+      if (isLocal) {
+        return "";
+      }
+      // Production Render Backend URL:
+      // Replace with your Render service URL e.g. "https://sams-backend.onrender.com"
+      const RENDER_BACKEND_URL = "";
+      return RENDER_BACKEND_URL || "";
+    })()
   ),
   
   DEFAULT_THRESHOLD: 75.0,
   AUTO_LOGOUT_MINUTES: 120
 };
+

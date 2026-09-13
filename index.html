@@ -2,17 +2,408 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=/frontend/index.html">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SAMS — Student Attendance Management System</title>
-  <script>
-    window.location.replace("/frontend/index.html");
-  </script>
+  <meta name="description" content="AI-assisted student attendance management system for modern colleges and polytechnic institutes. Role-based dashboards, biometric verification, and institutional analytics.">
+  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+  <style>
+    /* Landing Page Specific Enhancements */
+    .hero-section {
+      padding: 90px 24px 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--primary-accent);
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      padding: 6px 16px;
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+    .hero-title {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1.5px;
+      color: var(--text-main);
+      max-width: 860px;
+      margin: 0 auto 20px;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, var(--primary-accent), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 680px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+    .hero-cta-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 50px;
+    }
+    .btn-hero {
+      padding: 14px 28px;
+      font-size: 1rem;
+      border-radius: var(--radius-md);
+    }
+    /* Interactive Preview Container */
+    .preview-window {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      overflow: hidden;
+      max-width: 1040px;
+      margin: 0 auto 80px;
+      transform: perspective(1000px) rotateX(2deg);
+      transition: transform var(--transition-normal);
+    }
+    .preview-window:hover {
+      transform: perspective(1000px) rotateX(0deg);
+    }
+    .preview-window-bar {
+      background: var(--bg-surface-subtle);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .window-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    /* Features Grid */
+    .features-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+    .section-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .section-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--shadow-sm);
+      transition: all var(--transition-fast);
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary-accent);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 18px;
+    }
+    .feature-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .feature-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Landing Navbar */
+    .landing-nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    .nav-item {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: color var(--transition-fast);
+    }
+    .nav-item:hover {
+      color: var(--primary-accent);
+    }
+
+    /* Footer */
+    .landing-footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+  </style>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0b1120; color: #94a3b8;">
-  <div style="text-align: center;">
-    <h2 style="color: #60a5fa; margin-bottom: 8px;">SAMS Portal</h2>
-    <p>Redirecting to institutional dashboard...</p>
-    <p><a href="/frontend/index.html" style="color: #38bdf8; text-decoration: none;">Click here if you are not redirected automatically</a></p>
-  </div>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="landing-nav">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div class="sidebar-logo">SAMS</div>
+      <div>
+        <div style="font-weight: 800; font-size: 1.15rem; letter-spacing: -0.5px; color: var(--text-main);">SAMS</div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Demo Polytechnic Institute</div>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="#features" class="nav-item">Features</a>
+      <a href="#ai-architecture" class="nav-item">AI Verification</a>
+      <a href="#security" class="nav-item">Privacy & Security</a>
+      <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+      <a href="/frontend/login.html" class="btn btn-primary" style="padding: 8px 18px;">Portal Login</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="hero-badge">
+      <span>⚡ Powered by Google Gemini AI & PostgreSQL</span>
+    </div>
+    <h1 class="hero-title">
+      Smart Attendance Management for <span>Modern Institutions</span>
+    </h1>
+    <p class="hero-subtitle">
+      Track attendance, verify student identities with AI-assisted computer vision, analyze institutional trends, and eliminate classroom proxy attendance with precision.
+    </p>
+    <div class="hero-cta-group">
+      <a href="/frontend/login.html" class="btn btn-primary btn-hero">
+        Sign In to Portal →
+      </a>
+      <a href="#features" class="btn btn-secondary btn-hero">
+        Explore Capabilities
+      </a>
+    </div>
+
+    <!-- Animated Live Dashboard Preview Simulation -->
+    <div class="preview-window">
+      <div class="preview-window-bar">
+        <span class="window-dot dot-red"></span>
+        <span class="window-dot dot-yellow"></span>
+        <span class="window-dot dot-green"></span>
+        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 12px; font-weight: 500;">
+          https://sams.dpi.edu/admin/dashboard — Demo Polytechnic Institute
+        </span>
+      </div>
+      <div style="padding: 24px; text-align: left; background: var(--bg-app);">
+        <div class="stats-grid" style="margin-bottom: 16px;">
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Enrolled Students</span>
+              <span class="stat-value" style="color: var(--primary-accent);">20</span>
+              <span class="stat-subtext">3 Departments Active</span>
+            </div>
+            <div class="stat-icon icon-blue">👥</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">Today's Attendance</span>
+              <span class="stat-value" style="color: var(--success);">90.5%</span>
+              <span class="stat-subtext">38 / 42 Students Present</span>
+            </div>
+            <div class="stat-icon icon-green">✓</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">At-Risk Students</span>
+              <span class="stat-value" style="color: var(--danger);">2</span>
+              <span class="stat-subtext">Below 75% Threshold</span>
+            </div>
+            <div class="stat-icon icon-red">⚠</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">AI Face Matches</span>
+              <span class="stat-value" style="color: var(--secondary);">96.2%</span>
+              <span class="stat-subtext">Confidence Average</span>
+            </div>
+            <div class="stat-icon icon-purple">🎯</div>
+          </div>
+        </div>
+
+        <div class="ai-insights-banner" style="margin-bottom: 0;">
+          <div class="ai-icon-badge">✨</div>
+          <div class="ai-content">
+            <h4>Google Gemini Attendance Insights</h4>
+            <p>Computer Engineering demonstrated 91.2% attendance in today's morning sessions. 2 students flagged with shortage warnings require mid-term academic counseling.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features Grid -->
+  <section id="features" class="features-section">
+    <div class="section-header">
+      <h2 class="section-title">Engineered for Academic Excellence</h2>
+      <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto;">
+        A comprehensive institutional platform designed from the ground up to replace outdated paper registers and vulnerable manual records.
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon icon-blue">📷</div>
+        <h3 class="feature-title">AI-Assisted Face Verification</h3>
+        <p class="feature-desc">
+          Automated webcam verification with liveness checks and Gemini AI image quality assessment. Eliminates buddy punching and manual roll calls.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon icon-green">⚡</div>
+        <h3 class="feature-title">Real-Time Attendance Marking</h3>
+        <p class="feature-desc">
+          Live lecture sessions with instantaneous database synchronization, duplicate entry prevention, and auditable manual overrides.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon icon-purple">🛡️</div>
+        <h3 class="feature-title">Role-Based Access Control</h3>
+        <p class="feature-desc">
+          Strict authorization boundaries ensuring Administrators, Teachers, and Students only access their designated institutional workflows.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon icon-amber">📊</div>
+        <h3 class="feature-title">Institutional Analytics & Shortage Alarms</h3>
+        <p class="feature-desc">
+          Automated 75% attendance threshold monitoring, risk status indicators, department comparisons, and interactive Chart.js visualizations.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon icon-blue">📅</div>
+        <h3 class="feature-title">Interactive Student Calendars</h3>
+        <p class="feature-desc">
+          Color-coded monthly attendance calendars with date-level drilldown showing subjects, faculty, timestamps, and verification methods.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon icon-green">📑</div>
+        <h3 class="feature-title">Automated Export & Compliance</h3>
+        <p class="feature-desc">
+          One-click CSV and report streaming for polytechnic board inspections, university compliance audits, and parent-teacher meetings.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI Architecture & Privacy Section -->
+  <section id="ai-architecture" style="background: var(--bg-surface); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); padding: 70px 24px;">
+    <div style="max-width: 1000px; margin: 0 auto; text-align: center;">
+      <h2 class="section-title">Ethical Biometrics & Gemini AI Integration</h2>
+      <p style="color: var(--text-secondary); max-width: 720px; margin: 0 auto 40px;">
+        Designed responsibly: SAMS does not store raw student camera frames or rely blindly on free-form LLM outputs.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; text-align: left;">
+        <div style="padding: 24px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-app);">
+          <h4 style="font-weight: 700; margin-bottom: 8px;">1. Client Camera & Liveness</h4>
+          <p style="font-size: 0.88rem; color: var(--text-secondary);">Student explicitly grants camera access. The client guides the student through positioning and liveness validation cues.</p>
+        </div>
+        <div style="padding: 24px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-app);">
+          <h4 style="font-weight: 700; margin-bottom: 8px;">2. Server-Side Gemini Quality</h4>
+          <p style="font-size: 0.88rem; color: var(--text-secondary);">The backend verifies lighting, blurriness, and single-face presence via Gemini API without exposing credentials to the client.</p>
+        </div>
+        <div style="padding: 24px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-app);">
+          <h4 style="font-weight: 700; margin-bottom: 8px;">3. Biometric Feature Match</h4>
+          <p style="font-size: 0.88rem; color: var(--text-secondary);">Mathematical landmark vectors are compared against enrolled student profiles with 0.75+ confidence thresholds and manual teacher fallback.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security Section -->
+  <section id="security" class="features-section">
+    <div class="section-header">
+      <h2 class="section-title">Institutional Grade Security</h2>
+      <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto;">
+        Built following OWASP best practices to safeguard academic integrity and sensitive student biometrics.
+      </p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+      <div class="card">
+        <h4 style="font-weight: 700; margin-bottom: 6px;">🔒 Bcrypt Passwords</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Native password_hash with salt, session regeneration on login, and timing-safe comparisons.</p>
+      </div>
+      <div class="card">
+        <h4 style="font-weight: 700; margin-bottom: 6px;">🛡️ Parameterized Queries</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Full PDO prepared statements on PostgreSQL preventing SQL injection across all routes.</p>
+      </div>
+      <div class="card">
+        <h4 style="font-weight: 700; margin-bottom: 6px;">📋 Complete Audit Trail</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Every manual attendance override, login, and biometric modification is recorded with timestamp and reason.</p>
+      </div>
+      <div class="card">
+        <h4 style="font-weight: 700; margin-bottom: 6px;">🚫 Right to Erasure</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Students or administrators can instantly purge enrolled biometric vectors with full compliance logging.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 800; color: var(--text-main);">SAMS</span> — Student Attendance Management System
+      </div>
+      <div>"Smart Attendance. Better Academics." — Demo Polytechnic Institute</div>
+      <div>&copy; 2026 SAMS. All Rights Reserved.</div>
+    </div>
+  </footer>
+
+  <script src="/frontend/assets/js/config.js"></script>
+  <script src="/frontend/assets/js/ui.js"></script>
 </body>
 </html>
