@@ -122,9 +122,34 @@ class StudentController
         // STRICT ACCESS CONTROL: Student A cannot view Student B
         if ($user['role_name'] === 'STUDENT' && (int)$user['student_id'] !== $studentId) {
             Response::forbidden("Access denied: You cannot view attendance or profile information for another student.");
+            return;
         }
 
         $pdo = Database::getConnection();
+
+        // IDOR PROTECTION: Teachers can only view students in their assigned classes or sessions
+        if ($user['role_name'] === 'TEACHER') {
+            $teacherId = (int)$user['teacher_id'];
+            $authCheck = $pdo->prepare("
+                SELECT 1 FROM students s
+                WHERE s.student_id = :sid AND (
+                    EXISTS (
+                        SELECT 1 FROM teacher_subjects ts 
+                        WHERE ts.teacher_id = :tid AND ts.class_id = s.class_id AND ts.division_id = s.division_id
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM attendance_sessions ses
+                        JOIN attendance_records ar ON ar.session_id = ses.session_id
+                        WHERE ses.teacher_id = :tid2 AND ar.student_id = :sid2
+                    )
+                )
+            ");
+            $authCheck->execute([':sid' => $studentId, ':tid' => $teacherId, ':tid2' => $teacherId, ':sid2' => $studentId]);
+            if (!$authCheck->fetch()) {
+                Response::forbidden("Access denied: You can only view profiles of students in your assigned classes.");
+                return;
+            }
+        }
         $stmt = $pdo->prepare("
             SELECT 
                 s.student_id, s.user_id, s.roll_number, s.student_uid, s.full_name, s.email, s.phone,
@@ -204,8 +229,9 @@ class StudentController
 
         $pdo->beginTransaction();
         try {
-            // Default password for newly enrolled student: Student@12345
-            $pwdHash = password_hash('Student@12345', PASSWORD_BCRYPT);
+            // Default password for newly enrolled student: Student@12345 (or custom if supplied)
+            $rawPassword = !empty($input['password']) ? (string)$input['password'] : 'Student@12345';
+            $pwdHash = password_hash($rawPassword, PASSWORD_BCRYPT);
             $uStmt = $pdo->prepare("
                 INSERT INTO users (role_id, email, password_hash, status)
                 VALUES (3, :email, :pwd, 'ACTIVE')
@@ -298,4 +324,92 @@ class StudentController
         AuditService::log($admin['user_id'], 'STUDENT_DEACTIVATED', 'students', (string)$studentId);
         Response::success(null, "Student status marked as INACTIVE.");
     }
+
+    /**
+     * Monthly Calendar Data for a Student
+     * GET /api/students/{id}/calendar?year=2026&month=9
+     */
+    public static function calendar(int $studentId): void
+    {
+        $user = AuthMiddleware::authenticate();
+
+        // Students can only view their own calendar
+        if ($user['role_name'] === 'STUDENT' && (int)$user['student_id'] !== $studentId) {
+            Response::forbidden("Access denied: You cannot view another student's attendance calendar.");
+            return;
+        }
+
+        $pdo = Database::getConnection();
+
+        // Verify student exists
+        $checkStmt = $pdo->prepare("SELECT student_id, full_name FROM students WHERE student_id = :sid");
+        $checkStmt->execute([':sid' => $studentId]);
+        $student = $checkStmt->fetch();
+
+        if (!$student) {
+            Response::notFound("Student #{$studentId} not found.");
+        }
+
+        $year  = isset($_GET['year'])  ? (int)$_GET['year']  : (int)date('Y');
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('n');
+
+        // Clamp values
+        $year  = max(2020, min(2040, $year));
+        $month = max(1, min(12, $month));
+
+        $startDate = sprintf('%04d-%02d-01', $year, $month);
+        $endDate   = date('Y-m-t', strtotime($startDate));
+
+        $stmt = $pdo->prepare("
+            SELECT
+                ses.session_date,
+                r.status,
+                r.verification_method,
+                r.confidence_score,
+                r.marked_at,
+                sub.subject_name,
+                sub.subject_code,
+                t.full_name AS teacher_name,
+                ses.start_time
+            FROM attendance_records r
+            JOIN attendance_sessions ses ON r.session_id = ses.session_id
+            JOIN subjects sub ON ses.subject_id = sub.subject_id
+            JOIN teachers t ON ses.teacher_id = t.teacher_id
+            WHERE r.student_id = :sid
+              AND ses.session_date BETWEEN :start AND :end
+            ORDER BY ses.session_date ASC, ses.start_time ASC
+        ");
+        $stmt->execute([':sid' => $studentId, ':start' => $startDate, ':end' => $endDate]);
+        $records = $stmt->fetchAll();
+
+        // Group by date — a date can have multiple subjects
+        $byDate = [];
+        foreach ($records as $rec) {
+            $date = $rec['session_date'];
+            if (!isset($byDate[$date])) {
+                $byDate[$date] = [];
+            }
+            $byDate[$date][] = [
+                'status'              => $rec['status'],
+                'subject_name'        => $rec['subject_name'],
+                'subject_code'        => $rec['subject_code'],
+                'teacher_name'        => $rec['teacher_name'],
+                'start_time'          => $rec['start_time'],
+                'verification_method' => $rec['verification_method'],
+                'confidence_score'    => $rec['confidence_score'] !== null ? round((float)$rec['confidence_score'] * 100) : null,
+                'marked_at'           => $rec['marked_at']
+            ];
+        }
+
+        Response::success([
+            'student_id'  => $studentId,
+            'student_name'=> $student['full_name'],
+            'year'        => $year,
+            'month'       => $month,
+            'start_date'  => $startDate,
+            'end_date'    => $endDate,
+            'records_by_date' => $byDate
+        ], 'Monthly calendar data retrieved.');
+    }
 }
+

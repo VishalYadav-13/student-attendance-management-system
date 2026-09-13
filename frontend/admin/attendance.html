@@ -89,13 +89,11 @@
             <div class="form-group" style="margin-bottom: 0; min-width: 280px; flex: 1;">
               <label class="form-label" for="select-session">Select Attendance Session</label>
               <select id="select-session" class="form-control">
-                <option value="25">Session #25 — Data Structures (Today, Room 204 - Dr. Rajesh Sharma) [OPEN]</option>
-                <option value="24" selected>Session #24 — Data Structures (Sep 11, Room 204) [CLOSED]</option>
-                <option value="23">Session #23 — Data Structures (Sep 09, Room 204) [CLOSED]</option>
-                <option value="22">Session #22 — Data Structures (Sep 08, Room 204) [CLOSED]</option>
+                <option value="">-- Loading sessions... --</option>
               </select>
             </div>
             <button id="load-session-btn" class="btn btn-primary" onclick="loadSessionRoster()">Load Session Roster</button>
+            <button id="close-session-btn" class="btn btn-secondary" onclick="closeSelectedSession()" style="color: var(--warning); border-color: var(--warning);" title="Close the selected open session">🔒 Close Session</button>
           </div>
         </div>
 
@@ -182,8 +180,30 @@
     const currentUser = Auth.requireRole('ADMIN');
     Auth.renderUserProfile(currentUser);
 
+    // Dynamically populate the sessions dropdown from the API
+    async function loadSessionList() {
+      try {
+        const res = await API.get('/api/attendance/sessions', { limit: 50 });
+        if (!res || !res.data || !res.data.sessions) return;
+
+        const select = document.getElementById('select-session');
+        select.innerHTML = res.data.sessions.map(s => {
+          const label = `Session #${s.session_id} — ${s.subject_code} | ${s.class_code} Div ${s.division_name} | ${s.session_date} [${s.status}]`;
+          return `<option value="${s.session_id}" data-status="${s.status}">${label}</option>`;
+        }).join('');
+
+        // Auto-load first session
+        if (res.data.sessions.length > 0) {
+          loadSessionRoster();
+        }
+      } catch (err) {
+        UI.toast('Failed to load sessions list: ' + err.message, 'error');
+      }
+    }
+
     async function loadSessionRoster() {
       const sessId = document.getElementById('select-session').value;
+      if (!sessId) return;
       try {
         const res = await API.get(`/api/attendance/session/${sessId}/students`);
         if (!res || !res.data) return;
@@ -192,6 +212,10 @@
         document.getElementById('session-meta-heading').textContent = 
           `Session #${session.session_id} (${session.session_date}) — ${session.class_name} Div ${session.division_name} [${session.subject_name}]`;
         document.getElementById('session-marked-badge').textContent = `${marked_count} / ${total_students} Marked`;
+
+        // Show/hide Close button based on session status
+        const closeBtn = document.getElementById('close-session-btn');
+        closeBtn.style.display = session.status === 'OPEN' ? 'inline-flex' : 'none';
 
         const tbody = document.getElementById('session-roster-tbody');
         if (!students || students.length === 0) {
@@ -223,7 +247,7 @@
               <td>${conf}</td>
               <td>${time}</td>
               <td>
-                <button class="btn btn-secondary btn-sm" onclick="openOverrideModal(${s.record_id || 0}, '${s.full_name}', '${s.attendance_status || 'UNMARKED'}')">
+                <button class="btn btn-secondary btn-sm" onclick="openOverrideModal(${s.record_id || 0}, '${s.full_name.replace(/'/g, "\\'")  }', '${s.attendance_status || 'UNMARKED'}')">
                   ✏️ Override
                 </button>
               </td>
@@ -233,6 +257,29 @@
       } catch (err) {
         UI.toast("Failed to load session roster: " + err.message, "error");
       }
+    }
+
+    async function closeSelectedSession() {
+      const select = document.getElementById('select-session');
+      const sessId = select.value;
+      const selText = select.options[select.selectedIndex]?.text || 'this session';
+      if (!sessId) return;
+
+      UI.confirm({
+        title: 'Close Attendance Session',
+        message: `Are you sure you want to close ${selText}? No further records can be marked once closed.`,
+        confirmText: 'Close Session',
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await API.post(`/api/attendance/session/${sessId}/close`);
+            UI.toast('Session closed successfully.', 'success');
+            loadSessionList(); // Refresh dropdown and roster
+          } catch (err) {
+            UI.toast(err.message, 'error');
+          }
+        }
+      });
     }
 
     function openOverrideModal(recordId, name, currentStatus) {
@@ -274,7 +321,7 @@
       }
     });
 
-    document.addEventListener('DOMContentLoaded', loadSessionRoster);
+    document.addEventListener('DOMContentLoaded', loadSessionList);
   </script>
 </body>
 </html>

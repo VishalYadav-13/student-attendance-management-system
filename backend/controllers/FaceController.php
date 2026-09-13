@@ -69,6 +69,21 @@ class FaceController
             $stuId = (int)$result['student']['student_id'];
             $pdo = Database::getConnection();
 
+            // Verify session is OPEN and belongs to teacher if TEACHER role
+            $sessStmt = $pdo->prepare("SELECT session_id, teacher_id, status FROM attendance_sessions WHERE session_id = :sid");
+            $sessStmt->execute([':sid' => $sessionId]);
+            $session = $sessStmt->fetch();
+
+            if (!$session) {
+                Response::notFound("Attendance session #{$sessionId} not found.");
+            }
+            if ($user['role_name'] === 'TEACHER' && (int)$session['teacher_id'] !== (int)$user['teacher_id']) {
+                Response::forbidden("Access denied: You can only record attendance for your own sessions.");
+            }
+            if ($session['status'] === 'CLOSED') {
+                Response::forbidden("This attendance session has been closed. Modifications require administrator override.");
+            }
+
             // Check duplicate
             $dupStmt = $pdo->prepare("SELECT record_id, status FROM attendance_records WHERE session_id = :sess AND student_id = :sid");
             $dupStmt->execute([':sess' => $sessionId, ':sid' => $stuId]);

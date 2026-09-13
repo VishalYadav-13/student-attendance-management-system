@@ -111,7 +111,9 @@ class TeacherController
 
         $pdo->beginTransaction();
         try {
-            $pwdHash = password_hash('Teacher@12345', PASSWORD_BCRYPT);
+            // Default password for newly created teacher: Teacher@12345 (or custom if supplied)
+            $rawPassword = !empty($input['password']) ? (string)$input['password'] : 'Teacher@12345';
+            $pwdHash = password_hash($rawPassword, PASSWORD_BCRYPT);
             $uStmt = $pdo->prepare("
                 INSERT INTO users (role_id, email, password_hash, status)
                 VALUES (2, :email, :pwd, 'ACTIVE')

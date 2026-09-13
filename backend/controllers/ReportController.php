@@ -121,7 +121,7 @@ class ReportController
         RoleMiddleware::authorize(['ADMIN', 'TEACHER']);
         $pdo = Database::getConnection();
 
-        $startDate = $_GET['start_date'] ?? '2026-08-01';
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
         $endDate = $_GET['end_date'] ?? date('Y-m-d');
 
         $stmt = $pdo->prepare("
@@ -212,7 +212,7 @@ class ReportController
             'average_attendance' => $avgPct,
             'low_attendance_count' => count($lowList),
             'total_students' => (int)$pdo->query("SELECT COUNT(*) FROM students WHERE status='ACTIVE'")->fetchColumn(),
-            'period' => 'August-September 2026'
+            'period' => date('F Y')
         ]);
 
         Response::success($insights, 'AI Attendance Insights generated.');

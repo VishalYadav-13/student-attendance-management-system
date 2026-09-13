@@ -4,9 +4,10 @@
  * Dispatches API requests, enforces CORS policies, and handles exceptions safely.
  */
 
-// Error reporting configuration
+// Error reporting configuration — never display PHP errors to client
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 
 // Autoload SAMS classes
 spl_autoload_register(function ($class) {
@@ -27,6 +28,7 @@ spl_autoload_register(function ($class) {
 });
 
 use SAMS\Config\Env;
+use SAMS\Config\Database;
 use SAMS\Utils\Response;
 use SAMS\Controllers\AuthController;
 use SAMS\Controllers\DashboardController;
@@ -52,18 +54,31 @@ set_exception_handler(function (Throwable $e) {
     );
 });
 
-// Configure CORS
+// Configure CORS — strictly enforce origin whitelist in all environments
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOrigins = explode(',', (string)Env::get('CORS_ALLOWED_ORIGINS', 'http://localhost:8000,http://localhost:3000,http://127.0.0.1:8000'));
-$allowedOrigins = array_map('trim', $allowedOrigins);
+$allowedOriginsRaw = (string)Env::get('CORS_ALLOWED_ORIGINS', 'http://localhost:8000,http://localhost:3000,http://127.0.0.1:8000');
+$allowedOrigins = array_map('trim', explode(',', $allowedOriginsRaw));
 
-if ($origin && (in_array($origin, $allowedOrigins, true) || Env::get('APP_ENV') === 'development')) {
+// Only echo back the origin if it is in the whitelist (no wildcard in production)
+if ($origin && in_array($origin, $allowedOrigins, true)) {
     header("Access-Control-Allow-Origin: {$origin}");
     header("Access-Control-Allow-Credentials: true");
     header("Access-Control-Max-Age: 86400");
 }
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-CSRF-Token");
+
+// Security Headers for all API responses
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+header("Permissions-Policy: camera=(self), microphone=(), geolocation=()");
+// Content-Security-Policy for API — no rendering context needed
+header("Content-Security-Policy: default-src 'none'");
+// HSTS — only active in production over HTTPS
+if (Env::get('APP_ENV') === 'production') {
+    header("Strict-Transport-Security: max-age=63072000; includeSubDomains; preload");
+}
 
 // Preflight CORS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -98,6 +113,16 @@ if (!str_starts_with($requestUri, '/api')) {
 // REST API ROUTE DEFINITIONS
 // ---------------------------------------------------------------------
 
+// 0. Health Check
+if ($requestMethod === 'GET' && $requestUri === '/api/health') {
+    Response::success([
+        'status' => 'healthy',
+        'database' => Database::getActiveDriver(),
+        'app_env' => Env::get('APP_ENV', 'development'),
+        'timestamp' => date('c')
+    ], 'SAMS API is operating normally.');
+}
+
 // 1. Authentication
 if ($requestMethod === 'POST' && $requestUri === '/api/auth/login') {
     AuthController::login();
@@ -130,6 +155,12 @@ if ($requestMethod === 'GET' && $requestUri === '/api/students') {
 if ($requestMethod === 'POST' && $requestUri === '/api/students') {
     StudentController::store();
 }
+if (preg_match('#^/api/students/(\d+)/calendar$#', $requestUri, $m)) {
+    $studentId = (int)$m[1];
+    if ($requestMethod === 'GET') {
+        StudentController::calendar($studentId);
+    }
+}
 if (preg_match('#^/api/students/(\d+)$#', $requestUri, $m)) {
     $studentId = (int)$m[1];
     if ($requestMethod === 'GET') {
@@ -150,12 +181,20 @@ if ($requestMethod === 'POST' && $requestUri === '/api/teachers') {
 }
 
 // 5. Attendance Operations
+if ($requestMethod === 'GET' && $requestUri === '/api/attendance/sessions') {
+    AttendanceController::listSessions();
+}
 if ($requestMethod === 'POST' && $requestUri === '/api/attendance/session') {
     AttendanceController::createSession();
 }
 if (preg_match('#^/api/attendance/session/(\d+)/students$#', $requestUri, $m)) {
     if ($requestMethod === 'GET') {
         AttendanceController::getSessionStudents((int)$m[1]);
+    }
+}
+if (preg_match('#^/api/attendance/session/(\d+)/close$#', $requestUri, $m)) {
+    if ($requestMethod === 'POST') {
+        AttendanceController::closeSession((int)$m[1]);
     }
 }
 if ($requestMethod === 'POST' && $requestUri === '/api/attendance/mark') {

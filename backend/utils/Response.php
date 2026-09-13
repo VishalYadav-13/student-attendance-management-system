@@ -7,8 +7,26 @@ namespace SAMS\Utils;
 
 class Response
 {
+    private static bool $testMode = false;
+    private static ?array $lastResponse = null;
+
+    public static function enableTestMode(): void
+    {
+        self::$testMode = true;
+    }
+
+    public static function disableTestMode(): void
+    {
+        self::$testMode = false;
+    }
+
+    public static function getLastResponse(): ?array
+    {
+        return self::$lastResponse;
+    }
+
     /**
-     * Send standard JSON response and exit
+     * Send standard JSON response and exit (or capture in test mode)
      */
     public static function json(
         bool $success,
@@ -17,8 +35,10 @@ class Response
         int $statusCode = 200,
         ?array $error = null
     ): void {
-        http_response_code($statusCode);
-        header('Content-Type: application/json; charset=utf-8');
+        if (!headers_sent()) {
+            http_response_code($statusCode);
+            header('Content-Type: application/json; charset=utf-8');
+        }
 
         $payload = [
             'success' => $success,
@@ -29,6 +49,15 @@ class Response
 
         if (!$success && $error !== null) {
             $payload['error'] = $error;
+        }
+
+        self::$lastResponse = [
+            'status_code' => $statusCode,
+            'payload' => $payload
+        ];
+
+        if (self::$testMode) {
+            return;
         }
 
         echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

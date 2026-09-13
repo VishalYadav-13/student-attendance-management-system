@@ -132,46 +132,52 @@
     const currentUser = Auth.requireRole('STUDENT');
     Auth.renderUserProfile(currentUser);
 
-    let currentYear = 2026;
-    let currentMonth = 8; // September (0-indexed: 8 = September, 7 = August)
+    const studentId = currentUser.student_id;
 
-    // Historical attendance records mapped by Date (from database seed)
-    const mockAttendanceMap = {
-      '2026-09-11': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI (Gemini Assisted)', conf: '97%' },
-      '2026-09-09': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'FACE_AI', conf: '93%' },
-      '2026-09-08': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '94%' },
-      '2026-09-07': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-09-04': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'HYBRID', conf: '95%' },
-      '2026-09-02': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'FACE_AI', conf: '92%' },
-      '2026-09-01': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '96%' },
-      // August entries
-      '2026-08-31': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-28': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '94%' },
-      '2026-08-26': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'HYBRID', conf: '91%' },
-      '2026-08-25': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-24': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '93%' },
-      '2026-08-21': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '97%' },
-      '2026-08-19': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-18': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '92%' },
-      '2026-08-17': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-14': { status: 'LATE', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:22 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-12': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'FACE_AI', conf: '95%' },
-      '2026-08-11': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-10': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '91%' },
-      '2026-08-07': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-05': { status: 'ABSENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '09:00 AM', method: 'MANUAL', conf: '—' },
-      '2026-08-04': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '96%' },
-      '2026-08-03': { status: 'PRESENT', subject: 'Data Structures (22316)', teacher: 'Dr. Rajesh Sharma', time: '08:00 AM', method: 'FACE_AI', conf: '94%' }
-    };
+    let currentYear  = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1; // 1-indexed
 
-    function renderCalendar() {
-      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      document.getElementById('calendar-month-label').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    // Cached calendar data per "YYYY-M" key
+    const calendarCache = {};
 
-      const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
-      const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+    // Determine cell status from multiple records in a day:
+    // If any ABSENT → absent. If all PRESENT or LATE → use majority.
+    function dominantStatus(records) {
+      if (!records || records.length === 0) return null;
+      const statuses = records.map(r => r.status);
+      if (statuses.includes('ABSENT')) return 'ABSENT';
+      if (statuses.includes('LATE'))   return 'LATE';
+      return 'PRESENT';
+    }
+
+    async function fetchCalendarData(year, month) {
+      const key = `${year}-${month}`;
+      if (calendarCache[key]) return calendarCache[key];
+
+      try {
+        const res = await API.get(`/api/students/${studentId}/calendar`, { year, month });
+        const data = (res && res.data && res.data.records_by_date) ? res.data.records_by_date : {};
+        calendarCache[key] = data;
+        return data;
+      } catch (err) {
+        UI.toast('Failed to load calendar data: ' + err.message, 'error');
+        return {};
+      }
+    }
+
+    async function renderCalendar() {
+      const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      document.getElementById('calendar-month-label').textContent = `${monthNames[currentMonth - 1]} ${currentYear}`;
 
       const grid = document.getElementById('calendar-days-grid');
+      grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted); font-size:0.9rem;">Loading...</div>`;
+
+      const byDate = await fetchCalendarData(currentYear, currentMonth);
+
+      const firstDayIndex = new Date(currentYear, currentMonth - 1, 1).getDay();
+      const totalDays     = new Date(currentYear, currentMonth, 0).getDate();
+      const todayStr      = new Date().toISOString().slice(0, 10);
+
       grid.innerHTML = '';
 
       // Blank slots before 1st of month
@@ -184,74 +190,81 @@
 
       // Populate day cells
       for (let day = 1; day <= totalDays; day++) {
-        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+        const mm      = String(currentMonth).padStart(2, '0');
+        const dd      = String(day).padStart(2, '0');
+        const dateStr = `${currentYear}-${mm}-${dd}`;
+        const dayOfWeek = new Date(currentYear, currentMonth - 1, day).getDay();
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const isToday   = (dateStr === todayStr);
+
+        const records = byDate[dateStr] || null;
+        const status  = !isWeekend ? dominantStatus(records) : null;
 
         const cell = document.createElement('div');
         cell.className = 'calendar-day-cell';
 
-        const record = mockAttendanceMap[dateStr];
-        let statusClass = '';
+        if (isToday) cell.style.outline = '2px solid var(--primary-accent)';
+        if (isWeekend) cell.classList.add('cell-weekend');
+        else if (status === 'PRESENT') cell.classList.add('cell-present');
+        else if (status === 'ABSENT')  cell.classList.add('cell-absent');
+        else if (status === 'LATE')    cell.classList.add('cell-late');
 
-        if (isWeekend) {
-          statusClass = 'cell-weekend';
-        } else if (record) {
-          if (record.status === 'PRESENT') statusClass = 'cell-present';
-          else if (record.status === 'ABSENT') statusClass = 'cell-absent';
-          else if (record.status === 'LATE') statusClass = 'cell-late';
-        }
+        const dotHtml = records ? `<span class="day-status-indicator"></span>` : '';
+        const countHtml = records && records.length > 1
+          ? `<span style="position:absolute;bottom:3px;right:5px;font-size:0.6rem;opacity:0.8;">${records.length}</span>`
+          : '';
 
-        if (statusClass) {
-          cell.classList.add(statusClass);
-        }
+        cell.innerHTML = `<span class="calendar-day-num">${day}</span>${dotHtml}${countHtml}`;
+        cell.style.position = 'relative';
+        cell.style.cursor = 'pointer';
 
-        cell.innerHTML = `
-          <span class="calendar-day-num">${day}</span>
-          ${record ? `<span class="day-status-indicator"></span>` : ''}
-        `;
-
-        cell.addEventListener('click', () => {
-          showDayDetail(dateStr, record, isWeekend);
-        });
-
+        cell.addEventListener('click', () => showDayDetail(dateStr, records, isWeekend));
         grid.appendChild(cell);
       }
     }
 
-    function showDayDetail(dateStr, record, isWeekend) {
-      document.getElementById('day-detail-date').textContent = `Attendance: ${dateStr}`;
+    function showDayDetail(dateStr, records, isWeekend) {
+      const displayDate = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+      document.getElementById('day-detail-date').textContent = displayDate;
       const body = document.getElementById('day-detail-body');
 
       if (isWeekend) {
         body.innerHTML = `
           <div style="text-align:center; padding: 20px; color: var(--text-muted);">
-            <div>🏖️</div>
+            <div style="font-size:2rem;">🏖️</div>
             <div style="font-weight: 600; margin-top: 6px;">Weekend / Institutional Recess</div>
             <div style="font-size:0.85rem;">No academic sessions scheduled.</div>
           </div>
         `;
-      } else if (record) {
-        let badge = '<span class="badge badge-present">PRESENT</span>';
-        if (record.status === 'ABSENT') badge = '<span class="badge badge-absent">ABSENT</span>';
-        if (record.status === 'LATE') badge = '<span class="badge badge-late">LATE ARRIVAL</span>';
+      } else if (records && records.length > 0) {
+        body.innerHTML = records.map(rec => {
+          let badge = '<span class="badge badge-present">PRESENT</span>';
+          if (rec.status === 'ABSENT')  badge = '<span class="badge badge-absent">ABSENT</span>';
+          if (rec.status === 'LATE')    badge = '<span class="badge badge-late">LATE ARRIVAL</span>';
+          if (rec.status === 'EXCUSED') badge = '<span class="badge badge-enrolled">EXCUSED</span>';
 
-        body.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h4 style="font-size:1.05rem; font-weight:700;">${record.subject}</h4>
-            ${badge}
-          </div>
-          <div style="display:flex; flex-direction:column; gap:8px; font-size:0.9rem;">
-            <div><strong>Faculty Instructor:</strong> ${record.teacher}</div>
-            <div><strong>Session Time:</strong> ${record.time}</div>
-            <div><strong>Verification Method:</strong> ${record.method}</div>
-            <div><strong>Biometric Confidence:</strong> ${record.conf}</div>
-          </div>
-        `;
+          const conf = rec.confidence_score ? `${rec.confidence_score}%` : '—';
+          const time = rec.start_time ? rec.start_time.slice(0, 5) : '—';
+
+          return `
+            <div style="padding: 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 12px; background: var(--bg-surface-subtle);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h4 style="font-size:1rem; font-weight:700;">${rec.subject_name} <span style="font-size:0.78rem; font-weight:500; color:var(--text-muted);">(${rec.subject_code})</span></h4>
+                ${badge}
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px; font-size:0.88rem; color:var(--text-secondary);">
+                <div><strong>Faculty:</strong> ${rec.teacher_name}</div>
+                <div><strong>Session Time:</strong> ${time}</div>
+                <div><strong>Verification:</strong> ${rec.verification_method || '—'}</div>
+                <div><strong>AI Confidence:</strong> ${conf}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
       } else {
         body.innerHTML = `
           <div style="text-align:center; padding: 20px; color: var(--text-muted);">
-            <div>📅</div>
+            <div style="font-size:2rem;">📅</div>
             <div style="font-weight: 600; margin-top: 6px;">No Session Records</div>
             <div style="font-size:0.85rem;">No class attendance recorded for this date.</div>
           </div>
@@ -263,13 +276,8 @@
 
     function changeMonth(delta) {
       currentMonth += delta;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      } else if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-      }
+      if (currentMonth > 12) { currentMonth = 1;  currentYear++; }
+      if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
       renderCalendar();
     }
 
@@ -277,3 +285,4 @@
   </script>
 </body>
 </html>
+

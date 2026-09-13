@@ -17,9 +17,11 @@ class AuditService
     {
         try {
             $pdo = Database::getConnection();
+            $driver = Database::getActiveDriver();
+            $metaExpr = ($driver === 'pgsql') ? 'CAST(:metadata AS jsonb)' : ':metadata';
             $stmt = $pdo->prepare("
                 INSERT INTO audit_logs (user_id, action, entity, entity_id, ip_address, user_agent, metadata)
-                VALUES (:user_id, :action, :entity, :entity_id, :ip_address, :user_agent, :metadata)
+                VALUES (:user_id, :action, :entity, :entity_id, :ip_address, :user_agent, {$metaExpr})
             ");
 
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';

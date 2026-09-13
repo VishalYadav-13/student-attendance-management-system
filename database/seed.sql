@@ -74,10 +74,15 @@ INSERT INTO subjects (subject_id, subject_code, subject_name, department_id, sem
 ON CONFLICT (subject_id) DO NOTHING;
 
 -- 8. Users & Accounts
--- Passwords:
--- Admin: Admin@12345
--- Teachers: Teacher@12345
--- Students: Student@12345
+-- =====================================================================
+-- WARNING: DEVELOPMENT & DEMO PURPOSES ONLY
+-- For production deployments, all users should change passwords upon first
+-- login or use institutional Single Sign-On (SSO / LDAP / Google Workspace).
+-- Seed Demo Passwords:
+-- Admin:    admin@sams.edu           / Admin@12345
+-- Teachers: teacher.sharma@sams.edu  / Teacher@12345
+-- Students: vishal.yadav@sams.edu    / Student@12345
+-- =====================================================================
 INSERT INTO users (user_id, role_id, email, password_hash, status) VALUES
 (1, 1, 'admin@sams.edu', '$2y$10$T0lhi.fBoPbG16ePMKbaBuayUjpPfXVz1B9sHZL3pi5cCDhNXgdES', 'ACTIVE'),
 -- Teachers (IDs 2-6)

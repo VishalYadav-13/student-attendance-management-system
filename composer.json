@@ -24,5 +24,8 @@
     "optimize-autoloader": true,
     "preferred-install": "dist",
     "sort-packages": true
+  },
+  "scripts": {
+    "test": "php tests/SamsTest.php"
   }
 }

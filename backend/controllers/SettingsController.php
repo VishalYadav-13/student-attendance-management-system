@@ -6,6 +6,7 @@
 namespace SAMS\Controllers;
 
 use SAMS\Config\Database;
+use SAMS\Middleware\AuthMiddleware;
 use SAMS\Middleware\RoleMiddleware;
 use SAMS\Services\AuditService;
 use SAMS\Utils\Response;
@@ -14,11 +15,17 @@ use PDO;
 class SettingsController
 {
     /**
-     * Get All Public / System Settings
+     * Get All System Settings — requires authentication
      * GET /api/settings
      */
     public static function index(): void
     {
+        // Security fix: require any authenticated user (not public)
+        $user = AuthMiddleware::authenticate();
+        if (empty($user)) {
+            return;
+        }
+
         $pdo = Database::getConnection();
         $rows = $pdo->query("SELECT setting_key, setting_value, description FROM system_settings")->fetchAll();
 
@@ -37,7 +44,14 @@ class SettingsController
     public static function update(): void
     {
         $admin = RoleMiddleware::adminOnly();
+        if (empty($admin) || ($admin['role_name'] ?? '') !== 'ADMIN') {
+            return;
+        }
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
+        if (empty($input)) {
+            Response::error('No settings provided in request body.', 'EMPTY_INPUT', 422);
+        }
 
         $pdo = Database::getConnection();
         $stmt = $pdo->prepare("
@@ -53,14 +67,16 @@ class SettingsController
         ];
 
         $updatedCount = 0;
+        $updatedKeys = [];
         foreach ($input as $key => $val) {
             if (in_array($key, $allowedKeys, true)) {
                 $stmt->execute([':val' => (string)$val, ':key' => $key]);
                 $updatedCount++;
+                $updatedKeys[] = $key;
             }
         }
 
-        AuditService::log($admin['user_id'], 'SETTINGS_UPDATED', 'system_settings', null, $input);
+        AuditService::log($admin['user_id'], 'SETTINGS_UPDATED', 'system_settings', null, ['updated_keys' => $updatedKeys]);
         Response::success(['updated_keys' => $updatedCount], 'Institutional settings updated successfully.');
     }
 }

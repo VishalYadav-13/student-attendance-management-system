@@ -89,6 +89,7 @@ class AuthMiddleware
 
         if ($userId === null) {
             Response::unauthorized('Authentication required. Please provide a valid Bearer token or active session.');
+            return [];
         }
 
         // Lookup user in DB
@@ -104,6 +105,7 @@ class AuthMiddleware
 
         if (!$user) {
             Response::unauthorized('User account not found, deactivated, or session has expired.');
+            return [];
         }
 
         // Enrich with role profile data
@@ -145,6 +147,11 @@ class AuthMiddleware
     public static function user(): ?array
     {
         return self::$authenticatedUser;
+    }
+
+    public static function setAuthenticatedUser(?array $user): void
+    {
+        self::$authenticatedUser = $user;
     }
 
     private static function extractBearerToken(): ?string

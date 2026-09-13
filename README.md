@@ -176,7 +176,7 @@ php -S localhost:8000 backend/public/index.php
 
 ## 🌐 Production Deployment to Vercel & Cloud
 
-Please see [DEPLOYMENT.md](file:///c:/Users/Vy975/OneDrive/Documents/GitHub/student-attendance-management-system/DEPLOYMENT.md) for full instructions.
+Please see [DEPLOYMENT.md](DEPLOYMENT.md) for full instructions.
 
 - **Frontend**: Deploys statically to **Vercel** with global CDN caching and security headers (`vercel.json`).
 - **Backend API**: Deploys to a PHP-compatible host (Railway, Render, Fly.io, or VPS).

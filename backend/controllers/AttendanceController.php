@@ -258,12 +258,20 @@ class AttendanceController
         $pdo = Database::getConnection();
 
         // Check session
-        $sessStmt = $pdo->prepare("SELECT status FROM attendance_sessions WHERE session_id = :sid");
+        $sessStmt = $pdo->prepare("SELECT session_id, teacher_id, status FROM attendance_sessions WHERE session_id = :sid");
         $sessStmt->execute([':sid' => $sessionId]);
         $session = $sessStmt->fetch();
 
         if (!$session) {
             Response::notFound("Session #{$sessionId} not found.");
+        }
+
+        if ($user['role_name'] === 'TEACHER' && (int)$session['teacher_id'] !== (int)$user['teacher_id']) {
+            Response::forbidden("Access denied: You can only save attendance for your own sessions.");
+        }
+
+        if ($session['status'] === 'CLOSED') {
+            Response::forbidden("This attendance session has been closed. Modifications require administrator override.");
         }
 
         $pdo->beginTransaction();
@@ -365,12 +373,12 @@ class AttendanceController
                 VALUES (:rid, :sess, :stu, :orig, :new, :by, :reason)
             ");
             $ovr->execute([
-                ':rid' => $recordId,
-                ':sess' => $rec['session_id'],
-                ':stu' => $rec['student_id'],
-                ':orig' => $origStatus,
-                ':new' => $newStatus,
-                ':by' => $user['user_id'],
+                ':rid'    => $recordId,
+                ':sess'   => $rec['session_id'],
+                ':stu'    => $rec['student_id'],
+                ':orig'   => $origStatus,
+                ':new'    => $newStatus,
+                ':by'     => $user['user_id'],
                 ':reason' => $reason
             ]);
 
@@ -378,19 +386,136 @@ class AttendanceController
 
             AuditService::log($user['user_id'], 'ATTENDANCE_OVERRIDDEN', 'attendance_records', (string)$recordId, [
                 'original_status' => $origStatus,
-                'new_status' => $newStatus,
-                'reason' => $reason
+                'new_status'      => $newStatus,
+                'reason'          => $reason
             ]);
 
             Response::success([
-                'record_id' => $recordId,
+                'record_id'       => $recordId,
                 'original_status' => $origStatus,
-                'new_status' => $newStatus,
-                'reason' => $reason
+                'new_status'      => $newStatus,
+                'reason'          => $reason
             ], "Attendance status updated from {$origStatus} to {$newStatus}.");
         } catch (Exception $e) {
             $pdo->rollBack();
             Response::error("Failed to apply override: " . $e->getMessage(), 'DATABASE_ERROR', 500);
         }
+    }
+
+    /**
+     * List All Attendance Sessions (Admin Overview)
+     * GET /api/attendance/sessions
+     */
+    public static function listSessions(): void
+    {
+        RoleMiddleware::authorize(['ADMIN', 'TEACHER']);
+        $pdo = Database::getConnection();
+
+        $classId   = !empty($_GET['class_id'])   ? (int)$_GET['class_id']   : null;
+        $subjectId = !empty($_GET['subject_id'])  ? (int)$_GET['subject_id'] : null;
+        $status    = $_GET['status'] ?? null;
+        $page      = max(1, (int)($_GET['page']  ?? 1));
+        $limit     = min(50, max(10, (int)($_GET['limit'] ?? 20)));
+        $offset    = ($page - 1) * $limit;
+
+        $conditions = ['1=1'];
+        $params     = [];
+
+        if ($classId !== null) {
+            $conditions[] = 's.class_id = :cid';
+            $params[':cid'] = $classId;
+        }
+        if ($subjectId !== null) {
+            $conditions[] = 's.subject_id = :subid';
+            $params[':subid'] = $subjectId;
+        }
+        if ($status !== null && in_array(strtoupper($status), ['OPEN', 'CLOSED'], true)) {
+            $conditions[] = 's.status = :stat';
+            $params[':stat'] = strtoupper($status);
+        }
+
+        if ($user['role_name'] === 'TEACHER') {
+            $conditions[] = 's.teacher_id = :tid';
+            $params[':tid'] = (int)$user['teacher_id'];
+        }
+
+        $where = implode(' AND ', $conditions);
+
+        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM attendance_sessions s WHERE {$where}");
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        $stmt = $pdo->prepare("
+            SELECT
+                s.session_id,
+                s.session_date,
+                s.start_time,
+                s.end_time,
+                s.lecture_number,
+                s.status,
+                s.verification_mode,
+                c.class_name,
+                c.class_code,
+                d.division_name,
+                sub.subject_name,
+                sub.subject_code,
+                t.full_name  AS teacher_name,
+                t.teacher_id,
+                dept.department_code,
+                (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = s.session_id) AS marked_count
+            FROM attendance_sessions s
+            JOIN classes c    ON s.class_id    = c.class_id
+            JOIN divisions d  ON s.division_id = d.division_id
+            JOIN subjects sub ON s.subject_id  = sub.subject_id
+            JOIN teachers t   ON s.teacher_id  = t.teacher_id
+            JOIN departments dept ON t.department_id = dept.department_id
+            WHERE {$where}
+            ORDER BY s.session_date DESC, s.start_time DESC
+            LIMIT {$limit} OFFSET {$offset}
+        ");
+        $stmt->execute($params);
+        $sessions = $stmt->fetchAll();
+
+        Response::success([
+            'sessions'   => $sessions,
+            'pagination' => [
+                'current_page'  => $page,
+                'per_page'      => $limit,
+                'total_records' => $total,
+                'total_pages'   => (int)ceil($total / $limit)
+            ]
+        ], 'Sessions retrieved.');
+    }
+
+    /**
+     * Close an Open Attendance Session
+     * POST /api/attendance/session/{id}/close
+     */
+    public static function closeSession(int $sessionId): void
+    {
+        $user = RoleMiddleware::authorize(['ADMIN', 'TEACHER']);
+        $pdo  = Database::getConnection();
+
+        $stmt = $pdo->prepare("SELECT session_id, teacher_id, status FROM attendance_sessions WHERE session_id = :sid");
+        $stmt->execute([':sid' => $sessionId]);
+        $session = $stmt->fetch();
+
+        if (!$session) {
+            Response::notFound("Attendance session #{$sessionId} not found.");
+        }
+
+        if ($user['role_name'] === 'TEACHER' && (int)$session['teacher_id'] !== (int)$user['teacher_id']) {
+            Response::forbidden("Access denied: You can only close your own attendance sessions.");
+        }
+
+        if ($session['status'] === 'CLOSED') {
+            Response::conflict("Session #{$sessionId} is already closed.");
+        }
+
+        $pdo->prepare("UPDATE attendance_sessions SET status = 'CLOSED', closed_at = CURRENT_TIMESTAMP WHERE session_id = :sid")
+            ->execute([':sid' => $sessionId]);
+
+        AuditService::log($user['user_id'], 'SESSION_CLOSED', 'attendance_sessions', (string)$sessionId);
+        Response::success(['session_id' => $sessionId, 'status' => 'CLOSED'], "Session #{$sessionId} closed successfully.");
     }
 }

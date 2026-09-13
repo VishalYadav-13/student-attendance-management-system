@@ -21,6 +21,7 @@ class RoleMiddleware
 
         if (!in_array($userRole, $allowed, true)) {
             Response::forbidden("Access denied. Required role: [" . implode(', ', $allowed) . "], but your account role is '{$userRole}'.");
+            return [];
         }
 
         return $user;

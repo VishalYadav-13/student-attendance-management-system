@@ -276,7 +276,7 @@ class DashboardController
             'stats' => [
                 'today_classes_count' => count($timetable),
                 'assigned_classes_count' => count($classes),
-                'overall_attendance_percent' => $teacherAvgPct ?: 87.5,
+                'overall_attendance_percent' => $teacherAvgPct,
                 'active_session_id' => $activeSession['session_id'] ?? null
             ],
             'today_day' => $todayName,

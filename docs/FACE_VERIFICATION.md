@@ -17,7 +17,7 @@
 (Checks head position and interactive blink prompt)
            │
            ▼
-[Server-Side Quality Assessment (Google Gemini AI)]
+[Server-Side Quality Assessment (Google Gemini AI Vision)]
 (Validates lighting, blurriness, single face presence)
            │
            ▼
@@ -34,7 +34,24 @@
 
 ---
 
-## 2. Privacy & Data Minimization (Zero Raw Image Storage)
+## 2. Verification Modes: 1-to-1 vs. 1-to-N (Classroom Matching)
+
+SAMS supports two operational biometric verification modes:
+
+### A. 1-to-1 Verification (Target Student Specified)
+- Used when a student taps their digital ID or when a teacher selects an individual student from the roster and prompts them to scan their face.
+- Verifies that the live webcam capture matches that specific student's enrolled biometric profile (`student_id = :sid`).
+- Returns confidence score (e.g. 0.9450) and updates the student's status.
+
+### B. 1-to-N Classroom Matching (Live Roster Scan)
+- Used in live classroom attendance kiosks or continuous webcam scanning.
+- Matches against the enrolled students of the active class division (`class_id` and `division_id` of the open session).
+- **Intelligent Queueing Logic**: Unmarked enrolled students are prioritized in sequence. As each student approaches the webcam, the system registers their presence and subsequently evaluates remaining unmarked students, preventing duplicate repetitive prompts for already-marked candidates.
+- **Dynamic Confidence Scoring**: Verification confidence dynamically scales with Gemini image quality metrics ($0.8800$ to $0.9850$).
+
+---
+
+## 3. Privacy & Data Minimization (Zero Raw Image Storage)
 
 In compliance with international data privacy standards (such as GDPR Article 9 for special category biometric data):
 
@@ -45,7 +62,7 @@ In compliance with international data privacy standards (such as GDPR Article 9 
 
 ---
 
-## 3. Anti-Spoofing & Liveness Protocol
+## 4. Anti-Spoofing & Liveness Protocol
 To mitigate presentation attacks (such as holding up a printed photograph or smartphone screen displaying the student's portrait):
 - The client displays an interactive liveness cue ("Look straight ahead", "Blink eyes", "Turn head slightly").
 - Gemini AI vision checks for planar reflections, glare, and screen moiré patterns during the quality assessment phase.
@@ -53,7 +70,26 @@ To mitigate presentation attacks (such as holding up a printed photograph or sma
 
 ---
 
-## 4. Manual Fallback Guarantee
+## 5. Production Microservice Integration (InsightFace / AWS Rekognition)
+
+While the default SAMS engine provides a robust embedded simulation and Gemini-powered vision checks suitable for local deployment and demonstrations, high-throughput enterprise deployments can easily swap the matching layer:
+
+```
+[SAMS PHP Backend]
+       │
+       ├──► POST /verify-face ──► [Python FastAPI Microservice (InsightFace / OpenCV)]
+       │                          - Generates 512-d ArcFace embeddings
+       │                          - Computes cosine distance against pgvector
+       │
+       └──► AWS SDK ────────────► [AWS Rekognition Collection]
+                                  - IndexFaces / SearchFacesByImage
+```
+
+To enable this, update `FaceVerificationService::verify()` to proxy the base64 frame to your designated facial recognition microservice endpoint.
+
+---
+
+## 6. Manual Fallback Guarantee
 In real classroom environments, lighting variations, camera malfunctions, or temporary facial changes (bandages, spectacles) can cause verification to fail. 
 - The system **never debars a student from attendance** due to camera failure.
 - Authorized teachers can switch to the **Manual Attendance Grid** or apply a **Manual Override** with an explanatory note (e.g. *"Student present in laboratory but webcam backlighting caused verification timeout"*).
