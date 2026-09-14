@@ -84,6 +84,7 @@ student-attendance-management-system/
 │   │   ├── teachers.html            # Faculty directory & allocations
 │   │   ├── attendance.html          # Session audit & manual override studio
 │   │   ├── reports.html             # Detailed reports & CSV exports
+│   │   ├── audit-logs.html          # Immutable audit trail viewer
 │   │   └── settings.html            # Institutional policies & thresholds
 │   ├── teacher/
 │   │   ├── dashboard.html           # Today's schedule & class cards
@@ -123,6 +124,7 @@ student-attendance-management-system/
 │   │   ├── AttendanceController.php # Session lifecycle & duplicate defense
 │   │   ├── FaceController.php       # Face verification & biometrics
 │   │   ├── ReportController.php     # Attendance analytics & CSV export
+│   │   ├── AuditController.php      # Immutable audit trail API (admin)
 │   │   └── SettingsController.php   # System policies & thresholds
 │   ├── services/
 │   │   ├── GeminiService.php        # Google Gemini AI client

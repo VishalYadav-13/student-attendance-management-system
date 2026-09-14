@@ -38,6 +38,7 @@ use SAMS\Controllers\AttendanceController;
 use SAMS\Controllers\FaceController;
 use SAMS\Controllers\ReportController;
 use SAMS\Controllers\SettingsController;
+use SAMS\Controllers\AuditController;
 
 // Load environment variables
 Env::load();
@@ -240,6 +241,14 @@ if ($requestMethod === 'GET' && $requestUri === '/api/settings') {
 }
 if ($requestMethod === 'POST' && $requestUri === '/api/settings') {
     SettingsController::update();
+}
+
+// 9. Audit Logs (Admin only)
+if ($requestMethod === 'GET' && $requestUri === '/api/audit-logs') {
+    AuditController::index();
+}
+if ($requestMethod === 'GET' && $requestUri === '/api/audit-logs/actions') {
+    AuditController::actions();
 }
 
 // Default 404 Route
