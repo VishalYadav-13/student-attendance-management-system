@@ -1,0 +1,13 @@
+# SAMS - Apache mod_rewrite Front Controller
+# Routes all requests through index.php; required for the REST API router to function.
+
+Options -MultiViews -Indexes
+
+RewriteEngine On
+
+# Allow direct access to existing files (should not exist under /public except index.php)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else through the front controller
+RewriteRule ^ index.php [QSA,L]
