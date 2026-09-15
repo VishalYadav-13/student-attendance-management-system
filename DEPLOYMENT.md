@@ -59,32 +59,53 @@ Push your SAMS repository to your Git provider.
 4. Click **Deploy**.
 
 ### Step 3: Configure Frontend API Base URL
-In `frontend/assets/js/config.js`, configure your production backend URL:
+In `frontend/assets/js/config.js`, the production backend URL is already configured
+to point to the Render service (`https://sams-backend.onrender.com`):
 ```javascript
-window.SAMS_CONFIG = {
-  APP_NAME: "Student Attendance Management System",
-  SHORT_NAME: "SAMS",
-  TAGLINE: "Smart Attendance. Better Academics.",
-  INSTITUTION_NAME: "Demo Polytechnic Institute",
-  API_BASE_URL: "https://api-sams.up.railway.app", // Your deployed PHP backend URL
-  DEFAULT_THRESHOLD: 75.0,
-  AUTO_LOGOUT_MINUTES: 120
-};
+// Auto-detected: returns "" on localhost, Render URL in production
+API_BASE_URL: (
+  window.__SAMS_API_URL__ ||
+  localStorage.getItem('sams_api_url') ||
+  (function() {
+    const isLocal = window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1' ||
+                    window.location.port === '8000';
+    if (isLocal) return "";
+    // Production Render Backend URL (matches render.yaml service name):
+    const RENDER_BACKEND_URL = "https://sams-backend.onrender.com";
+    return RENDER_BACKEND_URL || "";
+  })()
+),
 ```
+> **Runtime override**: You can also set `localStorage.setItem('sams_api_url', 'https://...')` 
+> in the browser console to point to any backend without redeploying.
+
+
 
 ---
 
 ## 3. Backend Deployment on PHP Host (e.g., Railway / Render / VPS)
 
-### Option A: Railway (Recommended Cloud Deployment)
-1. In Railway, click **"New Project"** -> **"Deploy from GitHub repo"**.
-2. Select this repository.
-3. Configure environment variables (see Section 4).
-4. Set the Start Command:
+### Option A: Render (Configured — Recommended)
+The repository already includes a complete `render.yaml` blueprint and `Dockerfile`.
+
+1. In the [Render Dashboard](https://dashboard.render.com), click **New +** → **Blueprint**.
+2. Connect GitHub and select `VishalYadav-13/student-attendance-management-system`.
+3. Render detects `render.yaml` automatically — click **Apply**.
+4. Fill in the three secret environment variables when prompted:
+   - `GEMINI_API_KEY` — your Google AI Studio key
+   - `JWT_SECRET` — a random 64-character string
+   - `SESSION_SECRET` — a different random 64-character string
+5. Render provisions the `sams-db` PostgreSQL database and injects `DATABASE_URL` automatically.
+6. After the DB is ready, run the schema migrations against the connection string from the Render DB panel:
    ```bash
-   php -S 0.0.0.0:$PORT -t backend/public
+   psql "postgresql://sams_user:<pass>@<host>/sams_db?sslmode=require" -f database/schema.sql
+   psql "postgresql://sams_user:<pass>@<host>/sams_db?sslmode=require" -f database/seed.sql
    ```
-5. Railway provides an HTTPS domain, e.g.: `https://api-sams.up.railway.app`.
+7. Render builds the Docker image and deploys. Health check: `GET /api/health`.
+8. Your backend URL will be: `https://sams-backend.onrender.com`
+
+
 
 ### Option B: Traditional Apache or Nginx VPS
 1. Point your web server document root to the `backend/public/` directory.

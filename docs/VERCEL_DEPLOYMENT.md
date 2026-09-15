@@ -15,54 +15,51 @@ This guide explains how to deploy the SAMS client interface to Vercel as a high-
 ## 2. Pre-Deployment Configuration
 
 ### Step A: Configure Backend URL
-In `frontend/assets/js/config.js`, configure your backend API location:
-
+`frontend/assets/js/config.js` already contains the production Render backend URL:
 ```javascript
-// Option 1: Hardcode your production backend URL
-API_BASE_URL: window.location.hostname.includes('vercel.app') 
-  ? "https://api-sams.up.railway.app" 
-  : "",
+// Returns "" on localhost, Render URL in production
+const RENDER_BACKEND_URL = "https://sams-backend.onrender.com";
 ```
-
-Alternatively, inject `window.__SAMS_API_URL__` in an inline `<script>` tag inside your HTML `<head>`:
+For a runtime override without redeploying, inject before any SAMS script tag:
 ```html
-<script>
-  window.__SAMS_API_URL__ = "https://your-api-domain.com";
-</script>
+<script>window.__SAMS_API_URL__ = "https://your-custom-backend.com";</script>
 ```
+Or set in the browser console: `localStorage.setItem('sams_api_url', 'https://...')`.
 
 ### Step B: Check `vercel.json`
-The root `vercel.json` already defines clean URL routing, caching headers, and rewrites:
+The root `vercel.json` defines clean URL routing, security headers, and rewrites:
 
 ```json
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "public": false,
   "cleanUrls": true,
   "trailingSlash": false,
-  "routes": [
+  "framework": null,
+  "headers": [
     {
-      "src": "^/(admin|teacher|student)/(.*)$",
-      "dest": "/frontend/$1/$2"
-    },
-    {
-      "src": "^/assets/(.*)$",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      },
-      "dest": "/frontend/assets/$1"
-    },
-    {
-      "src": "^/$",
-      "dest": "/frontend/login.html"
-    },
-    {
-      "src": "^/login$",
-      "dest": "/frontend/login.html"
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=()" }
+      ]
     }
+  ],
+  "rewrites": [
+    { "source": "/",             "destination": "/frontend/index.html" },
+    { "source": "/login",        "destination": "/frontend/login.html" },
+    { "source": "/admin",        "destination": "/frontend/admin/dashboard.html" },
+    { "source": "/admin/:page",  "destination": "/frontend/admin/:page.html" },
+    { "source": "/teacher",      "destination": "/frontend/teacher/dashboard.html" },
+    { "source": "/teacher/:page","destination": "/frontend/teacher/:page.html" },
+    { "source": "/student",      "destination": "/frontend/student/dashboard.html" },
+    { "source": "/student/:page","destination": "/frontend/student/:page.html" }
   ]
 }
 ```
+
+
 
 ---
 

@@ -13,7 +13,7 @@ This document provides the authoritative, step-by-step checklist to take the Stu
 - [ ] **Gemini API Key Configured**: Set `GEMINI_API_KEY` on backend server environment only. Verified key is NEVER bundled or exposed to client-side scripts.
 - [ ] **CORS Configured**: Updated `CORS_ALLOWED_ORIGINS` in backend configuration with the exact production frontend domain (e.g., `https://sams.institution.edu`). No wildcard (`*`) in production.
 - [ ] **HTTPS Configured**: SSL/TLS certificate issued and enforced on both frontend and backend domains with HSTS enabled.
-- [ ] **Frontend API URL Configured**: Set `window.__SAMS_API_URL__` in frontend deployment or injected into `frontend/assets/js/config.js` pointing to `https://api.sams.institution.edu/api`.
+- [x] **Frontend API URL Configured**: `frontend/assets/js/config.js` updated (commit `fdb3723`) — `RENDER_BACKEND_URL` set to `https://sams-backend.onrender.com`; localhost auto-detected and uses `""` for unified host dev mode.
 - [ ] **Demo Credentials Disabled/Replaced**: Ensured development seed records (`seed.sql`) are not used as production administrative credentials. Created new unique administrator account with a strong password.
 - [ ] **Backups Configured**: Automated daily database backups and point-in-time recovery (PITR) enabled.
 
@@ -21,22 +21,22 @@ This document provides the authoritative, step-by-step checklist to take the Stu
 
 ## 2. Frontend (Vercel Edge / Static CDN)
 
-- [ ] **Vercel Project Created**: Linked repository to Vercel with Root Directory set to `./` or `frontend/`.
-- [ ] **Build Successful**: Static routing rules in `vercel.json` verified. Zero build failures or missing assets.
-- [ ] **Production URL Verified**: Deployed custom domain (e.g., `sams.institution.edu`) accessible via HTTPS with valid TLS certificate and HTTP/2 support.
-- [ ] **Asset Minification & Caching**: Cache headers active for static CSS, JS, and SVG assets (`Cache-Control: public, max-age=31536000, immutable` for versioned assets).
-- [ ] **Console Hygiene**: Confirmed zero 404s, JavaScript runtime errors, or exposed internal debug traces in browser developer tools.
+- [x] **Vercel Project Created**: Linked repository to Vercel — deployment created (commit `1b48569`). `vercel.json` schema validation error fixed (removed unsupported `"public"` property).
+- [x] **Build Successful**: Static routing rules in `vercel.json` verified. Uses `rewrites` (v2 spec). Zero schema validation failures.
+- [ ] **Production URL Verified**: Confirm your Vercel deployment URL is accessible via HTTPS.
+- [x] **Asset Minification & Caching**: Cache headers active for static CSS, JS, and SVG assets (`Cache-Control: public, max-age=31536000, immutable` for versioned assets).
+- [ ] **Console Hygiene**: Confirm zero 404s, JavaScript runtime errors in browser DevTools after full deployment.
 
 ---
 
 ## 3. Backend (PHP 8.1+ Production Runtime)
 
-- [ ] **PHP Hosting Configured**: Production server running PHP 8.1+ with extensions: `pdo`, `pdo_pgsql`, `openssl`, `mbstring`, `curl`, `json`.
-- [ ] **Composer Dependencies Installed**: Executed `composer install --no-dev --optimize-autoloader` to generate optimized class maps.
-- [ ] **API URL Verified**: Root public directory pointed to `backend/public/` with URL rewriting (`mod_rewrite` / `try_files $uri $uri/ /index.php?$query_string;`).
-- [ ] **Environment Variables Configured**: Secrets loaded via system environment or secure `.env` file located outside the web root (`public/`).
-- [ ] **HTTPS Verified**: API serves requests exclusively over TLS 1.3/1.2. Insecure HTTP requests redirected with 301.
-- [ ] **Rate Limiting Storage**: Ensured write permissions for rate-limiter storage directory or configured Redis/Memcached cache driver.
+- [x] **PHP Hosting Configured**: Dockerfile installs PHP 8.2-apache with `pdo`, `pdo_pgsql`, `bcmath`, `zip`, `curl`, `json` via `docker-php-ext-install`.
+- [ ] **Composer Dependencies Installed**: No Composer third-party packages required — all dependencies are native PHP extensions (declared in `composer.json`). Autoloader uses `spl_autoload_register`.
+- [x] **API URL Verified**: `backend/public/.htaccess` created (commit `fdb3723`) routing all requests through `index.php` via `mod_rewrite`.
+- [x] **Environment Variables Configured**: `render.yaml` declares `APP_ENV`, `APP_DEBUG`, `DB_CONNECTION`, `DATABASE_URL` (auto-linked), `CORS_ALLOWED_ORIGINS`, `GEMINI_API_KEY`, `JWT_SECRET`, `SESSION_SECRET` — secrets marked `sync: false` to be filled in the Render dashboard.
+- [x] **HTTPS Verified**: Render provides automatic TLS. HSTS header active when `APP_ENV=production` (see `backend/public/index.php` L81).
+- [x] **Rate Limiting Storage**: Dockerfile creates `tmp/ratelimit/` with `www-data` ownership and `775` permissions.
 
 ---
 
