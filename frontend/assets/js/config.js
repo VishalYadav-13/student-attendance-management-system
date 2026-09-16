@@ -26,9 +26,9 @@ window.SAMS_CONFIG = {
         return "";
       }
       // Production Render Backend URL:
-      // Matches the service name "sams-backend" defined in render.yaml.
-      // Update this if your Render service URL differs after first deploy.
-      const RENDER_BACKEND_URL = "https://sams-backend.onrender.com";
+      // Render assigned subdomain: sams-backend-bl23.onrender.com
+      // Update this value if the Render service URL ever changes.
+      const RENDER_BACKEND_URL = "https://sams-backend-bl23.onrender.com";
       return RENDER_BACKEND_URL || "";
     })()
   ),
