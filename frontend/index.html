@@ -111,7 +111,7 @@
     }
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 24px;
     }
     .feature-card {
@@ -170,6 +170,25 @@
     }
     .nav-item:hover {
       color: var(--primary-accent);
+    }
+
+    @media (max-width: 768px) {
+      .landing-nav {
+        padding: 16px 20px;
+      }
+      .nav-links .nav-item {
+        display: none;
+      }
+      .nav-links {
+        gap: 12px;
+      }
+      .hero-section {
+        padding: 50px 20px 40px;
+      }
+      .preview-window {
+        transform: none;
+        margin-bottom: 40px;
+      }
     }
 
     /* Footer */

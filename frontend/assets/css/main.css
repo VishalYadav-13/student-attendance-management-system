@@ -139,6 +139,24 @@ button, input, select, textarea {
   border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Mobile Sidebar Backdrop / Scrim */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 45;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+.sidebar-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .sidebar-brand {
   padding: 24px 20px;
   display: flex;
@@ -637,8 +655,22 @@ button, input, select, textarea {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-sm);
+}
+
+.table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: var(--bg-surface-subtle);
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
 }
 
 .table-toolbar {
@@ -693,6 +725,7 @@ button, input, select, textarea {
   letter-spacing: 0.6px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
 }
 
 .sams-table td {
@@ -1088,6 +1121,68 @@ button, input, select, textarea {
   .sams-table th, .sams-table td {
     padding: 10px 10px;
     font-size: 0.82rem;
+  }
+}
+
+/* Accessible Focus States */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--primary-accent);
+  outline-offset: 2px;
+}
+
+/* Responsive Form Rows */
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .form-row-2, .form-row-3 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+/* Mobile Auth Header (Login Page) */
+.auth-mobile-header {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 860px) {
+  .auth-mobile-header {
+    display: flex;
+  }
+}
+
+/* Student Dashboard Attendance Hero Mobile Stack */
+@media (max-width: 768px) {
+  .attendance-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Landing Navigation Responsive */
+@media (max-width: 768px) {
+  .landing-nav {
+    padding: 16px 20px;
+  }
+  .landing-nav .nav-links .nav-item {
+    display: none;
+  }
+  .landing-nav .nav-links {
+    gap: 12px;
   }
 }
 

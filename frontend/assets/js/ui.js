@@ -63,6 +63,7 @@ const UI = {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('sams_theme', next);
     this.updateThemeButtonIcon(next);
+    window.dispatchEvent(new CustomEvent('sams-theme-changed', { detail: { theme: next } }));
   },
 
   updateThemeButtonIcon(theme) {
@@ -80,23 +81,82 @@ const UI = {
     const mobileBtn = document.querySelector('.mobile-menu-btn');
     const sidebar = document.querySelector('.sidebar');
 
-    if (mobileBtn && sidebar) {
+    if (!sidebar) return;
+
+    // Create backdrop element if missing
+    let backdrop = document.querySelector('.sidebar-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.className = 'sidebar-backdrop';
+      document.body.appendChild(backdrop);
+    }
+
+    const openDrawer = () => {
+      sidebar.classList.add('open');
+      backdrop.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    };
+
+    const closeDrawer = () => {
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('show');
+      document.body.style.overflow = '';
+    };
+
+    if (mobileBtn) {
       mobileBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        sidebar.classList.toggle('open');
-      });
-
-      document.addEventListener('click', (e) => {
-        if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && !mobileBtn.contains(e.target)) {
-          sidebar.classList.remove('open');
+        if (sidebar.classList.contains('open')) {
+          closeDrawer();
+        } else {
+          openDrawer();
         }
       });
+    }
 
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-          sidebar.classList.remove('open');
-        }
-      });
+    backdrop.addEventListener('click', closeDrawer);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+        closeDrawer();
+      }
+    });
+  },
+
+  /* -------------------------------------------------- */
+  /* Authenticated CSV File Downloader                  */
+  /* -------------------------------------------------- */
+  async downloadCsv(endpoint = '/api/reports/export-csv', defaultFilename = 'sams_report.csv') {
+    try {
+      this.toast('Preparing CSV download...', 'info', 2000);
+      const token = (typeof API !== 'undefined' && API.getToken()) || localStorage.getItem('sams_token') || sessionStorage.getItem('sams_token');
+      const baseUrl = (typeof API !== 'undefined' && API.getBaseUrl()) || (window.SAMS_CONFIG && window.SAMS_CONFIG.API_BASE_URL) || '';
+      const fullUrl = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
+
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(fullUrl, { headers });
+      if (!response.ok) {
+        throw new Error(`Server returned HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = defaultFilename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      this.toast('CSV downloaded successfully!', 'success');
+    } catch (err) {
+      console.error('[SAMS CSV Export Error]', err);
+      this.toast('Failed to download CSV: ' + err.message, 'error');
     }
   },
 

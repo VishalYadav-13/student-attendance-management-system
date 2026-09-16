@@ -5,6 +5,14 @@
 const Charts = {
   instances: {},
 
+  getThemeColors() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      textColor: isDark ? '#94a3b8' : '#64748b',
+      gridColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+    };
+  },
+
   destroy(id) {
     if (this.instances[id]) {
       this.instances[id].destroy();
@@ -16,6 +24,8 @@ const Charts = {
     this.destroy(canvasId);
     const ctx = document.getElementById(canvasId);
     if (!ctx || typeof Chart === 'undefined') return;
+
+    const colors = this.getThemeColors();
 
     this.instances[canvasId] = new Chart(ctx, {
       type: 'line',
@@ -50,12 +60,14 @@ const Charts = {
             min: 50,
             max: 100,
             ticks: {
+              color: colors.textColor,
               callback: (v) => `${v}%`,
               stepSize: 10
             },
-            grid: { color: 'rgba(0,0,0,0.05)' }
+            grid: { color: colors.gridColor }
           },
           x: {
+            ticks: { color: colors.textColor },
             grid: { display: false }
           }
         }
@@ -67,6 +79,8 @@ const Charts = {
     this.destroy(canvasId);
     const ctx = document.getElementById(canvasId);
     if (!ctx || typeof Chart === 'undefined') return;
+
+    const colors = this.getThemeColors();
 
     this.instances[canvasId] = new Chart(ctx, {
       type: 'bar',
@@ -89,10 +103,14 @@ const Charts = {
           y: {
             min: 0,
             max: 100,
-            ticks: { callback: (v) => `${v}%` },
-            grid: { color: 'rgba(0,0,0,0.05)' }
+            ticks: {
+              color: colors.textColor,
+              callback: (v) => `${v}%`
+            },
+            grid: { color: colors.gridColor }
           },
           x: {
+            ticks: { color: colors.textColor },
             grid: { display: false }
           }
         }
@@ -104,6 +122,8 @@ const Charts = {
     this.destroy(canvasId);
     const ctx = document.getElementById(canvasId);
     if (!ctx || typeof Chart === 'undefined') return;
+
+    const colors = this.getThemeColors();
 
     this.instances[canvasId] = new Chart(ctx, {
       type: 'doughnut',
@@ -122,10 +142,31 @@ const Charts = {
         plugins: {
           legend: {
             position: 'bottom',
-            labels: { boxWidth: 12, font: { size: 11 } }
+            labels: {
+              boxWidth: 12,
+              font: { size: 11 },
+              color: colors.textColor
+            }
           }
         }
       }
     });
   }
 };
+
+// Re-color charts on theme toggle
+window.addEventListener('sams-theme-changed', () => {
+  const colors = Charts.getThemeColors();
+  Object.values(Charts.instances).forEach(chart => {
+    if (chart && chart.options && chart.options.scales) {
+      if (chart.options.scales.y) {
+        if (chart.options.scales.y.ticks) chart.options.scales.y.ticks.color = colors.textColor;
+        if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = colors.gridColor;
+      }
+      if (chart.options.scales.x) {
+        if (chart.options.scales.x.ticks) chart.options.scales.x.ticks.color = colors.textColor;
+      }
+      chart.update();
+    }
+  });
+});

@@ -61,8 +61,8 @@
             <div id="sidebar-user-role" class="sidebar-user-role">ADMIN</div>
           </div>
         </div>
-        <button onclick="Auth.logout()" title="Logout" style="background:none; border:none; color: #ef4444; cursor:pointer; font-size:1.1rem;">
-          ⎋
+        <button onclick="Auth.logout()" title="Sign Out" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 6px;" aria-label="Sign Out">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
         </button>
       </div>
     </aside>
@@ -71,7 +71,9 @@
     <div class="main-wrapper">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="mobile-menu-btn" aria-label="Toggle Navigation">☰</button>
+          <button class="mobile-menu-btn" aria-label="Toggle Navigation">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
           <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Student Roster</div>
         </div>
         <div class="topbar-right">
@@ -87,7 +89,10 @@
             <p class="page-subtitle">Manage students, verify biometric status, and audit individual records</p>
           </div>
           <div class="page-actions">
-            <a href="/api/reports/export-csv" class="btn btn-secondary btn-sm" target="_blank">📥 Export CSV</a>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="UI.downloadCsv('/api/reports/export-csv', 'sams_students_report.csv')" aria-label="Export CSV">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Export CSV
+            </button>
           </div>
         </div>
 
@@ -153,7 +158,7 @@
             <label class="form-label" for="add-email">Institutional Email *</label>
             <input type="email" id="add-email" class="form-control" placeholder="student.name@sams.edu" required>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-row-2">
             <div class="form-group">
               <label class="form-label" for="add-roll">Roll Number *</label>
               <input type="text" id="add-roll" class="form-control" placeholder="CO-2121" required>
@@ -163,7 +168,7 @@
               <input type="text" id="add-uid" class="form-control" placeholder="UID2026021" required>
             </div>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-row-2">
             <div class="form-group">
               <label class="form-label" for="add-dept">Department *</label>
               <select id="add-dept" class="form-control" required>

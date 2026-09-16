@@ -115,6 +115,15 @@
     <!-- Right Login Form -->
     <div class="auth-form-wrapper">
       <div class="auth-card">
+        <!-- Mobile Branding Header (visible on screens < 860px) -->
+        <div class="auth-mobile-header">
+          <div class="sidebar-logo">SAMS</div>
+          <div>
+            <div style="font-weight: 800; font-size: 1.15rem; letter-spacing: -0.5px; color: var(--text-main);">SAMS</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Demo Polytechnic Institute</div>
+          </div>
+        </div>
+
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;">
           <div>
             <h2 style="font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; color: var(--text-main);">Welcome back</h2>
@@ -136,7 +145,7 @@
             </div>
             <div style="position: relative;">
               <input type="password" id="password" class="form-control" placeholder="••••••••••••" required autocomplete="current-password" style="padding-right: 40px;">
-              <button type="button" id="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;">
+              <button type="button" id="toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;" aria-label="Toggle password visibility">
                 👁️
               </button>
             </div>
@@ -160,13 +169,13 @@
             ⚡ Quick Demo Credentials (1-Click Test):
           </div>
           <div class="demo-btn-group">
-            <button type="button" class="demo-btn" onclick="fillDemo('admin@sams.edu', 'Admin@12345')">
+            <button type="button" class="demo-btn" onclick="fillDemo('admin@sams.edu', 'Admin@12345')" aria-label="Autofill Admin Credentials" title="Log in as Administrator">
               👑 Admin
             </button>
-            <button type="button" class="demo-btn" onclick="fillDemo('teacher.sharma@sams.edu', 'Teacher@12345')">
+            <button type="button" class="demo-btn" onclick="fillDemo('teacher.sharma@sams.edu', 'Teacher@12345')" aria-label="Autofill Teacher Credentials" title="Log in as Faculty">
               👨‍🏫 Teacher
             </button>
-            <button type="button" class="demo-btn" onclick="fillDemo('vishal.yadav@sams.edu', 'Student@12345')">
+            <button type="button" class="demo-btn" onclick="fillDemo('vishal.yadav@sams.edu', 'Student@12345')" aria-label="Autofill Student Credentials" title="Log in as Student">
               🎓 Student
             </button>
           </div>

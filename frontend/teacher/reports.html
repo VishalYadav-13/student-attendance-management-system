@@ -231,9 +231,10 @@
           <button id="ai-btn" class="btn btn-secondary btn-sm" onclick="generateAiInsights()">
             ✨ Gemini Insights
           </button>
-          <a id="export-csv-link" href="/api/reports/export-csv" class="btn btn-primary btn-sm" target="_blank">
-            📥 Export CSV
-          </a>
+          <button type="button" class="btn btn-primary btn-sm" onclick="exportTeacherCsv()" aria-label="Export CSV">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Export CSV
+          </button>
         </div>
       </header>
 
@@ -430,10 +431,6 @@
         _allRecords = res.data.records || [];
         const summary = res.data.summary || {};
         const filters = res.data.filters || {};
-
-        // Update export link with current date range
-        const csvHref = `/api/reports/export-csv?start_date=${start}&end_date=${end}`;
-        document.getElementById('export-csv-link').href = csvHref;
 
         renderKpis(_allRecords, filters.threshold || 75);
         renderCharts(_allRecords);
@@ -658,6 +655,17 @@
     document.getElementById('t-filter-status').addEventListener('change', () => renderTable(_allRecords));
 
     // ─── Init ─────────────────────────────────────────────────────────────────
+    function exportTeacherCsv() {
+      const start = document.getElementById('t-start').value;
+      const end = document.getElementById('t-end').value;
+      const params = new URLSearchParams();
+      if (start) params.append('start_date', start);
+      if (end) params.append('end_date', end);
+      if (typeof _activeSubjectId !== 'undefined' && _activeSubjectId) params.append('subject_id', _activeSubjectId);
+      const qs = params.toString() ? '?' + params.toString() : '';
+      UI.downloadCsv('/api/reports/export-csv' + qs, `sams_teacher_report_${start || 'all'}.csv`);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       setThisMonth();
     });
