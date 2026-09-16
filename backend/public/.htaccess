@@ -10,4 +10,7 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 # Route everything else through the front controller
+# Preserve Authorization header for HTTP Bearer token authentication
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 RewriteRule ^ index.php [QSA,L]

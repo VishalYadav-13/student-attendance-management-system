@@ -35,17 +35,31 @@ class Database
         $user = Env::get('DB_USER', 'postgres');
         $pass = (string)Env::get('DB_PASSWORD', '');
 
-        // If DATABASE_URL is provided (e.g. Supabase, Neon, Railway)
+        $sslMode = '';
+
+        // If DATABASE_URL is provided (e.g. Render, Supabase, Neon, Railway)
         if (!empty($dbUrl)) {
             $parsed = parse_url($dbUrl);
             if ($parsed && isset($parsed['host'])) {
-                $driver = $parsed['scheme'] === 'postgresql' ? 'pgsql' : ($parsed['scheme'] ?? 'pgsql');
+                $scheme = strtolower($parsed['scheme'] ?? '');
+                $driver = in_array($scheme, ['postgres', 'postgresql', 'pgsql'], true) ? 'pgsql' : $scheme;
                 $host = $parsed['host'];
                 $port = $parsed['port'] ?? 5432;
-                $user = $parsed['user'] ?? '';
-                $pass = $parsed['pass'] ?? '';
+                $user = urldecode($parsed['user'] ?? '');
+                $pass = urldecode($parsed['pass'] ?? '');
                 $dbName = ltrim($parsed['path'] ?? '', '/');
+
+                if (isset($parsed['query'])) {
+                    parse_str($parsed['query'], $queryParams);
+                    if (!empty($queryParams['sslmode'])) {
+                        $sslMode = ";sslmode=" . $queryParams['sslmode'];
+                    }
+                }
             }
+        }
+
+        if (empty($sslMode) && !in_array($host, ['127.0.0.1', 'localhost'], true)) {
+            $sslMode = ";sslmode=prefer";
         }
 
         $options = [
@@ -57,16 +71,18 @@ class Database
         // Attempt PostgreSQL connection if pgsql driver extension is available
         if ($driver === 'pgsql' && extension_loaded('pdo_pgsql')) {
             try {
-                $dsn = "pgsql:host={$host};port={$port};dbname={$dbName};options='--client_encoding=UTF8'";
+                $dsn = "pgsql:host={$host};port={$port};dbname={$dbName}{$sslMode};options='--client_encoding=UTF8'";
                 self::$connection = new PDO($dsn, $user, $pass, $options);
                 self::$activeDriver = 'pgsql';
+                self::initPgsqlDatabase(self::$connection);
                 return self::$connection;
             } catch (PDOException $e) {
-                // In production, throw error; in local development, fall back gracefully to local SQLite
-                if (Env::get('APP_ENV') === 'production') {
+                error_log("[SAMS Database Notice] PostgreSQL connection failed: " . $e->getMessage());
+                // In production, if SQLite extension is not loaded, throw exception
+                if (Env::get('APP_ENV') === 'production' && !extension_loaded('pdo_sqlite')) {
                     throw new Exception("PostgreSQL Database Connection Failed: " . $e->getMessage());
                 }
-                error_log("[SAMS Notice] PostgreSQL connection failed ({$e->getMessage()}). Falling back to local SQLite dev database for instant testing.");
+                error_log("[SAMS Notice] Falling back to local SQLite database.");
             }
         }
 
@@ -80,6 +96,37 @@ class Database
             return self::$connection;
         } catch (PDOException $e) {
             throw new Exception("Database Initialization Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Initialize PostgreSQL tables and seed data if needed
+     */
+    private static function initPgsqlDatabase(PDO $pdo): void
+    {
+        try {
+            // Check if users table already exists in public schema
+            $checkStmt = $pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'");
+            if ($checkStmt && $checkStmt->fetch()) {
+                return; // Already initialized
+            }
+
+            $schemaFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'schema.sql';
+            $seedFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'seed.sql';
+
+            if (file_exists($schemaFile)) {
+                $schemaSql = file_get_contents($schemaFile);
+                // Strip CREATE EXTENSION if non-superuser permissions exist
+                $schemaSql = preg_replace('/CREATE EXTENSION IF NOT EXISTS[^;]+;/i', '', $schemaSql);
+                $pdo->exec($schemaSql);
+            }
+
+            if (file_exists($seedFile)) {
+                $seedSql = file_get_contents($seedFile);
+                $pdo->exec($seedSql);
+            }
+        } catch (\Throwable $e) {
+            error_log("[SAMS PgSQL Auto-Init Error] " . $e->getMessage());
         }
     }
 

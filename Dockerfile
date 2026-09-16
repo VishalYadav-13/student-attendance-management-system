@@ -3,15 +3,16 @@
 
 FROM php:8.2-apache
 
-# Install system dependencies and PostgreSQL driver libraries
+# Install system dependencies and PostgreSQL / SQLite driver libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
+    libsqlite3-dev \
     libzip-dev \
     zip \
     unzip \
     curl \
     ca-certificates \
-    && docker-php-ext-install pdo pdo_pgsql bcmath zip \
+    && docker-php-ext-install pdo pdo_pgsql pdo_sqlite bcmath zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite and mod_headers

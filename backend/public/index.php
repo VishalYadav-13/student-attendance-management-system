@@ -55,13 +55,27 @@ set_exception_handler(function (Throwable $e) {
     );
 });
 
-// Configure CORS — strictly enforce origin whitelist in all environments
+// Configure CORS — strictly enforce origin whitelist with intelligent Vercel/localhost matching
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOriginsRaw = (string)Env::get('CORS_ALLOWED_ORIGINS', 'http://localhost:8000,http://localhost:3000,http://127.0.0.1:8000');
+$allowedOriginsRaw = (string)Env::get(
+    'CORS_ALLOWED_ORIGINS',
+    'https://studentattendance-management-system.vercel.app,https://student-attendance-management-system.vercel.app,http://localhost:8000,http://localhost:3000,http://127.0.0.1:8000'
+);
 $allowedOrigins = array_map('trim', explode(',', $allowedOriginsRaw));
 
-// Only echo back the origin if it is in the whitelist (no wildcard in production)
-if ($origin && in_array($origin, $allowedOrigins, true)) {
+$isAllowed = false;
+if ($origin) {
+    if (in_array($origin, $allowedOrigins, true)) {
+        $isAllowed = true;
+    } elseif (preg_match('#^https://([a-z0-9-]+\.)?vercel\.app$#i', $origin)) {
+        // Automatically allow any Vercel production or preview branch deployments of this app
+        $isAllowed = true;
+    } elseif (preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin)) {
+        $isAllowed = true;
+    }
+}
+
+if ($isAllowed) {
     header("Access-Control-Allow-Origin: {$origin}");
     header("Access-Control-Allow-Credentials: true");
     header("Access-Control-Max-Age: 86400");
@@ -116,12 +130,25 @@ if (!str_starts_with($requestUri, '/api')) {
 
 // 0. Health Check
 if ($requestMethod === 'GET' && $requestUri === '/api/health') {
+    $dbStatus = 'disconnected';
+    $dbDriver = Database::getActiveDriver();
+    $dbError = null;
+    try {
+        $pdo = Database::getConnection();
+        $dbDriver = Database::getActiveDriver();
+        $dbStatus = 'connected (' . $dbDriver . ')';
+    } catch (\Throwable $e) {
+        $dbStatus = 'error';
+        $dbError = $e->getMessage();
+    }
+
     Response::success([
-        'status' => 'healthy',
-        'database' => Database::getActiveDriver(),
+        'status' => $dbStatus === 'error' ? 'degraded' : 'healthy',
+        'database' => $dbStatus,
+        'driver' => $dbDriver,
         'app_env' => Env::get('APP_ENV', 'development'),
         'timestamp' => date('c')
-    ], 'SAMS API is operating normally.');
+    ], $dbStatus === 'error' ? "Database note: {$dbError}" : 'SAMS API is operating normally.');
 }
 
 // 1. Authentication

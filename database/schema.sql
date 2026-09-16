@@ -4,8 +4,8 @@
 -- Compatible with PostgreSQL 13+
 -- =====================================================================
 
--- Enable UUID extension if available
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Optional UUID extension (omitted for compatibility with restricted non-superuser hosted databases)
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Drop tables with dependencies in reverse order for clean migration
 DROP TABLE IF EXISTS system_settings CASCADE;

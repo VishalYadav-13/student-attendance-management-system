@@ -18,7 +18,7 @@ services:
           name: sams-db
           property: connectionString
       - key: CORS_ALLOWED_ORIGINS
-        value: https://student-attendance-management-system.vercel.app,https://sams-frontend.vercel.app
+        value: https://studentattendance-management-system.vercel.app,https://student-attendance-management-system.vercel.app,https://sams-frontend.vercel.app
       - key: GEMINI_API_KEY
         sync: false
       - key: JWT_SECRET
