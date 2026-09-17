@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In — SAMS Student Attendance Management System</title>
-  <meta name="description" content="Sign in to SAMS institutional attendance portal for administrators, teachers, and students.">
+  <meta name="description" content="Sign in to SAMS institutional attendance portal for administrators and teachers.">
   <link rel="stylesheet" href="/frontend/assets/css/main.css">
   <style>
     .auth-container {
@@ -45,36 +45,70 @@
       width: 100%;
       max-width: 420px;
     }
-    .demo-accounts-box {
-      margin-top: 24px;
-      padding: 16px;
+    .role-selector {
+      display: flex;
       background: var(--bg-surface-subtle);
-      border: 1px dashed var(--border-medium);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 22px;
+    }
+    .role-tab {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      outline: none;
+    }
+    .role-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .role-tab.active {
+      background: var(--bg-surface);
+      color: var(--primary-accent);
+      border-color: var(--border-subtle);
+      box-shadow: var(--shadow-sm);
+    }
+    .role-tab-icon {
+      font-size: 1.05rem;
+    }
+    .portal-notice-card {
+      margin-top: 24px;
+      padding: 14px 16px;
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
     }
-    .demo-btn-group {
+    .portal-notice-header {
       display: flex;
+      align-items: center;
       gap: 8px;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-    .demo-btn {
-      flex: 1;
-      padding: 7px 10px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border-medium);
-      background: var(--bg-surface);
+      font-size: 0.8rem;
+      font-weight: 700;
       color: var(--text-main);
-      cursor: pointer;
-      text-align: center;
-      transition: all var(--transition-fast);
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
     }
-    .demo-btn:hover {
-      background: var(--primary-accent);
-      color: #fff;
-      border-color: var(--primary-accent);
+    .portal-notice-icon {
+      font-size: 0.95rem;
+    }
+    .portal-notice-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0;
     }
     @media (max-width: 860px) {
       .auth-banner { display: none; }
@@ -103,7 +137,7 @@
           "Smart Attendance.<br>Better Academics."
         </h1>
         <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; max-width: 440px;">
-          Empowering administrators, professors, and students with real-time biometric attendance, automated shortage alerts, and AI-driven classroom analytics.
+          Empowering administrators and faculty with real-time biometric attendance, automated shortage alerts, and AI-driven classroom analytics.
         </p>
       </div>
 
@@ -124,18 +158,30 @@
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
           <div>
             <h2 style="font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; color: var(--text-main);">Welcome back</h2>
-            <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">Sign in to continue to your dashboard</p>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;" id="login-role-subtitle">Sign in to your institutional portal</p>
           </div>
           <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
+        </div>
+
+        <!-- Role Selector: Admin and Teacher Only -->
+        <div class="role-selector" role="tablist" aria-label="Select Institutional Role">
+          <button type="button" class="role-tab active" id="role-admin-btn" role="tab" aria-selected="true" aria-controls="login-form">
+            <span class="role-tab-icon">👑</span>
+            <span>Admin</span>
+          </button>
+          <button type="button" class="role-tab" id="role-teacher-btn" role="tab" aria-selected="false" aria-controls="login-form">
+            <span class="role-tab-icon">👨‍🏫</span>
+            <span>Teacher</span>
+          </button>
         </div>
 
         <form id="login-form">
           <div class="form-group">
             <label class="form-label" for="email">Institutional Email</label>
-            <input type="email" id="email" class="form-control" placeholder="name@sams.edu" required autofocus autocomplete="username">
+            <input type="email" id="email" class="form-control" placeholder="admin@sams.edu" required autofocus autocomplete="username">
           </div>
 
           <div class="form-group">
@@ -163,22 +209,15 @@
           </button>
         </form>
 
-        <!-- Quick Demo Accounts Selector for Evaluators -->
-        <div class="demo-accounts-box">
-          <div style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">
-            ⚡ Quick Demo Credentials (1-Click Test):
+        <!-- Institutional Access Notice -->
+        <div class="portal-notice-card">
+          <div class="portal-notice-header">
+            <span class="portal-notice-icon">🛡️</span>
+            <span>Institutional Access Only</span>
           </div>
-          <div class="demo-btn-group">
-            <button type="button" class="demo-btn" onclick="fillDemo('admin@sams.edu', 'Admin@12345')" aria-label="Autofill Admin Credentials" title="Log in as Administrator">
-              👑 Admin
-            </button>
-            <button type="button" class="demo-btn" onclick="fillDemo('teacher.sharma@sams.edu', 'Teacher@12345')" aria-label="Autofill Teacher Credentials" title="Log in as Faculty">
-              👨‍🏫 Teacher
-            </button>
-            <button type="button" class="demo-btn" onclick="fillDemo('vishal.yadav@sams.edu', 'Student@12345')" aria-label="Autofill Student Credentials" title="Log in as Student">
-              🎓 Student
-            </button>
-          </div>
+          <p class="portal-notice-text">
+            This portal is strictly restricted to authenticated Administrators and Teachers. Student records and verification are managed directly by course instructors.
+          </p>
         </div>
 
         <div style="text-align: center; margin-top: 24px;">
@@ -220,11 +259,37 @@
   <script src="/frontend/assets/js/auth.js"></script>
   <script src="/frontend/assets/js/ui.js"></script>
   <script>
-    // Quick Demo Credentials filler helper
-    function fillDemo(email, pwd) {
-      document.getElementById('email').value = email;
-      document.getElementById('password').value = pwd;
-      UI.toast(`Loaded credentials for ${email}`, 'info', 2000);
+    // Role selection handler for Administrator and Teacher
+    // NOTE: Does NOT autofill email or password.
+    // User must manually enter their Institutional Email and Password.
+    const adminTab = document.getElementById('role-admin-btn');
+    const teacherTab = document.getElementById('role-teacher-btn');
+    const emailInput = document.getElementById('email');
+    const roleSubtitle = document.getElementById('login-role-subtitle');
+
+    function selectRole(role) {
+      if (role === 'admin') {
+        adminTab.classList.add('active');
+        adminTab.setAttribute('aria-selected', 'true');
+        teacherTab.classList.remove('active');
+        teacherTab.setAttribute('aria-selected', 'false');
+        emailInput.placeholder = 'admin@sams.edu';
+        if (roleSubtitle) roleSubtitle.textContent = 'Sign in as Administrator';
+      } else {
+        teacherTab.classList.add('active');
+        teacherTab.setAttribute('aria-selected', 'true');
+        adminTab.classList.remove('active');
+        adminTab.setAttribute('aria-selected', 'false');
+        emailInput.placeholder = 'teacher.sharma@sams.edu';
+        if (roleSubtitle) roleSubtitle.textContent = 'Sign in as Teacher';
+      }
+      // Never populate password or credentials automatically.
+      emailInput.focus();
+    }
+
+    if (adminTab && teacherTab) {
+      adminTab.addEventListener('click', () => selectRole('admin'));
+      teacherTab.addEventListener('click', () => selectRole('teacher'));
     }
 
     // Toggle password visibility
