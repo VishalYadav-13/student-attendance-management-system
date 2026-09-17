@@ -224,29 +224,56 @@ const UI = {
   },
 
   /* -------------------------------------------------- */
-  /* Animated Number Counter                            */
+  /* Animated Number Counter (supports ints & decimals) */
   /* -------------------------------------------------- */
   animateCounter(el, target, duration = 800, suffix = '') {
     if (!el) return;
+    const num = parseFloat(target);
+    if (isNaN(num)) {
+      el.textContent = target + suffix;
+      return;
+    }
+    const isDecimal = String(target).includes('.');
+    const decimalPlaces = isDecimal ? (String(target).split('.')[1]?.length || 1) : 0;
+
     const start = 0;
     const startTime = performance.now();
 
     function update(time) {
       const elapsed = time - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease-out expo
+      // Ease-out cubic
       const ease = 1 - Math.pow(1 - progress, 3);
-      const current = Math.floor(start + (target - start) * ease);
-      el.textContent = current + suffix;
+      const current = start + (num - start) * ease;
+      el.textContent = (isDecimal ? current.toFixed(decimalPlaces) : Math.floor(current)) + suffix;
 
       if (progress < 1) {
         requestAnimationFrame(update);
       } else {
-        el.textContent = target + suffix;
+        el.textContent = (isDecimal ? num.toFixed(decimalPlaces) : num) + suffix;
       }
     }
 
     requestAnimationFrame(update);
+  },
+
+  /* -------------------------------------------------- */
+  /* Button Loading State Helper                        */
+  /* -------------------------------------------------- */
+  setButtonLoading(btn, isLoading, loadingText = 'Processing...') {
+    if (!btn) return;
+    if (isLoading) {
+      btn.dataset.originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+      btn.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span> ${loadingText}`;
+    } else {
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+      if (btn.dataset.originalHtml) {
+        btn.innerHTML = btn.dataset.originalHtml;
+      }
+    }
   }
 };
 

@@ -203,7 +203,7 @@
                 <h3 class="card-title" style="margin-bottom: 16px;">Latest Verified Student</h3>
                 
                 <div id="last-student-box" style="text-align: center; padding: 24px 16px;">
-                  <div style="width: 72px; height: 72px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;" id="last-stu-avatar">
+                  <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--primary-accent); color: #fff; font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;" id="last-stu-avatar">
                     —
                   </div>
                   <h3 id="last-stu-name" style="font-size: 1.25rem; font-weight: 700;">Awaiting Face Capture</h3>
@@ -244,12 +244,24 @@
         <!-- TAB 2: MANUAL ATTENDANCE GRID -->
         <div id="tab-content-manual" class="tab-content">
           <div class="table-container">
-            <div class="table-toolbar">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('PRESENT')">✓ Mark All Present</button>
-                <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('ABSENT')">✕ Mark All Absent</button>
+            <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('PRESENT')">
+                  <span class="status-dot dot-present"></span> Mark All Present
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('ABSENT')">
+                  <span class="status-dot dot-absent"></span> Mark All Absent
+                </button>
+                <div style="display: flex; align-items: center; gap: 8px; margin-left: 8px; font-size: 0.8rem;">
+                  <span id="manual-prs-pill" class="badge badge-present">0 Present</span>
+                  <span id="manual-lte-pill" class="badge badge-late">0 Late</span>
+                  <span id="manual-abs-pill" class="badge badge-absent">0 Absent</span>
+                </div>
               </div>
-              <button class="btn btn-primary" onclick="confirmSaveAttendance()">💾 Save Attendance</button>
+              <button id="save-attendance-btn" class="btn btn-primary" onclick="confirmSaveAttendance()">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                Save Attendance
+              </button>
             </div>
 
             <table class="sams-table">
@@ -258,12 +270,12 @@
                   <th>Roll No</th>
                   <th>Student Name</th>
                   <th>Biometric Status</th>
-                  <th>Attendance Status</th>
+                  <th style="min-width: 240px;">Attendance Status</th>
                 </tr>
               </thead>
               <tbody id="manual-roster-tbody">
                 <tr>
-                  <td colspan="4" style="text-align: center; padding: 24px; color: var(--text-muted);">Loading student roster...</td>
+                  <td colspan="4" style="text-align: center; padding: 28px; color: var(--text-muted);">Loading student roster...</td>
                 </tr>
               </tbody>
             </table>
@@ -314,23 +326,31 @@
     function renderManualRoster() {
       const tbody = document.getElementById('manual-roster-tbody');
       if (rosterStudents.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:24px; color:var(--text-muted);">No students in roster.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:28px; color:var(--text-muted);">No students enrolled in this session.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = rosterStudents.map(s => {
+      tbody.innerHTML = rosterStudents.map((s, idx) => {
         const currStatus = s.attendance_status || 'PRESENT';
+        const avatarBg = ['#6F7F6A', '#6E7F8D', '#A56B52', '#7D8C7A', '#8C7A6E'][idx % 5];
+        const initial = (s.full_name || 'S').charAt(0).toUpperCase();
+
         return `
           <tr>
-            <td><strong>${s.roll_number}</strong></td>
+            <td><span class="badge" style="background:var(--bg-surface-subtle); font-family:monospace; font-weight:700; color:var(--text-main);">${s.roll_number}</span></td>
             <td>
-              <strong>${s.full_name}</strong>
-              <div style="font-size:0.75rem; color:var(--text-muted);">${s.email}</div>
+              <div class="table-user-cell">
+                <div class="table-avatar" style="background: ${avatarBg};">${initial}</div>
+                <div>
+                  <div style="font-weight: 700; color: var(--text-main);">${s.full_name}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">${s.email}</div>
+                </div>
+              </div>
             </td>
             <td>
               ${s.face_verification_status === 'ENROLLED' 
-                ? '<span class="badge badge-enrolled">✓ Enrolled</span>' 
-                : '<span class="badge" style="background:#f1f5f9;color:#64748b;">Not Enrolled</span>'}
+                ? '<span class="badge badge-enrolled"><span class="status-dot dot-present"></span> Enrolled</span>' 
+                : '<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-muted); border:1px solid var(--border-subtle);">Not Enrolled</span>'}
             </td>
             <td>
               <div class="status-btn-group" data-student-id="${s.student_id}">
@@ -366,23 +386,37 @@
     }
 
     function updateLiveProgress() {
-      const presentCount = rosterStudents.filter(s => s.attendance_status === 'PRESENT' || s.attendance_status === 'LATE').length;
+      const presentCount = rosterStudents.filter(s => s.attendance_status === 'PRESENT').length;
+      const lateCount = rosterStudents.filter(s => s.attendance_status === 'LATE').length;
+      const absentCount = rosterStudents.filter(s => s.attendance_status === 'ABSENT').length;
       const total = rosterStudents.length || 1;
-      const pct = Math.round((presentCount / total) * 100);
+      const attendedCount = presentCount + lateCount;
+      const pct = Math.round((attendedCount / total) * 100);
 
+      // AI Tab counters
       const el = document.getElementById('live-present-count');
       const fill = document.getElementById('live-progress-fill');
-      if (el) el.textContent = `${presentCount} / ${total} (${pct}%)`;
+      if (el) el.textContent = `${attendedCount} / ${total} (${pct}%)`;
       if (fill) fill.style.width = `${pct}%`;
+
+      // Manual Tab counter pills
+      const prsPill = document.getElementById('manual-prs-pill');
+      const ltePill = document.getElementById('manual-lte-pill');
+      const absPill = document.getElementById('manual-abs-pill');
+      if (prsPill) prsPill.textContent = `${presentCount} Present`;
+      if (ltePill) ltePill.textContent = `${lateCount} Late`;
+      if (absPill) absPill.textContent = `${absentCount} Absent`;
     }
 
     function confirmSaveAttendance() {
+      const saveBtn = document.getElementById('save-attendance-btn');
       UI.confirm({
         title: 'Save Session Attendance',
-        message: `Are you ready to commit attendance records for ${rosterStudents.length} students?`,
+        message: `Are you ready to commit attendance records for ${rosterStudents.length} students to the institutional registry?`,
         confirmText: 'Save Attendance',
         danger: false,
         onConfirm: async () => {
+          if (saveBtn) UI.setButtonLoading(saveBtn, true, 'Saving Records...');
           try {
             const records = rosterStudents.map(s => ({
               student_id: s.student_id,
@@ -395,10 +429,12 @@
               records: records
             });
 
-            UI.toast("Attendance successfully committed to database!", "success");
+            UI.toast("Attendance saved successfully", "success");
             loadRoster();
           } catch (err) {
             UI.toast(err.message, "error");
+          } finally {
+            if (saveBtn) UI.setButtonLoading(saveBtn, false, 'Save Attendance');
           }
         }
       });

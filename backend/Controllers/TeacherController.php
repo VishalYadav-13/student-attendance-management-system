@@ -117,13 +117,16 @@ class TeacherController
             $uStmt = $pdo->prepare("
                 INSERT INTO users (role_id, email, password_hash, status)
                 VALUES (2, :email, :pwd, 'ACTIVE')
+                RETURNING user_id
             ");
             $uStmt->execute([':email' => $email, ':pwd' => $pwdHash]);
-            $userId = (int)$pdo->lastInsertId();
+            $userId = (int)$uStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+            $uStmt->closeCursor();
 
             $tStmt = $pdo->prepare("
                 INSERT INTO teachers (user_id, employee_id, full_name, phone, department_id, designation, status)
                 VALUES (:uid, :emp, :name, :phone, :dept, :desig, 'ACTIVE')
+                RETURNING teacher_id
             ");
             $tStmt->execute([
                 ':uid' => $userId,
@@ -133,7 +136,8 @@ class TeacherController
                 ':dept' => $deptId,
                 ':desig' => $designation
             ]);
-            $teacherId = (int)$pdo->lastInsertId();
+            $teacherId = (int)$tStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+            $tStmt->closeCursor();
 
             $pdo->commit();
             AuditService::log($admin['user_id'], 'TEACHER_CREATED', 'teachers', (string)$teacherId);

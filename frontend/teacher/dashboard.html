@@ -95,6 +95,25 @@
           </div>
         </div>
 
+        <!-- Quick Actions & Status Summary -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; align-items: center;">
+          <a href="/frontend/teacher/attendance.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Launch Attendance Studio
+          </a>
+          <a href="/frontend/teacher/reports.html" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Generate Attendance Report
+          </a>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-surface); padding: 8px 16px; border-radius: var(--radius-full); border: 1px solid var(--border-subtle);">
+            <span style="font-weight: 700; color: var(--text-main);">Status Legend:</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><span class="status-dot dot-present"></span> Present (&ge;75%)</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><span class="status-dot dot-late"></span> Late</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><span class="status-dot dot-absent"></span> Absent</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><span class="status-dot dot-shortage"></span> Shortage (&lt;75%)</span>
+          </div>
+        </div>
+
         <!-- KPI Cards -->
         <div class="stats-grid">
           <div class="stat-card">
@@ -104,7 +123,7 @@
               <span class="stat-subtext" id="stat-day-subtext">Loading schedule...</span>
             </div>
             <div class="stat-icon icon-blue">
-              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
             </div>
           </div>
 
@@ -115,7 +134,7 @@
               <span class="stat-subtext">Active Divisions</span>
             </div>
             <div class="stat-icon icon-purple">
-              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
             </div>
           </div>
 
@@ -126,18 +145,18 @@
               <span class="stat-subtext">Across All Lectures</span>
             </div>
             <div class="stat-icon icon-green">
-              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             </div>
           </div>
 
           <div class="stat-card">
             <div class="stat-info">
               <span class="stat-label">Active Session</span>
-              <span id="stat-active-session" class="stat-value" style="font-size: 1.1rem;">None</span>
+              <span id="stat-active-session" class="stat-value" style="font-size: 1.15rem;">None</span>
               <span class="stat-subtext">Attendance In-Progress</span>
             </div>
             <div class="stat-icon icon-amber">
-              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
           </div>
         </div>
@@ -146,26 +165,32 @@
         <div style="margin-bottom: 24px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
             <div>
-              <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Today's Class Schedule</h3>
-              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Scheduled lectures for <span id="today-day-label">today</span></p>
+              <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--primary-accent);"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Today's Class Schedule
+              </h3>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">Scheduled lectures and lab sessions for <span id="today-day-label" style="font-weight: 600; color: var(--text-main);">today</span></p>
             </div>
-            <span class="badge badge-enrolled" id="today-day-badge">—</span>
+            <span class="badge badge-enrolled" id="today-day-badge" style="font-size: 0.85rem; padding: 6px 14px;">—</span>
           </div>
 
-          <div id="timetable-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+          <div id="timetable-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px;">
             <!-- Skeleton cards -->
-            <div class="class-card skeleton" style="height: 140px;"></div>
-            <div class="class-card skeleton" style="height: 140px;"></div>
+            <div class="class-card skeleton" style="height: 150px;"></div>
+            <div class="class-card skeleton" style="height: 150px;"></div>
           </div>
         </div>
 
         <!-- Assigned Subject Courses -->
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Assigned Subject Courses</h3>
-            <a href="/frontend/teacher/reports.html" class="btn btn-secondary btn-sm">View Reports →</a>
+            <div>
+              <h3 class="card-title">Assigned Subject Courses</h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">Divisions and academic subjects under your direct supervision</p>
+            </div>
+            <a href="/frontend/teacher/reports.html" class="btn btn-secondary btn-sm">View Analytics →</a>
           </div>
-          <div id="assigned-courses-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; padding: 4px 0;">
+          <div id="assigned-courses-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 4px 0;">
             <div class="skeleton skeleton-text w-full" style="height: 60px;"></div>
             <div class="skeleton skeleton-text w-full" style="height: 60px;"></div>
           </div>
@@ -253,15 +278,18 @@
                     <div class="class-subject">${item.subject_name}</div>
                     <div class="class-meta">${item.subject_code} • ${item.class_name}, Division ${item.division_name}</div>
                   </div>
-                  <span class="class-time-pill">${timeRange}</span>
+                  <span class="class-time-pill">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline; vertical-align:middle; margin-right:3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    ${timeRange}
+                  </span>
                 </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px;">
                   <span class="badge badge-enrolled">${item.class_name} Div ${item.division_name}</span>
-                  ${item.room_number ? `<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-main);">Room: ${item.room_number}</span>` : ''}
+                  ${item.room_number ? `<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-secondary); border:1px solid var(--border-subtle);">📍 Room ${item.room_number}</span>` : ''}
                 </div>
                 <div class="class-card-footer">
-                  <span style="font-size: 0.78rem; color: var(--text-muted);">${item.subject_code}</span>
-                  <a href="/frontend/teacher/attendance.html?subject_id=${item.subject_id}&class_id=${item.class_id}&division_id=${item.division_id}" class="btn btn-primary btn-sm">
+                  <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">${item.subject_code}</span>
+                  <a href="/frontend/teacher/attendance.html?subject_id=${item.subject_id}&class_id=${item.class_id}&division_id=${item.division_id}" class="btn btn-primary btn-sm" style="box-shadow: var(--shadow-sm);">
                     Take Attendance →
                   </a>
                 </div>

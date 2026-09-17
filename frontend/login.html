@@ -13,45 +13,40 @@
       width: 100%;
     }
     .auth-banner {
-      flex: 1.1;
-      background: linear-gradient(145deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%);
-      color: #ffffff;
+      flex: 1.05;
+      background: #242A27;
+      color: #EAE3D7;
       padding: 60px 50px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       position: relative;
-      overflow: hidden;
-    }
-    .auth-banner::before {
-      content: "";
-      position: absolute;
-      top: -100px;
-      right: -100px;
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, transparent 70%);
-      border-radius: 50%;
+      border-right: 1px solid #323A36;
     }
     .auth-form-wrapper {
       flex: 1;
-      background: var(--bg-surface);
+      background: var(--bg-app);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px 30px;
+      padding: 40px 24px;
     }
     .auth-card {
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 36px 32px;
+      box-shadow: var(--shadow-card);
     }
     .role-selector {
       display: flex;
       background: var(--bg-surface-subtle);
       border: 1px solid var(--border-medium);
-      border-radius: var(--radius-md);
-      padding: 4px;
-      gap: 4px;
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 3px;
       margin-bottom: 22px;
     }
     .role-tab {
@@ -60,59 +55,67 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 10px 14px;
-      font-size: 0.88rem;
+      padding: 9px 12px;
+      font-size: 0.85rem;
       font-weight: 600;
       border: 1px solid transparent;
       border-radius: var(--radius-sm);
       background: transparent;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       cursor: pointer;
       transition: all var(--transition-fast);
       outline: none;
     }
     .role-tab:hover {
       color: var(--text-main);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(47, 53, 50, 0.05);
     }
     .role-tab.active {
       background: var(--bg-surface);
       color: var(--primary-accent);
       border-color: var(--border-subtle);
+      border-left: 3px solid var(--accent-warm);
       box-shadow: var(--shadow-sm);
     }
     .role-tab-icon {
-      font-size: 1.05rem;
+      font-size: 1rem;
     }
     .portal-notice-card {
-      margin-top: 24px;
-      padding: 14px 16px;
+      margin-top: 22px;
+      padding: 12px 14px;
       background: var(--bg-surface-subtle);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
     }
     .portal-notice-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 700;
       color: var(--text-main);
       letter-spacing: 0.3px;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     .portal-notice-icon {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
     .portal-notice-text {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      line-height: 1.5;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
       margin: 0;
+    }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
     }
     @media (max-width: 860px) {
       .auth-banner { display: none; }
-      .auth-form-wrapper { padding: 30px 20px; }
+      .auth-form-wrapper { padding: 24px 16px; background: var(--bg-app); }
+      .auth-card { padding: 28px 20px; box-shadow: none; border: 1px solid var(--border-subtle); }
     }
   </style>
 </head>
@@ -124,25 +127,25 @@
       <div style="display: flex; align-items: center; gap: 12px; z-index: 2;">
         <div class="sidebar-logo">SAMS</div>
         <div>
-          <h2 style="font-weight: 800; font-size: 1.25rem; letter-spacing: -0.5px;">SAMS</h2>
-          <p style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Demo Polytechnic Institute</p>
+          <h2 style="font-family: var(--font-serif); font-weight: 700; font-size: 1.25rem; color: #EAE3D7; letter-spacing: 0.3px;">SAMS</h2>
+          <p style="font-size: 0.75rem; color: #9EABA2; font-weight: 500;">Demo Polytechnic Institute</p>
         </div>
       </div>
 
       <div style="z-index: 2; margin: 40px 0;">
-        <div style="display: inline-block; padding: 4px 12px; background: rgba(255,255,255,0.1); border-radius: var(--radius-full); font-size: 0.8rem; font-weight: 600; margin-bottom: 16px;">
+        <div style="display: inline-block; padding: 4px 12px; background: rgba(111, 127, 106, 0.2); border: 1px solid rgba(111, 127, 106, 0.35); border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 600; margin-bottom: 18px; color: #EAE3D7;">
           Institutional Attendance Portal
         </div>
-        <h1 style="font-size: 2.3rem; font-weight: 800; line-height: 1.2; letter-spacing: -1px; margin-bottom: 16px;">
+        <h1 style="font-family: var(--font-serif); font-size: 2.35rem; font-weight: 600; line-height: 1.2; margin-bottom: 16px; color: #F4EFE6;">
           "Smart Attendance.<br>Better Academics."
         </h1>
-        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; max-width: 440px;">
-          Empowering administrators and faculty with real-time biometric attendance, automated shortage alerts, and AI-driven classroom analytics.
+        <p style="color: #B1B8B3; font-size: 0.92rem; line-height: 1.6; max-width: 440px;">
+          Empowering polytechnic administrators and faculty with real-time classroom attendance, automated shortage auditing, and course analytics.
         </p>
       </div>
 
-      <div style="font-size: 0.82rem; color: #94a3b8; z-index: 2;">
-        🔒 Protected by Bcrypt Encryption, Prepared Queries, and Session Integrity Controls.
+      <div style="font-size: 0.78rem; color: #858E87; z-index: 2;">
+        🔒 Institutional Cryptographic Controls & Session Protection.
       </div>
     </div>
 
@@ -151,8 +154,8 @@
       <div class="auth-card">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
           <div>
-            <h2 style="font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; color: var(--text-main);">Welcome back</h2>
-            <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;" id="login-role-subtitle">Sign in to your institutional portal</p>
+            <h2 style="font-family: var(--font-serif); font-size: 1.7rem; font-weight: 600; color: var(--text-main); margin-bottom: 3px;">Welcome back</h2>
+            <p style="font-size: 0.86rem; color: var(--text-secondary);" id="login-role-subtitle">Sign in to your institutional portal</p>
           </div>
           <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
         </div>
@@ -325,8 +328,12 @@
       const remember = document.getElementById('remember-me').checked;
       const submitBtn = document.getElementById('login-submit-btn');
 
-      submitBtn.textContent = 'Signing in...';
-      submitBtn.disabled = true;
+      if (!email || !password) {
+        UI.toast('Please enter both your institutional email and password.', 'warning', 3000);
+        return;
+      }
+
+      UI.setButtonLoading(submitBtn, true, 'Signing in...');
 
       try {
         const res = await API.post('/api/auth/login', { email, password });
@@ -341,8 +348,15 @@
         }
       } catch (err) {
         UI.toast(err.message || 'Invalid email or password.', 'error');
-        submitBtn.textContent = 'Sign In to Account';
-        submitBtn.disabled = false;
+        UI.setButtonLoading(submitBtn, false);
+        
+        // Visual shake animation on error
+        const formCard = document.querySelector('.auth-card');
+        if (formCard) {
+          formCard.style.animation = 'none';
+          void formCard.offsetWidth; // trigger reflow
+          formCard.style.animation = 'shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both';
+        }
       }
     });
   </script>

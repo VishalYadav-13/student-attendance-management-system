@@ -1,5 +1,6 @@
 /**
  * SAMS - Chart.js Visualizations Manager
+ * Vintage Academic Theme Visualizations
  */
 
 const Charts = {
@@ -8,8 +9,8 @@ const Charts = {
   getThemeColors() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     return {
-      textColor: isDark ? '#94a3b8' : '#64748b',
-      gridColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+      textColor: isDark ? '#B1B8B3' : '#6F706A',
+      gridColor: isDark ? 'rgba(52, 60, 56, 0.5)' : 'rgba(213, 204, 189, 0.4)'
     };
   },
 
@@ -34,12 +35,12 @@ const Charts = {
         datasets: [{
           label: 'Attendance %',
           data: data,
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37, 99, 235, 0.1)',
-          borderWidth: 3,
+          borderColor: '#6F7F6A',
+          backgroundColor: 'rgba(111, 127, 106, 0.14)',
+          borderWidth: 2.5,
           fill: true,
-          tension: 0.35,
-          pointBackgroundColor: '#2563eb',
+          tension: 0.3,
+          pointBackgroundColor: '#6F7F6A',
           pointRadius: 4,
           pointHoverRadius: 6
         }]
@@ -89,8 +90,8 @@ const Charts = {
         datasets: [{
           label: 'Avg Attendance %',
           data: data,
-          backgroundColor: ['#2563eb', '#4f46e5', '#0ea5e9'],
-          borderRadius: 6
+          backgroundColor: ['#6F7F6A', '#6E7F8D', '#A56B52'],
+          borderRadius: 4
         }]
       },
       options: {
@@ -131,19 +132,19 @@ const Charts = {
         labels: labels,
         datasets: [{
           data: data,
-          backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+          backgroundColor: ['#526B54', '#A56B52', '#9A4333', '#6E7F8D'],
           borderWidth: 0
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '72%',
+        cutout: '70%',
         plugins: {
           legend: {
             position: 'bottom',
             labels: {
-              boxWidth: 12,
+              boxWidth: 10,
               font: { size: 11 },
               color: colors.textColor
             }

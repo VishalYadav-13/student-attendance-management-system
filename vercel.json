@@ -3,7 +3,6 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
-  "framework": null,
   "headers": [
     {
       "source": "/(.*)",
@@ -35,7 +34,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }
@@ -47,31 +46,23 @@
     },
     {
       "source": "/login",
-      "destination": "/frontend/login.html"
+      "destination": "/frontend/login"
     },
     {
       "source": "/admin",
-      "destination": "/frontend/admin/dashboard.html"
+      "destination": "/frontend/admin/dashboard"
     },
     {
       "source": "/admin/:page",
-      "destination": "/frontend/admin/:page.html"
+      "destination": "/frontend/admin/:page"
     },
     {
       "source": "/teacher",
-      "destination": "/frontend/teacher/dashboard.html"
+      "destination": "/frontend/teacher/dashboard"
     },
     {
       "source": "/teacher/:page",
-      "destination": "/frontend/teacher/:page.html"
-    },
-    {
-      "source": "/student",
-      "destination": "/frontend/student/dashboard.html"
-    },
-    {
-      "source": "/student/:page",
-      "destination": "/frontend/student/:page.html"
+      "destination": "/frontend/teacher/:page"
     }
   ]
 }

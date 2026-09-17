@@ -33,7 +33,9 @@ use SAMS\Middleware\AuthMiddleware;
 use SAMS\Middleware\RoleMiddleware;
 use SAMS\Controllers\SettingsController;
 use SAMS\Controllers\StudentController;
+use SAMS\Controllers\TeacherController;
 use SAMS\Controllers\AttendanceController;
+use SAMS\Config\Database;
 
 class SamsTest
 {
@@ -61,6 +63,9 @@ class SamsTest
 
         // RBAC & IDOR Authorization Security Tests
         $this->testRoleAuthorizationAndIdor();
+
+        // Auto-Increment Sequence & User Insertion Regression Tests
+        $this->testUserInsertionAndSequenceAutoIncrement();
 
         // Results Summary
         echo "\n------------------------------------------------------\n";
@@ -289,6 +294,101 @@ class SamsTest
 
         Response::disableTestMode();
         AuthMiddleware::setAuthenticatedUser(null);
+    }
+
+    private function testUserInsertionAndSequenceAutoIncrement(): void
+    {
+        echo "\n[5] User Insertion & Auto-Increment Sequence Synchronization Tests\n";
+        Response::enableTestMode();
+
+        $pdo = Database::getConnection();
+
+        // 1. Verify seed data exists
+        $seedUserCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE user_id <= 26")->fetchColumn();
+        $this->assert("Seeded users (IDs 1-26) exist in database", $seedUserCount >= 26);
+
+        $maxSeedUserId = (int)$pdo->query("SELECT MAX(user_id) FROM users")->fetchColumn();
+        $this->assert("MAX(user_id) in database is at least 26", $maxSeedUserId >= 26);
+
+        // 2. Direct user insertion without explicit ID
+        $testEmail = 'seq.test.' . uniqid() . '@sams.edu';
+        $pwdHash = password_hash('TestPass@123', PASSWORD_BCRYPT);
+        $insStmt = $pdo->prepare("
+            INSERT INTO users (role_id, email, password_hash, status)
+            VALUES (3, :email, :pwd, 'ACTIVE')
+            RETURNING user_id
+        ");
+        $insStmt->execute([':email' => $testEmail, ':pwd' => $pwdHash]);
+        $newUserId = (int)$insStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+        $insStmt->closeCursor();
+
+        $this->assert("Direct user insertion assigns auto-increment ID > 26", $newUserId > 26);
+
+        // 3. Authenticate as Admin and test Add Student path
+        AuthMiddleware::setAuthenticatedUser([
+            'user_id' => 1,
+            'role_id' => 1,
+            'role_name' => 'ADMIN'
+        ]);
+
+        $testStudentRoll = 'REG-' . rand(1000, 9999);
+        $testStudentUid = 'UID-REG-' . rand(1000, 9999);
+        $testStudentEmail = 'student.reg.' . uniqid() . '@sams.edu';
+
+        $_POST = [
+            'full_name' => 'Regression Test Student',
+            'email' => $testStudentEmail,
+            'roll_number' => $testStudentRoll,
+            'student_uid' => $testStudentUid,
+            'department_id' => 1,
+            'class_id' => 1,
+            'division_id' => 1,
+            'gender' => 'Male',
+            'batch' => '2026'
+        ];
+
+        StudentController::store();
+        $respStudent = Response::getLastResponse();
+        $studentStatusCode = $respStudent['status_code'] ?? 0;
+        $studentData = $respStudent['payload']['data'] ?? $respStudent['data'] ?? [];
+
+        $this->assert("Add Student controller succeeds with 200/201 response", in_array($studentStatusCode, [200, 201], true));
+        $this->assert("Add Student creates student with valid ID > 20", !empty($studentData['student_id']) && (int)$studentData['student_id'] > 20);
+
+        // 4. Test Add Faculty / Teacher path
+        $testTeacherEmp = 'EMP-REG-' . rand(1000, 9999);
+        $testTeacherEmail = 'faculty.reg.' . uniqid() . '@sams.edu';
+
+        $_POST = [
+            'full_name' => 'Regression Test Faculty',
+            'email' => $testTeacherEmail,
+            'employee_id' => $testTeacherEmp,
+            'department_id' => 1,
+            'designation' => 'Testing Assistant Professor'
+        ];
+
+        TeacherController::store();
+        $respTeacher = Response::getLastResponse();
+        $teacherStatusCode = $respTeacher['status_code'] ?? 0;
+        $teacherData = $respTeacher['payload']['data'] ?? $respTeacher['data'] ?? [];
+
+        $this->assert("Add Faculty controller succeeds with 200/201 response", in_array($teacherStatusCode, [200, 201], true));
+        $this->assert("Add Faculty creates teacher with valid ID > 5", !empty($teacherData['teacher_id']) && (int)$teacherData['teacher_id'] > 5);
+
+        // 5. Verify existing seed users remain intact and unmodified
+        $adminCheck = $pdo->query("SELECT user_id, email FROM users WHERE user_id = 1")->fetch();
+        $this->assert("Admin user ID 1 remains intact and unmodified", $adminCheck && $adminCheck['email'] === 'admin@sams.edu');
+
+        $studentCheck = $pdo->query("SELECT user_id, email FROM users WHERE user_id = 7")->fetch();
+        $this->assert("Student user ID 7 remains intact and unmodified", $studentCheck && $studentCheck['email'] === 'vishal.yadav@sams.edu');
+
+        // 6. Verify Database::syncPgsqlSequences method is defined and callable
+        $this->assert("Database::syncPgsqlSequences method exists and is callable", is_callable(['SAMS\Config\Database', 'syncPgsqlSequences']));
+
+        // Clean up test POST and Auth
+        $_POST = [];
+        AuthMiddleware::setAuthenticatedUser(null);
+        Response::disableTestMode();
     }
 }
 

@@ -47,22 +47,22 @@
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    .action-LOGIN      { background: rgba(16,185,129,0.12); color: #059669; }
-    .action-LOGOUT     { background: rgba(100,116,139,0.12); color: #64748b; }
-    .action-CREATE     { background: rgba(37,99,235,0.12); color: #2563eb; }
-    .action-UPDATE     { background: rgba(245,158,11,0.12); color: #d97706; }
-    .action-DELETE     { background: rgba(239,68,68,0.12); color: #dc2626; }
-    .action-MARK       { background: rgba(79,70,229,0.12); color: #4f46e5; }
-    .action-OVERRIDE   { background: rgba(245,158,11,0.15); color: #b45309; border: 1px solid rgba(245,158,11,0.3); }
-    .action-VERIFY     { background: rgba(14,165,233,0.12); color: #0284c7; }
-    .action-ENROLL     { background: rgba(16,185,129,0.12); color: #059669; }
-    .action-CLOSE      { background: rgba(100,116,139,0.12); color: #475569; }
-    .action-default    { background: rgba(100,116,139,0.1); color: #475569; }
+    .action-LOGIN      { background: var(--success-bg); color: var(--success); }
+    .action-LOGOUT     { background: var(--bg-surface-subtle); color: var(--text-muted); }
+    .action-CREATE     { background: var(--info-bg); color: var(--info); }
+    .action-UPDATE     { background: var(--warning-bg); color: var(--warning); }
+    .action-DELETE     { background: var(--danger-bg); color: var(--danger); }
+    .action-MARK       { background: rgba(110, 127, 141, 0.15); color: var(--secondary-accent); }
+    .action-OVERRIDE   { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--border-color); }
+    .action-VERIFY     { background: var(--info-bg); color: var(--info); }
+    .action-ENROLL     { background: var(--success-bg); color: var(--success); }
+    .action-CLOSE      { background: var(--bg-surface-subtle); color: var(--text-secondary); }
+    .action-default    { background: var(--bg-surface-subtle); color: var(--text-secondary); }
 
-    .role-badge-admin   { background: rgba(239,68,68,0.1); color: #dc2626; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
-    .role-badge-teacher { background: rgba(37,99,235,0.1); color: #2563eb; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
-    .role-badge-student { background: rgba(16,185,129,0.1); color: #059669; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
-    .role-badge-system  { background: rgba(100,116,139,0.1); color: #64748b; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
+    .role-badge-admin   { background: var(--danger-bg); color: var(--danger); font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
+    .role-badge-teacher { background: var(--info-bg); color: var(--info); font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
+    .role-badge-student { background: var(--success-bg); color: var(--success); font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
+    .role-badge-system  { background: var(--bg-surface-subtle); color: var(--text-muted); font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; }
 
     .actor-cell { display: flex; flex-direction: column; gap: 2px; }
     .actor-name { font-weight: 600; font-size: 0.88rem; }

@@ -185,17 +185,29 @@
           return;
         }
 
-        tbody.innerHTML = res.data.map(t => `
-          <tr>
-            <td><strong>${t.employee_id}</strong></td>
-            <td><strong>${t.full_name}</strong></td>
-            <td>${t.email}</td>
-            <td>${t.department_name}</td>
-            <td>${t.designation}</td>
-            <td><span class="badge badge-enrolled">${t.assigned_subjects_count || 1} Subjects</span></td>
-            <td><span class="badge badge-present">Active</span></td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = res.data.map((t, idx) => {
+          const avatarBg = ['#6F7F6A', '#6E7F8D', '#A56B52', '#7D8C7A', '#8C7A6E'][idx % 5];
+          const initial = (t.full_name || 'T').charAt(0).toUpperCase();
+          return `
+            <tr>
+              <td><span class="badge" style="background:var(--bg-surface-subtle); font-family:monospace; font-weight:700; color:var(--text-main);">${t.employee_id}</span></td>
+              <td>
+                <div class="table-user-cell">
+                  <div class="table-avatar" style="background: ${avatarBg};">${initial}</div>
+                  <div>
+                    <div style="font-weight: 700; color: var(--text-main);">${t.full_name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${t.email}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="color: var(--text-secondary); font-size: 0.85rem;">${t.email}</td>
+              <td><span class="badge badge-enrolled">${t.department_name}</span></td>
+              <td style="font-size: 0.85rem; font-weight: 500;">${t.designation || 'Lecturer'}</td>
+              <td><span class="badge" style="background: var(--bg-surface-subtle); color: var(--text-secondary); border: 1px solid var(--border-subtle);"><span class="status-dot dot-present"></span> ${t.assigned_subjects_count || 1} Subject(s)</span></td>
+              <td><span class="badge badge-present"><span class="status-dot dot-present"></span> Active</span></td>
+            </tr>
+          `;
+        }).join('');
       } catch (err) {
         UI.toast("Failed to load teachers: " + err.message, "error");
       }
@@ -204,8 +216,7 @@
     document.getElementById('add-teacher-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('add-teacher-btn');
-      btn.textContent = 'Saving...';
-      btn.disabled = true;
+      UI.setButtonLoading(btn, true, 'Registering Faculty...');
 
       const payload = {
         full_name: document.getElementById('t-name').value.trim(),
@@ -224,8 +235,7 @@
       } catch (err) {
         UI.toast(err.message, 'error');
       } finally {
-        btn.textContent = 'Save Faculty';
-        btn.disabled = false;
+        UI.setButtonLoading(btn, false, 'Save Faculty');
       }
     });
 

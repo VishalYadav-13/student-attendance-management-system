@@ -18,28 +18,29 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(37, 99, 235, 0.1);
+      background: rgba(111, 127, 106, 0.12);
       color: var(--primary-accent);
-      border: 1px solid rgba(37, 99, 235, 0.25);
-      padding: 6px 16px;
-      border-radius: var(--radius-full);
-      font-size: 0.85rem;
+      border: 1px solid rgba(111, 127, 106, 0.3);
+      padding: 5px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
       font-weight: 600;
-      margin-bottom: 24px;
+      margin-bottom: 22px;
     }
     .hero-title {
-      font-size: clamp(2.2rem, 5vw, 3.8rem);
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -1.5px;
+      font-family: var(--font-serif);
+      font-size: clamp(2.3rem, 5vw, 3.7rem);
+      font-weight: 600;
+      line-height: 1.18;
+      letter-spacing: -0.5px;
       color: var(--text-main);
       max-width: 860px;
       margin: 0 auto 20px;
     }
     .hero-title span {
-      background: linear-gradient(135deg, var(--primary-accent), var(--secondary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: var(--primary-accent);
+      background: none;
+      -webkit-text-fill-color: initial;
     }
     .hero-subtitle {
       font-size: 1.15rem;
@@ -217,7 +218,7 @@
       <a href="#ai-architecture" class="nav-item">AI Verification</a>
       <a href="#security" class="nav-item">Privacy & Security</a>
       <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
-      <a href="/frontend/login.html" class="btn btn-primary" style="padding: 8px 18px;">Portal Login</a>
+      <a href="/login" class="btn btn-primary" style="padding: 8px 18px;">Portal Login</a>
     </div>
   </nav>
 
@@ -233,7 +234,7 @@
       Track attendance, verify student identities with AI-assisted computer vision, analyze institutional trends, and eliminate classroom proxy attendance with precision.
     </p>
     <div class="hero-cta-group">
-      <a href="/frontend/login.html" class="btn btn-primary btn-hero">
+      <a href="/login" class="btn btn-primary btn-hero">
         Sign In to Portal →
       </a>
       <a href="#features" class="btn btn-secondary btn-hero">

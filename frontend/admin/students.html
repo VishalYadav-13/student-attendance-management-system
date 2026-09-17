@@ -206,7 +206,7 @@
       </div>
       <div class="modal-body">
         <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px;">
-          <div style="width: 54px; height: 54px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; justify-content: center;" id="view-student-avatar">V</div>
+          <div style="width: 52px; height: 52px; border-radius: var(--radius-sm); background: var(--primary-accent); color: var(--text-inverse); font-family: var(--font-serif); font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; justify-content: center;" id="view-student-avatar">V</div>
           <div>
             <h4 id="view-student-fullname" style="font-size: 1.15rem; font-weight: 700;">Full Name</h4>
             <div id="view-student-meta" style="font-size: 0.85rem; color: var(--text-muted);">Roll: CO-2101 | UID: 2026001</div>
@@ -278,31 +278,47 @@
           return;
         }
 
-        tbody.innerHTML = res.data.students.map(s => {
-          let bioBadge = '<span class="badge" style="background:#f1f5f9;color:#64748b;">Not Enrolled</span>';
+        tbody.innerHTML = res.data.students.map((s, idx) => {
+          let bioBadge = '<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-muted); border:1px solid var(--border-subtle);">Not Enrolled</span>';
           if (s.face_verification_status === 'ENROLLED') {
-            bioBadge = '<span class="badge badge-enrolled">✓ Enrolled</span>';
+            bioBadge = '<span class="badge badge-enrolled"><span class="status-dot dot-present"></span> Enrolled</span>';
           } else if (s.face_verification_status === 'PENDING') {
-            bioBadge = '<span class="badge badge-late">⏳ Pending</span>';
+            bioBadge = '<span class="badge badge-late"><span class="status-dot dot-late"></span> Pending</span>';
           }
 
           const statusBadge = s.status === 'ACTIVE'
-            ? '<span class="badge badge-present">Active</span>'
-            : '<span class="badge badge-absent">Inactive</span>';
+            ? '<span class="badge badge-present"><span class="status-dot dot-present"></span> Active</span>'
+            : '<span class="badge badge-absent"><span class="status-dot dot-absent"></span> Inactive</span>';
+
+          const avatarBg = ['#6F7F6A', '#6E7F8D', '#A56B52', '#7D8C7A', '#8C7A6E'][idx % 5];
+          const initial = (s.full_name || 'S').charAt(0).toUpperCase();
 
           return `
             <tr>
-              <td><strong>${s.roll_number}</strong></td>
-              <td><strong>${s.full_name}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${s.student_uid}</span></td>
-              <td>${s.email}</td>
-              <td>${s.department_code}</td>
-              <td>${s.class_code} - Div ${s.division_name}</td>
+              <td><span class="badge" style="background:var(--bg-surface-subtle); font-family:monospace; font-weight:700; color:var(--text-main);">${s.roll_number}</span></td>
+              <td>
+                <div class="table-user-cell">
+                  <div class="table-avatar" style="background: ${avatarBg};">${initial}</div>
+                  <div>
+                    <div style="font-weight: 700; color: var(--text-main);">${s.full_name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); font-family:monospace;">${s.student_uid}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="color: var(--text-secondary); font-size: 0.85rem;">${s.email}</td>
+              <td><span class="badge badge-enrolled">${s.department_code}</span></td>
+              <td style="font-size: 0.85rem; font-weight: 500;">${s.class_code} <span style="color:var(--text-muted);">&bull;</span> Div ${s.division_name}</td>
               <td>${bioBadge}</td>
               <td>${statusBadge}</td>
               <td>
-                <div style="display:flex; gap: 6px;">
-                  <button class="btn btn-secondary btn-sm" onclick="viewStudentDetails(${s.student_id})">View</button>
-                  <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deactivateStudent(${s.student_id}, '${s.full_name}')">Deactivate</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <button class="btn btn-secondary btn-sm" onclick="viewStudentDetails(${s.student_id})" title="View Details" style="padding: 5px 10px; font-size: 0.78rem;">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 3px;"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    View
+                  </button>
+                  <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239,68,68,0.25); padding: 5px 10px; font-size: 0.78rem;" onclick="deactivateStudent(${s.student_id}, '${s.full_name.replace(/'/g, "\\'")}')" title="Deactivate Student">
+                    Deactivate
+                  </button>
                 </div>
               </td>
             </tr>
@@ -379,8 +395,7 @@
     document.getElementById('add-student-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const submitBtn = document.getElementById('add-student-submit-btn');
-      submitBtn.textContent = 'Saving...';
-      submitBtn.disabled = true;
+      UI.setButtonLoading(submitBtn, true, 'Enrolling Student...');
 
       const payload = {
         full_name: document.getElementById('add-name').value.trim(),
@@ -401,8 +416,7 @@
       } catch (err) {
         UI.toast(err.message, 'error');
       } finally {
-        submitBtn.textContent = 'Save Student';
-        submitBtn.disabled = false;
+        UI.setButtonLoading(submitBtn, false, 'Save Student');
       }
     });
 

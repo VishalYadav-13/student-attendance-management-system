@@ -100,33 +100,160 @@ class Database
     }
 
     /**
-     * Initialize PostgreSQL tables and seed data if needed
+     * Initialize PostgreSQL tables and seed data if needed, and ensure sequences are synchronized
      */
     private static function initPgsqlDatabase(PDO $pdo): void
     {
         try {
             // Check if users table already exists in public schema
             $checkStmt = $pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'");
-            if ($checkStmt && $checkStmt->fetch()) {
-                return; // Already initialized
+            $alreadyInitialized = ($checkStmt && $checkStmt->fetch());
+
+            if (!$alreadyInitialized) {
+                $schemaFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'schema.sql';
+                $seedFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'seed.sql';
+
+                if (file_exists($schemaFile)) {
+                    $schemaSql = file_get_contents($schemaFile);
+                    // Strip CREATE EXTENSION if non-superuser permissions exist
+                    $schemaSql = preg_replace('/CREATE EXTENSION IF NOT EXISTS[^;]+;/i', '', $schemaSql);
+                    $pdo->exec($schemaSql);
+                }
+
+                if (file_exists($seedFile)) {
+                    $seedSql = file_get_contents($seedFile);
+                    $pdo->exec($seedSql);
+                }
             }
 
-            $schemaFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'schema.sql';
-            $seedFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'seed.sql';
+            // Always synchronize all PostgreSQL sequences to MAX(column_value)
+            // Safe to run repeatedly; only synchronizes when a sequence is behind MAX(id)
+            self::syncPgsqlSequences($pdo);
 
-            if (file_exists($schemaFile)) {
-                $schemaSql = file_get_contents($schemaFile);
-                // Strip CREATE EXTENSION if non-superuser permissions exist
-                $schemaSql = preg_replace('/CREATE EXTENSION IF NOT EXISTS[^;]+;/i', '', $schemaSql);
-                $pdo->exec($schemaSql);
-            }
-
-            if (file_exists($seedFile)) {
-                $seedSql = file_get_contents($seedFile);
-                $pdo->exec($seedSql);
-            }
         } catch (\Throwable $e) {
             error_log("[SAMS PgSQL Auto-Init Error] " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Synchronize all PostgreSQL sequences with MAX(primary_key)
+     * Safe to run more than once; only updates sequences that are out of sync.
+     * Uses pg_get_serial_sequence and setval dynamically for all auto-increment columns.
+     */
+    public static function syncPgsqlSequences(PDO $pdo): void
+    {
+        try {
+            // Primary dynamic synchronization via PostgreSQL system catalogs
+            $sql = "
+                DO $$
+                DECLARE
+                    rec RECORD;
+                    seq_name TEXT;
+                    max_val BIGINT;
+                    curr_seq BIGINT;
+                    is_called BOOL;
+                BEGIN
+                    FOR rec IN
+                        SELECT 
+                            c.table_name,
+                            c.column_name
+                        FROM information_schema.columns c
+                        JOIN information_schema.tables t 
+                            ON c.table_name = t.table_name AND c.table_schema = t.table_schema
+                        WHERE c.table_schema = 'public'
+                          AND t.table_type = 'BASE TABLE'
+                          AND c.column_default LIKE 'nextval(%'
+                    LOOP
+                        seq_name := pg_get_serial_sequence(quote_ident(rec.table_name), rec.column_name);
+                        IF seq_name IS NOT NULL THEN
+                            EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %I', rec.column_name, rec.table_name) INTO max_val;
+                            IF max_val > 0 THEN
+                                BEGIN
+                                    EXECUTE format('SELECT last_value, is_called FROM %s', seq_name) INTO curr_seq, is_called;
+                                    IF curr_seq < max_val OR (curr_seq = max_val AND NOT is_called) THEN
+                                        PERFORM setval(seq_name, max_val, true);
+                                    END IF;
+                                EXCEPTION WHEN OTHERS THEN
+                                    PERFORM setval(seq_name, max_val, true);
+                                END;
+                            END IF;
+                        END IF;
+                    END LOOP;
+                END $$;
+            ";
+            $pdo->exec($sql);
+        } catch (\Throwable $e) {
+            error_log("[SAMS PgSQL Sequence Sync Notice] Dynamic PL/pgSQL sync notice: " . $e->getMessage() . " - invoking fallback sync.");
+            self::fallbackSyncSequences($pdo);
+        }
+    }
+
+    /**
+     * Fallback sequence synchronizer querying pg_get_serial_sequence and setval per core table
+     */
+    private static function fallbackSyncSequences(PDO $pdo): void
+    {
+        $coreTables = [
+            'users' => 'user_id',
+            'students' => 'student_id',
+            'teachers' => 'teacher_id',
+            'admins' => 'admin_id',
+            'attendance_sessions' => 'session_id',
+            'attendance_records' => 'record_id',
+            'attendance_overrides' => 'override_id',
+            'audit_logs' => 'log_id',
+            'notifications' => 'notification_id',
+            'face_profiles' => 'profile_id',
+            'face_verification_logs' => 'log_id',
+            'subjects' => 'subject_id',
+            'classes' => 'class_id',
+            'divisions' => 'division_id',
+            'departments' => 'department_id',
+            'courses' => 'course_id',
+            'semesters' => 'semester_id',
+            'academic_years' => 'academic_year_id',
+            'timetables' => 'timetable_id',
+            'roles' => 'role_id'
+        ];
+
+        foreach ($coreTables as $table => $column) {
+            try {
+                $check = $pdo->prepare("
+                    SELECT pg_get_serial_sequence(:tbl, :col) AS seq_name,
+                           COALESCE(MAX(\"{$column}\"), 0) AS max_val
+                    FROM \"{$table}\"
+                ");
+                $check->execute([':tbl' => $table, ':col' => $column]);
+                $row = $check->fetch(PDO::FETCH_ASSOC);
+                if ($row && !empty($row['seq_name']) && (int)$row['max_val'] > 0) {
+                    $seq = $row['seq_name'];
+                    $maxVal = (int)$row['max_val'];
+
+                    // Check if sync is necessary
+                    $currSeq = null;
+                    $isCalled = false;
+                    try {
+                        $stateStmt = $pdo->query("SELECT last_value, is_called FROM {$seq}");
+                        if ($stateStmt && ($state = $stateStmt->fetch(PDO::FETCH_ASSOC))) {
+                            $currSeq = (int)($state['last_value'] ?? 0);
+                            $isCalled = !empty($state['is_called']) && in_array($state['is_called'], [true, 't', 1, '1'], true);
+                        }
+                    } catch (\Throwable $t) {
+                        // ignore state query error
+                    }
+
+                    if ($currSeq === null || $currSeq < $maxVal || ($currSeq === $maxVal && !$isCalled)) {
+                        $setval = $pdo->prepare("SELECT setval(:seq, :maxval, true)");
+                        $setval->execute([
+                            ':seq' => $seq,
+                            ':maxval' => $maxVal
+                        ]);
+                    }
+                }
+            } catch (\Throwable $t) {
+                // Table might not exist or non-serial
+                continue;
+            }
         }
     }
 

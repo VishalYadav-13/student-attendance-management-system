@@ -306,3 +306,43 @@ INSERT INTO notifications (user_id, title, message, type) VALUES
 (7, 'Attendance Marked', 'You were marked Present in Data Structures on Sep 11 at 08:04 AM via AI Face Verification.', 'ATTENDANCE'),
 (1, 'System Announcement', 'Mid-term attendance audit scheduled for next week. Ensure all sessions are reconciled.', 'ANNOUNCEMENT'),
 (2, 'Class Timetable Reminder', 'Your lecture for Data Structures (SY CO Division A) starts at 08:00 AM in Room 204.', 'ALERT');
+
+-- =====================================================================
+-- 19. Synchronize All PostgreSQL Auto-Increment Sequences
+-- Advances sequences to MAX(id) so new INSERTs receive the next ID
+-- =====================================================================
+DO $$
+DECLARE
+    rec RECORD;
+    seq_name TEXT;
+    max_val BIGINT;
+    curr_seq BIGINT;
+    is_called BOOL;
+BEGIN
+    FOR rec IN
+        SELECT 
+            c.table_name,
+            c.column_name
+        FROM information_schema.columns c
+        JOIN information_schema.tables t 
+            ON c.table_name = t.table_name AND c.table_schema = t.table_schema
+        WHERE c.table_schema = 'public'
+          AND t.table_type = 'BASE TABLE'
+          AND c.column_default LIKE 'nextval(%'
+    LOOP
+        seq_name := pg_get_serial_sequence(quote_ident(rec.table_name), rec.column_name);
+        IF seq_name IS NOT NULL THEN
+            EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %I', rec.column_name, rec.table_name) INTO max_val;
+            IF max_val > 0 THEN
+                BEGIN
+                    EXECUTE format('SELECT last_value, is_called FROM %s', seq_name) INTO curr_seq, is_called;
+                    IF curr_seq < max_val OR (curr_seq = max_val AND NOT is_called) THEN
+                        PERFORM setval(seq_name, max_val, true);
+                    END IF;
+                EXCEPTION WHEN OTHERS THEN
+                    PERFORM setval(seq_name, max_val, true);
+                END;
+            END IF;
+        END IF;
+    END LOOP;
+END $$;

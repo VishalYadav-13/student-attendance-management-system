@@ -229,31 +229,40 @@
           return;
         }
 
-        tbody.innerHTML = students.map(s => {
-          let badge = '<span class="badge" style="background:#f1f5f9; color:#64748b;">Not Marked</span>';
+        tbody.innerHTML = students.map((s, idx) => {
+          let badge = '<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-muted); border:1px solid var(--border-subtle);">Not Marked</span>';
           if (s.attendance_status === 'PRESENT') {
-            badge = '<span class="badge badge-present">PRESENT</span>';
+            badge = '<span class="badge badge-present"><span class="status-dot dot-present"></span> PRESENT</span>';
           } else if (s.attendance_status === 'ABSENT') {
-            badge = '<span class="badge badge-absent">ABSENT</span>';
+            badge = '<span class="badge badge-absent"><span class="status-dot dot-absent"></span> ABSENT</span>';
           } else if (s.attendance_status === 'LATE') {
-            badge = '<span class="badge badge-late">LATE</span>';
+            badge = '<span class="badge badge-late"><span class="status-dot dot-late"></span> LATE</span>';
           } else if (s.attendance_status === 'EXCUSED') {
             badge = '<span class="badge badge-enrolled">EXCUSED</span>';
           }
 
           const conf = s.confidence_score ? `${Math.round(s.confidence_score * 100)}%` : '—';
           const time = s.marked_at ? new Date(s.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+          const avatarBg = ['#6F7F6A', '#6E7F8D', '#A56B52', '#7D8C7A', '#8C7A6E'][idx % 5];
+          const initial = (s.full_name || 'S').charAt(0).toUpperCase();
 
           return `
             <tr>
-              <td><strong>${s.roll_number}</strong></td>
-              <td>${s.full_name}</td>
-              <td>${badge}</td>
-              <td><span style="font-size:0.85rem; font-weight:500;">${s.verification_method || '—'}</span></td>
-              <td>${conf}</td>
-              <td>${time}</td>
+              <td><span class="badge" style="background:var(--bg-surface-subtle); font-family:monospace; font-weight:700; color:var(--text-main);">${s.roll_number}</span></td>
               <td>
-                <button class="btn btn-secondary btn-sm" onclick="openOverrideModal(${s.record_id || 0}, '${s.full_name.replace(/'/g, "\\'")  }', '${s.attendance_status || 'UNMARKED'}')">
+                <div class="table-user-cell">
+                  <div class="table-avatar" style="background: ${avatarBg};">${initial}</div>
+                  <div>
+                    <div style="font-weight: 700; color: var(--text-main);">${s.full_name}</div>
+                  </div>
+                </div>
+              </td>
+              <td>${badge}</td>
+              <td><span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-secondary); border:1px solid var(--border-subtle); font-size:0.75rem;">${s.verification_method || '—'}</span></td>
+              <td style="font-weight: 600; color: ${s.confidence_score ? 'var(--success)' : 'var(--text-muted)'};">${conf}</td>
+              <td style="font-size: 0.82rem; color: var(--text-secondary);">${time}</td>
+              <td>
+                <button class="btn btn-secondary btn-sm" onclick="openOverrideModal(${s.record_id || 0}, '${s.full_name.replace(/'/g, "\\'")}', '${s.attendance_status || 'UNMARKED'}')" title="Audit / Override Attendance Record" style="padding: 4px 10px; font-size: 0.78rem;">
                   ✏️ Override
                 </button>
               </td>
@@ -307,8 +316,7 @@
       const reason = document.getElementById('override-reason').value.trim();
       const btn = document.getElementById('save-override-btn');
 
-      btn.textContent = 'Auditing & Saving...';
-      btn.disabled = true;
+      UI.setButtonLoading(btn, true, 'Auditing & Saving...');
 
       try {
         const res = await API.post('/api/attendance/override', {
@@ -322,8 +330,7 @@
       } catch (err) {
         UI.toast(err.message, "error");
       } finally {
-        btn.textContent = 'Save & Audit Override';
-        btn.disabled = false;
+        UI.setButtonLoading(btn, false, 'Save & Audit Override');
       }
     });
 

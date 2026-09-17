@@ -235,13 +235,16 @@ class StudentController
             $uStmt = $pdo->prepare("
                 INSERT INTO users (role_id, email, password_hash, status)
                 VALUES (3, :email, :pwd, 'ACTIVE')
+                RETURNING user_id
             ");
             $uStmt->execute([':email' => $email, ':pwd' => $pwdHash]);
-            $newUserId = (int)$pdo->lastInsertId();
+            $newUserId = (int)$uStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+            $uStmt->closeCursor();
 
             $sStmt = $pdo->prepare("
                 INSERT INTO students (user_id, roll_number, student_uid, full_name, email, phone, gender, department_id, course_id, class_id, division_id, batch, admission_year, status, face_verification_status)
                 VALUES (:uid, :roll, :suid, :name, :email, :phone, :gender, :dept, 1, :cid, :did, :batch, :yr, 'ACTIVE', 'NOT_ENROLLED')
+                RETURNING student_id
             ");
             $sStmt->execute([
                 ':uid' => $newUserId,
@@ -257,7 +260,8 @@ class StudentController
                 ':batch' => $batch,
                 ':yr' => $admYear
             ]);
-            $newStudentId = (int)$pdo->lastInsertId();
+            $newStudentId = (int)$sStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+            $sStmt->closeCursor();
 
             $pdo->commit();
             AuditService::log($admin['user_id'], 'STUDENT_CREATED', 'students', (string)$newStudentId, ['roll_number' => $roll]);

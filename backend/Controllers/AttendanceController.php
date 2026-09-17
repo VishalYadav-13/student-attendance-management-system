@@ -70,6 +70,7 @@ class AttendanceController
         $stmt = $pdo->prepare("
             INSERT INTO attendance_sessions (class_id, division_id, subject_id, teacher_id, session_date, start_time, end_time, lecture_number, status, verification_mode)
             VALUES (:cid, :did, :sid, :tid, :sdate, :stime, :etime, :lec, 'OPEN', :mode)
+            RETURNING session_id
         ");
         $stmt->execute([
             ':cid' => $classId,
@@ -83,7 +84,8 @@ class AttendanceController
             ':mode' => $mode
         ]);
 
-        $newSessionId = (int)$pdo->lastInsertId();
+        $newSessionId = (int)$stmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+        $stmt->closeCursor();
         AuditService::log($user['user_id'], 'SESSION_OPENED', 'attendance_sessions', (string)$newSessionId);
 
         Response::success([
@@ -205,6 +207,7 @@ class AttendanceController
         $insStmt = $pdo->prepare("
             INSERT INTO attendance_records (session_id, student_id, status, marked_at, verification_method, confidence_score, ip_address)
             VALUES (:sess, :stu, :status, CURRENT_TIMESTAMP, :method, :conf, :ip)
+            RETURNING record_id
         ");
         $insStmt->execute([
             ':sess' => $sessionId,
@@ -215,7 +218,8 @@ class AttendanceController
             ':ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
         ]);
 
-        $recordId = (int)$pdo->lastInsertId();
+        $recordId = (int)$insStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+        $insStmt->closeCursor();
 
         AuditService::log($user['user_id'], 'ATTENDANCE_MARKED', 'attendance_records', (string)$recordId, [
             'student_id' => $studentId,
