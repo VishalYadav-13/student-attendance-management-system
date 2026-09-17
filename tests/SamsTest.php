@@ -382,8 +382,39 @@ class SamsTest
         $studentCheck = $pdo->query("SELECT user_id, email FROM users WHERE user_id = 7")->fetch();
         $this->assert("Student user ID 7 remains intact and unmodified", $studentCheck && $studentCheck['email'] === 'vishal.yadav@sams.edu');
 
-        // 6. Verify Database::syncPgsqlSequences method is defined and callable
+        // 6. Verify Database::syncPgsqlSequences and syncAllSequences methods are defined and callable
         $this->assert("Database::syncPgsqlSequences method exists and is callable", is_callable(['SAMS\Config\Database', 'syncPgsqlSequences']));
+        $this->assert("Database::syncAllSequences method exists and is callable", is_callable(['SAMS\Config\Database', 'syncAllSequences']));
+
+        // 7. Verify duplicate roll number returns 409 conflict
+        $_POST = [
+            'full_name' => 'Duplicate Roll Test Student',
+            'email' => 'unique.email.' . uniqid() . '@sams.edu',
+            'roll_number' => $testStudentRoll, // already created above
+            'student_uid' => 'UID-UNIQUE-' . rand(10000, 99999),
+            'department_id' => 1,
+            'class_id' => 1,
+            'division_id' => 1
+        ];
+        StudentController::store();
+        $respDupRoll = Response::getLastResponse();
+        $this->assert("Duplicate roll number returns 409 Conflict", ($respDupRoll['status_code'] ?? 0) === 409);
+        $this->assert("Duplicate roll error does not expose raw SQLSTATE", !str_contains($respDupRoll['payload']['message'] ?? '', 'SQLSTATE'));
+
+        // 8. Verify duplicate student UID returns 409 conflict
+        $_POST = [
+            'full_name' => 'Duplicate UID Test Student',
+            'email' => 'unique.email2.' . uniqid() . '@sams.edu',
+            'roll_number' => 'REG-UNIQUE-' . rand(10000, 99999),
+            'student_uid' => $testStudentUid, // already created above
+            'department_id' => 1,
+            'class_id' => 1,
+            'division_id' => 1
+        ];
+        StudentController::store();
+        $respDupUid = Response::getLastResponse();
+        $this->assert("Duplicate student UID returns 409 Conflict", ($respDupUid['status_code'] ?? 0) === 409);
+        $this->assert("Duplicate UID error does not expose raw SQLSTATE", !str_contains($respDupUid['payload']['message'] ?? '', 'SQLSTATE'));
 
         // Clean up test POST and Auth
         $_POST = [];

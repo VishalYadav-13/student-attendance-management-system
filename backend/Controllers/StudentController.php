@@ -214,68 +214,161 @@ class StudentController
 
         $pdo = Database::getConnection();
 
-        // Check uniqueness of email and roll number
-        $chk = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email");
-        $chk->execute([':email' => $email]);
-        if ($chk->fetch()) {
+        // 1. Check uniqueness of email in users and students
+        $chkUserEmail = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email");
+        $chkUserEmail->execute([':email' => $email]);
+        if ($chkUserEmail->fetch()) {
             Response::conflict("An account with email '{$email}' already exists.");
+            return;
         }
 
+        $chkStudentEmail = $pdo->prepare("SELECT student_id FROM students WHERE LOWER(email) = :email");
+        $chkStudentEmail->execute([':email' => $email]);
+        if ($chkStudentEmail->fetch()) {
+            Response::conflict("Student email '{$email}' is already registered.");
+            return;
+        }
+
+        // 2. Check uniqueness of roll number in students
         $chkRoll = $pdo->prepare("SELECT student_id FROM students WHERE roll_number = :roll");
         $chkRoll->execute([':roll' => $roll]);
         if ($chkRoll->fetch()) {
             Response::conflict("Roll number '{$roll}' is already assigned to another student.");
+            return;
         }
 
-        $pdo->beginTransaction();
-        try {
-            // Default password for newly enrolled student: Student@12345 (or custom if supplied)
-            $rawPassword = !empty($input['password']) ? (string)$input['password'] : 'Student@12345';
-            $pwdHash = password_hash($rawPassword, PASSWORD_BCRYPT);
-            $uStmt = $pdo->prepare("
-                INSERT INTO users (role_id, email, password_hash, status)
-                VALUES (3, :email, :pwd, 'ACTIVE')
-                RETURNING user_id
-            ");
-            $uStmt->execute([':email' => $email, ':pwd' => $pwdHash]);
-            $newUserId = (int)$uStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
-            $uStmt->closeCursor();
-
-            $sStmt = $pdo->prepare("
-                INSERT INTO students (user_id, roll_number, student_uid, full_name, email, phone, gender, department_id, course_id, class_id, division_id, batch, admission_year, status, face_verification_status)
-                VALUES (:uid, :roll, :suid, :name, :email, :phone, :gender, :dept, 1, :cid, :did, :batch, :yr, 'ACTIVE', 'NOT_ENROLLED')
-                RETURNING student_id
-            ");
-            $sStmt->execute([
-                ':uid' => $newUserId,
-                ':roll' => $roll,
-                ':suid' => $uid,
-                ':name' => $name,
-                ':email' => $email,
-                ':phone' => $phone,
-                ':gender' => $gender,
-                ':dept' => $deptId,
-                ':cid' => $classId,
-                ':did' => $divId,
-                ':batch' => $batch,
-                ':yr' => $admYear
-            ]);
-            $newStudentId = (int)$sStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
-            $sStmt->closeCursor();
-
-            $pdo->commit();
-            AuditService::log($admin['user_id'], 'STUDENT_CREATED', 'students', (string)$newStudentId, ['roll_number' => $roll]);
-
-            Response::success([
-                'student_id' => $newStudentId,
-                'roll_number' => $roll,
-                'full_name' => $name,
-                'email' => $email
-            ], 'Student registered successfully. Initial credentials generated.', 201);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            Response::error("Failed to create student: " . $e->getMessage(), 'DATABASE_ERROR', 500);
+        // 3. Check uniqueness of student UID in students
+        $chkUid = $pdo->prepare("SELECT student_id FROM students WHERE student_uid = :suid");
+        $chkUid->execute([':suid' => $uid]);
+        if ($chkUid->fetch()) {
+            Response::conflict("Student UID '{$uid}' is already assigned to another student.");
+            return;
         }
+
+        // 4. Validate academic references exist
+        $chkDept = $pdo->prepare("SELECT department_id FROM departments WHERE department_id = :did");
+        $chkDept->execute([':did' => $deptId]);
+        if (!$chkDept->fetch()) {
+            Response::validationError(['department_id' => "Selected department (ID {$deptId}) does not exist."]);
+            return;
+        }
+
+        $chkClass = $pdo->prepare("SELECT class_id FROM classes WHERE class_id = :cid");
+        $chkClass->execute([':cid' => $classId]);
+        if (!$chkClass->fetch()) {
+            Response::validationError(['class_id' => "Selected class (ID {$classId}) does not exist."]);
+            return;
+        }
+
+        $chkDiv = $pdo->prepare("SELECT division_id FROM divisions WHERE division_id = :did");
+        $chkDiv->execute([':did' => $divId]);
+        if (!$chkDiv->fetch()) {
+            Response::validationError(['division_id' => "Selected division (ID {$divId}) does not exist."]);
+            return;
+        }
+
+        // Ensure sequences are synchronized before insertion if PostgreSQL
+        if (Database::getActiveDriver() === 'pgsql') {
+            Database::syncPgsqlSequences($pdo);
+        }
+
+        $rawPassword = !empty($input['password']) ? (string)$input['password'] : 'Student@12345';
+        $pwdHash = password_hash($rawPassword, PASSWORD_BCRYPT);
+
+        $maxAttempts = 2;
+        $attempt = 0;
+        $created = false;
+        $lastException = null;
+
+        while ($attempt < $maxAttempts && !$created) {
+            $attempt++;
+            $pdo->beginTransaction();
+            try {
+                $uStmt = $pdo->prepare("
+                    INSERT INTO users (role_id, email, password_hash, status)
+                    VALUES (3, :email, :pwd, 'ACTIVE')
+                    RETURNING user_id
+                ");
+                $uStmt->execute([':email' => $email, ':pwd' => $pwdHash]);
+                $newUserId = (int)$uStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+                $uStmt->closeCursor();
+
+                $sStmt = $pdo->prepare("
+                    INSERT INTO students (user_id, roll_number, student_uid, full_name, email, phone, gender, department_id, course_id, class_id, division_id, batch, admission_year, status, face_verification_status)
+                    VALUES (:uid, :roll, :suid, :name, :email, :phone, :gender, :dept, 1, :cid, :did, :batch, :yr, 'ACTIVE', 'NOT_ENROLLED')
+                    RETURNING student_id
+                ");
+                $sStmt->execute([
+                    ':uid' => $newUserId,
+                    ':roll' => $roll,
+                    ':suid' => $uid,
+                    ':name' => $name,
+                    ':email' => $email,
+                    ':phone' => $phone,
+                    ':gender' => $gender,
+                    ':dept' => $deptId,
+                    ':cid' => $classId,
+                    ':did' => $divId,
+                    ':batch' => $batch,
+                    ':yr' => $admYear
+                ]);
+                $newStudentId = (int)$sStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+                $sStmt->closeCursor();
+
+                $pdo->commit();
+                $created = true;
+
+                AuditService::log($admin['user_id'], 'STUDENT_CREATED', 'students', (string)$newStudentId, ['roll_number' => $roll]);
+
+                Response::success([
+                    'student_id' => $newStudentId,
+                    'roll_number' => $roll,
+                    'full_name' => $name,
+                    'email' => $email
+                ], 'Student registered successfully. Initial credentials generated.', 201);
+                return;
+            } catch (\Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $lastException = $e;
+
+                // If sequence primary key collision occurred on first attempt, synchronize and retry
+                $isPkeyViolation = str_contains($e->getMessage(), 'users_pkey') || str_contains($e->getMessage(), 'students_pkey');
+                if ($isPkeyViolation && $attempt < $maxAttempts && Database::getActiveDriver() === 'pgsql') {
+                    Database::syncPgsqlSequences($pdo);
+                    continue;
+                }
+                break;
+            }
+        }
+
+        // Handle failure if not created
+        error_log("[SAMS Student Creation Error] " . ($lastException ? $lastException->getMessage() : 'Unknown error'));
+        $errMsg = $lastException ? $lastException->getMessage() : '';
+
+        // Friendly error messages for constraint conflicts without leaking raw SQLSTATE
+        if (str_contains($errMsg, '23505') || str_contains($errMsg, 'Unique violation') || str_contains($errMsg, 'UNIQUE constraint failed')) {
+            if (str_contains($errMsg, 'users_email_key') || str_contains($errMsg, 'users.email') || str_contains($errMsg, 'email')) {
+                Response::conflict("An account with email '{$email}' already exists.");
+                return;
+            }
+            if (str_contains($errMsg, 'students_roll_number_key') || str_contains($errMsg, 'students.roll_number') || str_contains($errMsg, 'roll_number')) {
+                Response::conflict("Roll number '{$roll}' is already assigned to another student.");
+                return;
+            }
+            if (str_contains($errMsg, 'students_student_uid_key') || str_contains($errMsg, 'students.student_uid') || str_contains($errMsg, 'student_uid')) {
+                Response::conflict("Student UID '{$uid}' is already assigned to another student.");
+                return;
+            }
+        }
+
+        if (str_contains($errMsg, '23503') || str_contains($errMsg, 'foreign key constraint')) {
+            Response::validationError(['academic_structure' => "Invalid academic assignment (department, class, or division)."]);
+            return;
+        }
+
+        Response::error("Unable to register student. Please check the entered details.", 'STUDENT_CREATION_FAILED', 500);
     }
 
     /**

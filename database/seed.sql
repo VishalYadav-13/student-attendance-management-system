@@ -321,6 +321,7 @@ DECLARE
 BEGIN
     FOR rec IN
         SELECT 
+            c.table_schema,
             c.table_name,
             c.column_name
         FROM information_schema.columns c
@@ -328,19 +329,28 @@ BEGIN
             ON c.table_name = t.table_name AND c.table_schema = t.table_schema
         WHERE c.table_schema = 'public'
           AND t.table_type = 'BASE TABLE'
-          AND c.column_default LIKE 'nextval(%'
+          AND (
+              c.column_default LIKE 'nextval(%'
+              OR c.is_identity = 'YES'
+          )
     LOOP
-        seq_name := pg_get_serial_sequence(quote_ident(rec.table_name), rec.column_name);
+        seq_name := pg_get_serial_sequence(quote_ident(rec.table_schema) || '.' || quote_ident(rec.table_name), rec.column_name);
         IF seq_name IS NOT NULL THEN
-            EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %I', rec.column_name, rec.table_name) INTO max_val;
+            EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %I.%I', rec.column_name, rec.table_schema, rec.table_name) INTO max_val;
             IF max_val > 0 THEN
                 BEGIN
                     EXECUTE format('SELECT last_value, is_called FROM %s', seq_name) INTO curr_seq, is_called;
                     IF curr_seq < max_val OR (curr_seq = max_val AND NOT is_called) THEN
-                        PERFORM setval(seq_name, max_val, true);
+                        EXECUTE format('SELECT setval(%L::regclass, %s, true)', seq_name, max_val);
                     END IF;
                 EXCEPTION WHEN OTHERS THEN
-                    PERFORM setval(seq_name, max_val, true);
+                    EXECUTE format('SELECT setval(%L::regclass, %s, true)', seq_name, max_val);
+                END;
+            ELSE
+                BEGIN
+                    EXECUTE format('SELECT setval(%L::regclass, 1, false)', seq_name);
+                EXCEPTION WHEN OTHERS THEN
+                    NULL;
                 END;
             END IF;
         END IF;

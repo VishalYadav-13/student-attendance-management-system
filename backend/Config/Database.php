@@ -137,15 +137,15 @@ class Database
 
     /**
      * Synchronize all PostgreSQL sequences with MAX(primary_key)
-     * Safe to run more than once; only updates sequences that are out of sync.
-     * Uses pg_get_serial_sequence and setval dynamically for all auto-increment columns.
+     * Safe to run repeatedly; only updates sequences that are out of sync.
+     * Uses pg_get_serial_sequence and setval with proper regclass casting.
      */
     public static function syncPgsqlSequences(PDO $pdo): void
     {
         try {
             // Primary dynamic synchronization via PostgreSQL system catalogs
             $sql = "
-                DO $$
+                DO \$\$
                 DECLARE
                     rec RECORD;
                     seq_name TEXT;
@@ -155,6 +155,7 @@ class Database
                 BEGIN
                     FOR rec IN
                         SELECT 
+                            c.table_schema,
                             c.table_name,
                             c.column_name
                         FROM information_schema.columns c
@@ -162,98 +163,103 @@ class Database
                             ON c.table_name = t.table_name AND c.table_schema = t.table_schema
                         WHERE c.table_schema = 'public'
                           AND t.table_type = 'BASE TABLE'
-                          AND c.column_default LIKE 'nextval(%'
+                          AND (
+                              c.column_default LIKE 'nextval(%'
+                              OR c.is_identity = 'YES'
+                          )
                     LOOP
-                        seq_name := pg_get_serial_sequence(quote_ident(rec.table_name), rec.column_name);
+                        seq_name := pg_get_serial_sequence(quote_ident(rec.table_schema) || '.' || quote_ident(rec.table_name), rec.column_name);
                         IF seq_name IS NOT NULL THEN
-                            EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %I', rec.column_name, rec.table_name) INTO max_val;
+                            EXECUTE format('SELECT COALESCE(MAX(%I), 0) FROM %I.%I', rec.column_name, rec.table_schema, rec.table_name) INTO max_val;
                             IF max_val > 0 THEN
                                 BEGIN
                                     EXECUTE format('SELECT last_value, is_called FROM %s', seq_name) INTO curr_seq, is_called;
                                     IF curr_seq < max_val OR (curr_seq = max_val AND NOT is_called) THEN
-                                        PERFORM setval(seq_name, max_val, true);
+                                        EXECUTE format('SELECT setval(%L::regclass, %s, true)', seq_name, max_val);
                                     END IF;
                                 EXCEPTION WHEN OTHERS THEN
-                                    PERFORM setval(seq_name, max_val, true);
+                                    EXECUTE format('SELECT setval(%L::regclass, %s, true)', seq_name, max_val);
+                                END;
+                            ELSE
+                                BEGIN
+                                    EXECUTE format('SELECT setval(%L::regclass, 1, false)', seq_name);
+                                EXCEPTION WHEN OTHERS THEN
+                                    NULL;
                                 END;
                             END IF;
                         END IF;
                     END LOOP;
-                END $$;
+                END \$\$;
             ";
             $pdo->exec($sql);
         } catch (\Throwable $e) {
             error_log("[SAMS PgSQL Sequence Sync Notice] Dynamic PL/pgSQL sync notice: " . $e->getMessage() . " - invoking fallback sync.");
-            self::fallbackSyncSequences($pdo);
         }
+
+        // Always run fallback synchronizer across core tables as a guaranteed safety net
+        self::fallbackSyncSequences($pdo);
     }
 
     /**
      * Fallback sequence synchronizer querying pg_get_serial_sequence and setval per core table
      */
-    private static function fallbackSyncSequences(PDO $pdo): void
+    public static function fallbackSyncSequences(PDO $pdo): void
     {
         $coreTables = [
+            'roles' => 'role_id',
             'users' => 'user_id',
-            'students' => 'student_id',
-            'teachers' => 'teacher_id',
             'admins' => 'admin_id',
+            'departments' => 'department_id',
+            'courses' => 'course_id',
+            'academic_years' => 'academic_year_id',
+            'semesters' => 'semester_id',
+            'classes' => 'class_id',
+            'divisions' => 'division_id',
+            'teachers' => 'teacher_id',
+            'students' => 'student_id',
+            'subjects' => 'subject_id',
+            'teacher_subjects' => 'id',
+            'timetables' => 'timetable_id',
             'attendance_sessions' => 'session_id',
             'attendance_records' => 'record_id',
             'attendance_overrides' => 'override_id',
-            'audit_logs' => 'log_id',
-            'notifications' => 'notification_id',
             'face_profiles' => 'profile_id',
             'face_verification_logs' => 'log_id',
-            'subjects' => 'subject_id',
-            'classes' => 'class_id',
-            'divisions' => 'division_id',
-            'departments' => 'department_id',
-            'courses' => 'course_id',
-            'semesters' => 'semester_id',
-            'academic_years' => 'academic_year_id',
-            'timetables' => 'timetable_id',
-            'roles' => 'role_id'
+            'notifications' => 'notification_id',
+            'audit_logs' => 'log_id',
+            'password_resets' => 'reset_id'
         ];
 
         foreach ($coreTables as $table => $column) {
             try {
-                $check = $pdo->prepare("
-                    SELECT pg_get_serial_sequence(:tbl, :col) AS seq_name,
-                           COALESCE(MAX(\"{$column}\"), 0) AS max_val
+                // Execute atomic sequence alignment per table using native pg_get_serial_sequence and setval
+                $sql = "
+                    SELECT CASE 
+                        WHEN pg_get_serial_sequence('\"{$table}\"', '{$column}') IS NOT NULL 
+                        THEN setval(
+                            pg_get_serial_sequence('\"{$table}\"', '{$column}'), 
+                            GREATEST(COALESCE(MAX(\"{$column}\"), 0), 1), 
+                            (COALESCE(MAX(\"{$column}\"), 0) > 0)
+                        ) 
+                    END 
                     FROM \"{$table}\"
-                ");
-                $check->execute([':tbl' => $table, ':col' => $column]);
-                $row = $check->fetch(PDO::FETCH_ASSOC);
-                if ($row && !empty($row['seq_name']) && (int)$row['max_val'] > 0) {
-                    $seq = $row['seq_name'];
-                    $maxVal = (int)$row['max_val'];
-
-                    // Check if sync is necessary
-                    $currSeq = null;
-                    $isCalled = false;
-                    try {
-                        $stateStmt = $pdo->query("SELECT last_value, is_called FROM {$seq}");
-                        if ($stateStmt && ($state = $stateStmt->fetch(PDO::FETCH_ASSOC))) {
-                            $currSeq = (int)($state['last_value'] ?? 0);
-                            $isCalled = !empty($state['is_called']) && in_array($state['is_called'], [true, 't', 1, '1'], true);
-                        }
-                    } catch (\Throwable $t) {
-                        // ignore state query error
-                    }
-
-                    if ($currSeq === null || $currSeq < $maxVal || ($currSeq === $maxVal && !$isCalled)) {
-                        $setval = $pdo->prepare("SELECT setval(:seq, :maxval, true)");
-                        $setval->execute([
-                            ':seq' => $seq,
-                            ':maxval' => $maxVal
-                        ]);
-                    }
-                }
+                ";
+                $pdo->exec($sql);
             } catch (\Throwable $t) {
                 // Table might not exist or non-serial
                 continue;
             }
+        }
+    }
+
+    /**
+     * Explicit public helper to synchronize all database sequences on active connection
+     */
+    public static function syncAllSequences(?PDO $pdo = null): void
+    {
+        $conn = $pdo ?? self::getConnection();
+        if (self::getActiveDriver() === 'pgsql') {
+            self::syncPgsqlSequences($conn);
         }
     }
 

@@ -96,61 +96,114 @@ class TeacherController
 
         $pdo = Database::getConnection();
 
-        // Check uniqueness
+        // 1. Check uniqueness of email
         $chk = $pdo->prepare("SELECT user_id FROM users WHERE LOWER(email) = :email");
         $chk->execute([':email' => $email]);
         if ($chk->fetch()) {
             Response::conflict("An account with email '{$email}' already exists.");
+            return;
         }
 
+        // 2. Check uniqueness of employee ID
         $chkEmp = $pdo->prepare("SELECT teacher_id FROM teachers WHERE employee_id = :emp");
         $chkEmp->execute([':emp' => $empId]);
         if ($chkEmp->fetch()) {
             Response::conflict("Employee ID '{$empId}' is already assigned.");
+            return;
         }
 
-        $pdo->beginTransaction();
-        try {
-            // Default password for newly created teacher: Teacher@12345 (or custom if supplied)
-            $rawPassword = !empty($input['password']) ? (string)$input['password'] : 'Teacher@12345';
-            $pwdHash = password_hash($rawPassword, PASSWORD_BCRYPT);
-            $uStmt = $pdo->prepare("
-                INSERT INTO users (role_id, email, password_hash, status)
-                VALUES (2, :email, :pwd, 'ACTIVE')
-                RETURNING user_id
-            ");
-            $uStmt->execute([':email' => $email, ':pwd' => $pwdHash]);
-            $userId = (int)$uStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
-            $uStmt->closeCursor();
-
-            $tStmt = $pdo->prepare("
-                INSERT INTO teachers (user_id, employee_id, full_name, phone, department_id, designation, status)
-                VALUES (:uid, :emp, :name, :phone, :dept, :desig, 'ACTIVE')
-                RETURNING teacher_id
-            ");
-            $tStmt->execute([
-                ':uid' => $userId,
-                ':emp' => $empId,
-                ':name' => $name,
-                ':phone' => $phone,
-                ':dept' => $deptId,
-                ':desig' => $designation
-            ]);
-            $teacherId = (int)$tStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
-            $tStmt->closeCursor();
-
-            $pdo->commit();
-            AuditService::log($admin['user_id'], 'TEACHER_CREATED', 'teachers', (string)$teacherId);
-
-            Response::success([
-                'teacher_id' => $teacherId,
-                'employee_id' => $empId,
-                'full_name' => $name,
-                'email' => $email
-            ], 'Teacher account created successfully.', 201);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            Response::error("Failed to register teacher: " . $e->getMessage(), 'DATABASE_ERROR', 500);
+        // 3. Validate department exists
+        $chkDept = $pdo->prepare("SELECT department_id FROM departments WHERE department_id = :did");
+        $chkDept->execute([':did' => $deptId]);
+        if (!$chkDept->fetch()) {
+            Response::validationError(['department_id' => "Selected department (ID {$deptId}) does not exist."]);
+            return;
         }
+
+        // Ensure sequences are synchronized before insertion if PostgreSQL
+        if (Database::getActiveDriver() === 'pgsql') {
+            Database::syncPgsqlSequences($pdo);
+        }
+
+        $rawPassword = !empty($input['password']) ? (string)$input['password'] : 'Teacher@12345';
+        $pwdHash = password_hash($rawPassword, PASSWORD_BCRYPT);
+
+        $maxAttempts = 2;
+        $attempt = 0;
+        $created = false;
+        $lastException = null;
+
+        while ($attempt < $maxAttempts && !$created) {
+            $attempt++;
+            $pdo->beginTransaction();
+            try {
+                $uStmt = $pdo->prepare("
+                    INSERT INTO users (role_id, email, password_hash, status)
+                    VALUES (2, :email, :pwd, 'ACTIVE')
+                    RETURNING user_id
+                ");
+                $uStmt->execute([':email' => $email, ':pwd' => $pwdHash]);
+                $userId = (int)$uStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+                $uStmt->closeCursor();
+
+                $tStmt = $pdo->prepare("
+                    INSERT INTO teachers (user_id, employee_id, full_name, phone, department_id, designation, status)
+                    VALUES (:uid, :emp, :name, :phone, :dept, :desig, 'ACTIVE')
+                    RETURNING teacher_id
+                ");
+                $tStmt->execute([
+                    ':uid' => $userId,
+                    ':emp' => $empId,
+                    ':name' => $name,
+                    ':phone' => $phone,
+                    ':dept' => $deptId,
+                    ':desig' => $designation
+                ]);
+                $teacherId = (int)$tStmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+                $tStmt->closeCursor();
+
+                $pdo->commit();
+                $created = true;
+
+                AuditService::log($admin['user_id'], 'TEACHER_CREATED', 'teachers', (string)$teacherId);
+
+                Response::success([
+                    'teacher_id' => $teacherId,
+                    'employee_id' => $empId,
+                    'full_name' => $name,
+                    'email' => $email
+                ], 'Teacher account created successfully.', 201);
+                return;
+            } catch (\Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $lastException = $e;
+
+                $isPkeyViolation = str_contains($e->getMessage(), 'users_pkey') || str_contains($e->getMessage(), 'teachers_pkey');
+                if ($isPkeyViolation && $attempt < $maxAttempts && Database::getActiveDriver() === 'pgsql') {
+                    Database::syncPgsqlSequences($pdo);
+                    continue;
+                }
+                break;
+            }
+        }
+
+        // Handle failure if not created
+        error_log("[SAMS Teacher Creation Error] " . ($lastException ? $lastException->getMessage() : 'Unknown error'));
+        $errMsg = $lastException ? $lastException->getMessage() : '';
+
+        if (str_contains($errMsg, '23505') || str_contains($errMsg, 'Unique violation') || str_contains($errMsg, 'UNIQUE constraint failed')) {
+            if (str_contains($errMsg, 'users_email_key') || str_contains($errMsg, 'users.email') || str_contains($errMsg, 'email')) {
+                Response::conflict("An account with email '{$email}' already exists.");
+                return;
+            }
+            if (str_contains($errMsg, 'teachers_employee_id_key') || str_contains($errMsg, 'teachers.employee_id') || str_contains($errMsg, 'employee_id')) {
+                Response::conflict("Employee ID '{$empId}' is already assigned.");
+                return;
+            }
+        }
+
+        Response::error("Unable to register teacher. Please check the entered details.", 'TEACHER_CREATION_FAILED', 500);
     }
 }

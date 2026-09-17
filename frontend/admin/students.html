@@ -419,7 +419,14 @@
         document.getElementById('add-student-form').reset();
         loadStudents();
       } catch (err) {
-        UI.toast(err.message, 'error');
+        let displayMsg = (err.data && err.data.message) ||
+                         (err.data && err.data.error && err.data.error.message) ||
+                         err.message ||
+                         'Unable to register student. Please check the entered details.';
+        if (displayMsg.includes('SQLSTATE') || displayMsg.includes('ERROR:') || displayMsg.includes('HTTP Error 500')) {
+          displayMsg = 'Unable to register student. Please check the entered details.';
+        }
+        UI.toast(displayMsg, 'error');
       } finally {
         UI.setButtonLoading(submitBtn, false, 'Save Student');
       }
