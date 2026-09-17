@@ -175,7 +175,7 @@
         <form id="login-form">
           <div class="form-group">
             <label class="form-label" for="email">Institutional Email</label>
-            <input type="email" id="email" class="form-control" placeholder="admin@sams.edu" required autofocus autocomplete="username">
+            <input type="email" id="email" class="form-control" placeholder="admin@institution.edu" required autofocus autocomplete="username">
           </div>
 
           <div class="form-group">
@@ -237,7 +237,7 @@
           </p>
           <div class="form-group">
             <label class="form-label" for="reset-email">Registered Email</label>
-            <input type="email" id="reset-email" class="form-control" placeholder="user@sams.edu" required>
+            <input type="email" id="reset-email" class="form-control" placeholder="user@institution.edu" required>
           </div>
         </div>
         <div class="modal-footer">
@@ -267,14 +267,14 @@
         adminTab.setAttribute('aria-selected', 'true');
         teacherTab.classList.remove('active');
         teacherTab.setAttribute('aria-selected', 'false');
-        emailInput.placeholder = 'admin@sams.edu';
+        emailInput.placeholder = 'admin@institution.edu';
         if (roleSubtitle) roleSubtitle.textContent = 'Sign in as Administrator';
       } else {
         teacherTab.classList.add('active');
         teacherTab.setAttribute('aria-selected', 'true');
         adminTab.classList.remove('active');
         adminTab.setAttribute('aria-selected', 'false');
-        emailInput.placeholder = 'teacher.sharma@sams.edu';
+        emailInput.placeholder = 'faculty@institution.edu';
         if (roleSubtitle) roleSubtitle.textContent = 'Sign in as Teacher';
       }
       // Never populate password or credentials automatically.
