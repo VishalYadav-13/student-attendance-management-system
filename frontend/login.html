@@ -5,8 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In — SAMS Student Attendance Management System</title>
   <meta name="description" content="Sign in to SAMS institutional attendance portal for administrators and teachers.">
-  <link rel="stylesheet" href="/frontend/assets/css/main.css">
+  <!-- Vintage Academic Typography: Newsreader & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/frontend/assets/css/academic-theme.css?v=2.2.0">
+  <link rel="stylesheet" href="/frontend/assets/css/main.css?v=2.2.0">
   <style>
+    /* Vintage Academic Theme Tokens */
+    :root {
+      --bg-app: #F4EFE6;
+      --bg-surface: #EAE3D7;
+      --primary-accent: #6F7F6A;
+      --secondary-accent: #6E7F8D;
+      --accent-warm: #A56B52;
+      --text-main: #2F3532;
+      --text-secondary: #6F706A;
+      --border-color: #D5CCBD;
+      --font-serif: 'Newsreader', Georgia, serif;
+    }
     .auth-container {
       display: flex;
       min-height: 100vh;
@@ -248,10 +265,10 @@
     </div>
   </div>
 
-  <script src="/frontend/assets/js/config.js"></script>
-  <script src="/frontend/assets/js/api.js"></script>
-  <script src="/frontend/assets/js/auth.js"></script>
-  <script src="/frontend/assets/js/ui.js"></script>
+  <script src="/frontend/assets/js/config.js?v=2.2.0"></script>
+  <script src="/frontend/assets/js/api.js?v=2.2.0"></script>
+  <script src="/frontend/assets/js/auth.js?v=2.2.0"></script>
+  <script src="/frontend/assets/js/ui.js?v=2.2.0"></script>
   <script>
     // Role selection handler for Administrator and Teacher
     // NOTE: Does NOT autofill email or password.
