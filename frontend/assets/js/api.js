@@ -40,9 +40,14 @@ const API = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const timeoutMs = options.timeout || 15000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     const config = {
       ...options,
-      headers
+      headers,
+      signal: controller.signal
     };
 
     if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
@@ -51,6 +56,7 @@ const API = {
 
     try {
       const response = await fetch(url, config);
+      clearTimeout(timeoutId);
       const contentType = response.headers.get('content-type') || '';
       
       let data = null;
@@ -78,6 +84,12 @@ const API = {
 
       return data;
     } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        const timeoutErr = new Error('Face verification timed out. Please try again.');
+        timeoutErr.isTimeout = true;
+        throw timeoutErr;
+      }
       if (err.name === 'TypeError' && err.message.includes('fetch')) {
         console.error('[SAMS Network Error]', err);
         throw new Error('Unable to connect to backend server. Please verify your connection.');

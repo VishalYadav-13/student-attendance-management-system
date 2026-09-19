@@ -485,9 +485,13 @@ class FaceVerificationService
                 'threshold' => $threshold,
                 'student' => [
                     'student_id' => $matchedStudentId,
+                    'name' => $bestStudent['full_name'],
                     'full_name' => $bestStudent['full_name'],
                     'roll_number' => $bestStudent['roll_number'],
                     'student_uid' => $bestStudent['student_uid']
+                ],
+                'attendance' => [
+                    'status' => $existing['status']
                 ],
                 'message' => "Already Present. (Attendance already recorded for {$bestStudent['full_name']}.)"
             ];
@@ -522,11 +526,15 @@ class FaceVerificationService
             'code' => 'FACE_RECOGNIZED',
             'already_marked' => false,
             'attendance_status' => 'PRESENT',
+            'attendance' => [
+                'status' => 'PRESENT'
+            ],
             'confidence' => $confidence,
             'best_distance' => round($bestDistance, 4),
             'threshold' => $threshold,
             'student' => [
                 'student_id' => $matchedStudentId,
+                'name' => $bestStudent['full_name'],
                 'full_name' => $bestStudent['full_name'],
                 'roll_number' => $bestStudent['roll_number'],
                 'student_uid' => $bestStudent['student_uid']

@@ -575,14 +575,15 @@
         FaceVerification.init({
           sessionId: activeSessionId,
           onStudentVerified: (data) => {
-            const stu = data.student;
+            const stu = data.student || {};
+            const studentName = stu.full_name || stu.name || 'Student';
 
             // Show real-time Attendance Success Popup with actual student name
             showAttendancePopup(data);
 
-            document.getElementById('last-stu-name').textContent = stu.full_name;
-            document.getElementById('last-stu-roll').textContent = `Roll: ${stu.roll_number}`;
-            document.getElementById('last-stu-avatar').textContent = (stu.full_name || 'S').charAt(0).toUpperCase();
+            document.getElementById('last-stu-name').textContent = studentName;
+            document.getElementById('last-stu-roll').textContent = `Roll: ${stu.roll_number || 'CO-2101'}`;
+            document.getElementById('last-stu-avatar').textContent = studentName.charAt(0).toUpperCase();
             document.getElementById('last-stu-conf').textContent = `${Math.round((data.confidence || 0.95) * 100)}%`;
             document.getElementById('last-stu-details').style.display = 'block';
 
@@ -655,10 +656,11 @@
 
       if (!popup || !data || !data.student) return;
 
-      const stu = data.student;
+      const stu = data.student || {};
+      const studentName = stu.full_name || stu.name || 'Student';
       titleEl.textContent = data.already_marked ? 'Already Present' : '✓ Attendance Marked';
-      nameEl.textContent = stu.full_name;
-      rollEl.textContent = `Roll No: ${stu.roll_number} | UID: ${stu.student_uid || ''}`;
+      nameEl.textContent = studentName;
+      rollEl.textContent = `Roll No: ${stu.roll_number || ''} | UID: ${stu.student_uid || ''}`;
       badgeEl.textContent = 'Status: PRESENT';
       badgeEl.className = data.already_marked ? 'badge' : 'badge badge-present';
 

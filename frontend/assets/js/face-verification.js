@@ -111,22 +111,29 @@ const FaceVerification = {
       this.setStatus('Face ready — verifying identity...', 'scanning');
       this.isCoolingDown = true; // Pause frame polling while awaiting backend verification
 
-      // Safe Audit Log (never logs raw biometric vectors)
+      // Safe Audit Log (Requirement 3: Never log raw biometric vectors!)
       const descriptor = result.descriptor;
-      const isValidVector = Array.isArray(descriptor) && descriptor.length === 128;
-      const containsNaN = isValidVector && descriptor.some(v => typeof v !== 'number' || Number.isNaN(v));
-      const containsNull = isValidVector && descriptor.some(v => v === null || v === undefined);
-      const allNumeric = isValidVector && descriptor.every(v => typeof v === 'number' && !Number.isNaN(v) && Number.isFinite(v));
+      const isValidArray = Array.isArray(descriptor);
+      const descriptorLength = isValidArray ? descriptor.length : 0;
+      const allNumeric = isValidArray && descriptorLength === 128 && descriptor.every(v => typeof v === 'number' && !Number.isNaN(v) && Number.isFinite(v));
+      const containsNaN = isValidArray && descriptor.some(v => typeof v !== 'number' || Number.isNaN(v));
+      const containsNull = isValidArray && descriptor.some(v => v === null || v === undefined);
+      const descriptorGenerated = allNumeric && descriptorLength === 128 && !containsNaN && !containsNull;
 
-      console.log('[SAMS Live Face Verification Audit]', {
-        embeddingGenerated: isValidVector && allNumeric,
-        embeddingLength: isValidVector ? descriptor.length : 0,
+      console.log({
+        descriptorGenerated: descriptorGenerated,
+        descriptorLength: descriptorLength,
         allNumeric: allNumeric,
         containsNaN: containsNaN,
-        containsNull: containsNull,
-        modelVersion: 'face-api-v1-128d',
-        sessionId: this.sessionId
+        containsNull: containsNull
       });
+
+      if (!descriptorGenerated) {
+        console.warn('[SAMS Face Engine] Invalid descriptor produced. Retrying frame capture...');
+        this.setStatus('Face detected — checking quality...', 'warning');
+        await new Promise(r => setTimeout(r, 1200));
+        return;
+      }
 
       let frameData = null;
       try {
@@ -160,11 +167,13 @@ const FaceVerification = {
 
       if (res && res.success && res.data) {
         const data = res.data;
-        const student = data.student;
+        const student = data.student || {};
+        const studentName = student.full_name || student.name || 'Student';
 
         console.log('[SAMS Face Verification Match Result]', {
           match: 'YES',
           student_id: student.student_id,
+          name: studentName,
           attendance: data.already_marked ? 'ALREADY_PRESENT' : 'CREATED',
           class_check: 'PASS'
         });
@@ -175,10 +184,10 @@ const FaceVerification = {
 
         if (data.already_marked) {
           this.setStatus('Already Present', 'verified');
-          UI.toast(`Already Present: ${student.full_name}`, 'info');
+          UI.toast(`Already Present: ${studentName}`, 'info');
         } else {
           this.setStatus('Attendance marked', 'success');
-          UI.toast(`✓ Attendance Marked: ${student.full_name}`, 'success');
+          UI.toast(`✓ Attendance Marked: ${studentName}`, 'success');
 
           // Institutional confirmation chime
           this.playAudioFeedback();
@@ -202,7 +211,11 @@ const FaceVerification = {
                    (err.data && err.data.code) || 
                    (err.data && err.data.error && err.data.error.details && err.data.error.details.result_code) || '';
 
-      if (code === 'WRONG_CLASS') {
+      if (err.isTimeout || (err.message && err.message.toLowerCase().includes('timed out'))) {
+        this.setStatus('Face verification timed out. Please try again.', 'warning');
+        UI.toast('Face verification timed out. Please try again.', 'error');
+        await new Promise(r => setTimeout(r, 3000));
+      } else if (code === 'WRONG_CLASS' || code === 'CLASS_MISMATCH') {
         this.setStatus('Student belongs to another class/division.', 'warning');
         UI.toast('Student belongs to another class/division.', 'error');
         await new Promise(r => setTimeout(r, 3000));
@@ -217,7 +230,10 @@ const FaceVerification = {
         this.setStatus('Face not recognized', 'warning');
         await new Promise(r => setTimeout(r, 2000));
       } else {
-        this.setStatus('Camera ready — looking for face...', '');
+        const displayMsg = err.message || 'Face verification error. Please try again.';
+        this.setStatus(displayMsg, 'warning');
+        UI.toast(displayMsg, 'warning');
+        await new Promise(r => setTimeout(r, 3000));
       }
     } finally {
       this.isCoolingDown = false;

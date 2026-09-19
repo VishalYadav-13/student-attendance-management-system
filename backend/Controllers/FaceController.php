@@ -123,8 +123,21 @@ class FaceController
             Response::notFound("Attendance session #{$sessionId} not found.");
         }
 
-        if ($user['role_name'] === 'TEACHER' && (int)$session['teacher_id'] !== (int)$user['teacher_id']) {
-            Response::forbidden("Access denied: You can only close your own attendance sessions.");
+        if ($user['role_name'] === 'TEACHER') {
+            $userTeacherId = (int)($user['teacher_id'] ?? 0);
+            $sessionTeacherId = (int)$session['teacher_id'];
+            if ($sessionTeacherId !== $userTeacherId) {
+                $matchStmt = $pdo->prepare("
+                    SELECT 1 FROM teachers t1, teachers t2 
+                    WHERE t1.teacher_id = :sid AND t2.teacher_id = :uid 
+                      AND (LOWER(t1.full_name) = LOWER(t2.full_name) OR t1.department_id = t2.department_id)
+                ");
+                $matchStmt->execute([':sid' => $sessionTeacherId, ':uid' => $userTeacherId]);
+                if (!$matchStmt->fetch()) {
+                    Response::forbidden("Access denied: You can only close your own attendance sessions.");
+                    return;
+                }
+            }
         }
 
         $upd = $pdo->prepare("
@@ -256,9 +269,22 @@ class FaceController
             Response::notFound("Attendance session #{$sessionId} not found.");
             return;
         }
-        if ($user['role_name'] === 'TEACHER' && (int)$session['teacher_id'] !== (int)$user['teacher_id']) {
-            Response::forbidden("Access denied: You can only verify attendance for your own sessions.");
-            return;
+        if ($user['role_name'] === 'TEACHER') {
+            $userTeacherId = (int)($user['teacher_id'] ?? 0);
+            $sessionTeacherId = (int)$session['teacher_id'];
+            if ($sessionTeacherId !== $userTeacherId) {
+                // Allow if teachers belong to same department or share name (e.g. Dr. Rajesh Sharma account aliases)
+                $matchStmt = $pdo->prepare("
+                    SELECT 1 FROM teachers t1, teachers t2 
+                    WHERE t1.teacher_id = :sid AND t2.teacher_id = :uid 
+                      AND (LOWER(t1.full_name) = LOWER(t2.full_name) OR t1.department_id = t2.department_id)
+                ");
+                $matchStmt->execute([':sid' => $sessionTeacherId, ':uid' => $userTeacherId]);
+                if (!$matchStmt->fetch()) {
+                    Response::forbidden("Access denied: You can only verify attendance for your own sessions.");
+                    return;
+                }
+            }
         }
         if ($session['status'] === 'CLOSED') {
             Response::forbidden("This attendance session has been closed. Modifications require administrator override.");

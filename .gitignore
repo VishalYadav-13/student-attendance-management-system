@@ -35,3 +35,5 @@ Thumbs.db
 database/*.sqlite
 database/*.sqlite3
 database/*.db
+# Scratch diagnostic scripts
+scratch/

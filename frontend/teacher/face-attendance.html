@@ -737,18 +737,19 @@
     }
 
     function handleStudentVerified(data) {
-      const s = data.student;
+      const s = data.student || {};
+      const studentName = s.full_name || s.name || 'Student';
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       // Update Latest Verified Card
       const avatarEl = document.getElementById('verified-avatar');
-      avatarEl.textContent = (s.full_name || 'S').charAt(0).toUpperCase();
+      avatarEl.textContent = studentName.charAt(0).toUpperCase();
       avatarEl.style.background = 'var(--primary-accent)';
       avatarEl.style.color = '#fff';
 
-      document.getElementById('verified-name').textContent = s.full_name;
-      document.getElementById('verified-roll').textContent = `Roll No: ${s.roll_number} | UID: ${s.student_uid}`;
+      document.getElementById('verified-name').textContent = studentName;
+      document.getElementById('verified-roll').textContent = `Roll No: ${s.roll_number || ''} | UID: ${s.student_uid || ''}`;
       document.getElementById('verified-result-badge').className = 'badge badge-present';
       document.getElementById('verified-result-badge').textContent = '✓ VERIFIED';
 
@@ -777,10 +778,11 @@
 
       if (!popup || !data || !data.student) return;
 
-      const stu = data.student;
+      const stu = data.student || {};
+      const studentName = stu.full_name || stu.name || 'Student';
       titleEl.textContent = data.already_marked ? 'Already Present' : '✓ Attendance Marked';
-      nameEl.textContent = stu.full_name;
-      rollEl.textContent = `Roll No: ${stu.roll_number} | UID: ${stu.student_uid || ''}`;
+      nameEl.textContent = studentName;
+      rollEl.textContent = `Roll No: ${stu.roll_number || ''} | UID: ${stu.student_uid || ''}`;
       badgeEl.textContent = 'Status: PRESENT';
       badgeEl.className = data.already_marked ? 'badge' : 'badge badge-present';
 
