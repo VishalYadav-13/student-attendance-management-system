@@ -182,9 +182,9 @@
                 <div class="face-guide-overlay">
                   <div class="scan-laser"></div>
                 </div>
-                <div class="camera-status-pill">
-                  <span class="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;"></span>
-                  <span>Camera ready. Click "Start AI Camera"</span>
+                <div id="camera-status-pill" class="camera-status-pill">
+                  <span class="status-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#6E7F8D;"></span>
+                  <span>Camera offline. Click "Start AI Camera" to begin scanning.</span>
                 </div>
               </div>
 
@@ -193,14 +193,14 @@
                 <button id="cam-start-btn" class="btn btn-primary" onclick="startCameraSession()">
                   ▶ Start AI Camera
                 </button>
+                <button id="cam-stop-btn" class="btn btn-danger" onclick="stopCameraSession()" style="display: none;">
+                  ⏹ Stop AI Camera
+                </button>
                 <button id="cam-capture-btn" class="btn btn-secondary" onclick="triggerManualSnapshot()" disabled>
                   📸 Verify Current Frame
                 </button>
                 <button id="cam-switch-btn" class="btn btn-secondary" onclick="Camera.switchCamera()" disabled>
                   🔄 Flip Camera
-                </button>
-                <button id="cam-stop-btn" class="btn btn-secondary" onclick="stopCameraSession()" disabled>
-                  ⏹ Stop Camera
                 </button>
               </div>
 
@@ -299,17 +299,19 @@
     </div>
   </div>
 
-  <script src="/frontend/assets/js/config.js"></script>
-  <script src="/frontend/assets/js/api.js"></script>
-  <script src="/frontend/assets/js/auth.js"></script>
-  <script src="/frontend/assets/js/ui.js"></script>
-  <script src="/frontend/assets/js/camera.js"></script>
-  <script src="/frontend/assets/js/face-verification.js"></script>
+  <script src="/frontend/assets/js/config.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/api.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/auth.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/ui.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/camera.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/face-engine.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/face-verification.js?v=2.3.2"></script>
   <script>
     const currentUser = Auth.requireRole('TEACHER');
     Auth.renderUserProfile(currentUser);
 
-    const activeSessionId = 25; // Default live demo session
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeSessionId = parseInt(urlParams.get('session_id') || urlParams.get('id') || '25');
     let rosterStudents = [];
 
     function switchTab(tab) {
@@ -457,29 +459,41 @@
     async function startCameraSession() {
       const video = document.getElementById('webcam-video');
       const startBtn = document.getElementById('cam-start-btn');
+      const stopBtn = document.getElementById('cam-stop-btn');
       const capBtn = document.getElementById('cam-capture-btn');
       const flipBtn = document.getElementById('cam-switch-btn');
-      const stopBtn = document.getElementById('cam-stop-btn');
+      const statusPill = document.getElementById('camera-status-pill');
 
       try {
-        startBtn.textContent = 'Initializing Camera...';
+        startBtn.textContent = '⏳ Initializing AI Models...';
         startBtn.disabled = true;
+        if (statusPill) {
+          statusPill.innerHTML = '<span class="status-dot" style="background:#6E7F8D;"></span><span>Accessing camera and loading facial AI models...</span>';
+        }
 
+        // 1. Start webcam feed
         await Camera.start(video, 'user');
-        
+
+        // 2. Preload FaceEngine neural network models
+        if (typeof FaceEngine !== 'undefined') {
+          await FaceEngine.init();
+        }
+
+        // 3. Switch UI controls
         startBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-flex';
+        stopBtn.disabled = false;
         capBtn.disabled = false;
         flipBtn.disabled = false;
-        stopBtn.disabled = false;
 
-        // Init Face Verification Pipeline
+        // 4. Init Face Verification Pipeline
         FaceVerification.init({
           sessionId: activeSessionId,
           onStudentVerified: (data) => {
             const stu = data.student;
             document.getElementById('last-stu-name').textContent = stu.full_name;
             document.getElementById('last-stu-roll').textContent = `Roll: ${stu.roll_number}`;
-            document.getElementById('last-stu-avatar').textContent = stu.full_name.charAt(0);
+            document.getElementById('last-stu-avatar').textContent = (stu.full_name || 'S').charAt(0).toUpperCase();
             document.getElementById('last-stu-conf').textContent = `${Math.round((data.confidence || 0.95) * 100)}%`;
             document.getElementById('last-stu-details').style.display = 'block';
 
@@ -489,21 +503,33 @@
               match.attendance_status = 'PRESENT';
               match.verification_method = 'FACE_AI';
             }
+            renderManualRoster();
             updateLiveProgress();
           }
         });
 
-        // Start scanning
-        FaceVerification.startContinuousScan(4000);
+        // 5. Start responsive continuous scanning (every 250ms)
+        FaceVerification.startContinuousScan(250);
       } catch (err) {
+        console.error('[SAMS Camera Start Error]', err);
         UI.toast(err.message, 'error', 5000);
+
+        startBtn.style.display = 'inline-flex';
         startBtn.textContent = '▶ Start AI Camera';
         startBtn.disabled = false;
+        stopBtn.style.display = 'none';
+        capBtn.disabled = true;
+        flipBtn.disabled = true;
+
+        if (statusPill) {
+          statusPill.innerHTML = `<span class="status-dot" style="background:var(--danger)"></span><span>Camera error: ${err.message}</span>`;
+        }
       }
     }
 
     function triggerManualSnapshot() {
-      FaceVerification.runVerificationCycle();
+      // Force instantaneous evaluation of the current camera frame
+      FaceVerification.runVerificationCycle(true);
     }
 
     function stopCameraSession() {
@@ -511,13 +537,22 @@
       Camera.stop();
 
       const startBtn = document.getElementById('cam-start-btn');
+      const stopBtn = document.getElementById('cam-stop-btn');
+      const capBtn = document.getElementById('cam-capture-btn');
+      const flipBtn = document.getElementById('cam-switch-btn');
+      const statusPill = document.getElementById('camera-status-pill');
+
       startBtn.style.display = 'inline-flex';
       startBtn.textContent = '▶ Start AI Camera';
       startBtn.disabled = false;
 
-      document.getElementById('cam-capture-btn').disabled = true;
-      document.getElementById('cam-switch-btn').disabled = true;
-      document.getElementById('cam-stop-btn').disabled = true;
+      stopBtn.style.display = 'none';
+      capBtn.disabled = true;
+      flipBtn.disabled = true;
+
+      if (statusPill) {
+        statusPill.innerHTML = '<span class="status-dot" style="background:#6E7F8D"></span><span>Camera stopped. Click "Start AI Camera" to resume.</span>';
+      }
     }
 
     document.addEventListener('DOMContentLoaded', loadRoster);

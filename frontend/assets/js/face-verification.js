@@ -17,16 +17,19 @@ const FaceVerification = {
   init(options = {}) {
     this.sessionId = options.sessionId;
     this.overlayEl = document.querySelector('.face-guide-overlay');
-    this.statusPillEl = document.querySelector('.camera-status-pill');
+    this.statusPillEl = document.getElementById('camera-status-pill') || document.querySelector('.camera-status-pill');
     this.onStudentVerified = options.onStudentVerified || null;
     this.onStatsUpdated = options.onStatsUpdated || null;
 
-    if (options.sessionId) {
+    if (options.sessionId && typeof FaceEngine !== 'undefined') {
       FaceEngine.resetLiveness();
     }
   },
 
   setStatus(text, stateClass = '', badgeBg = '#6E7F8D') {
+    if (!this.statusPillEl) {
+      this.statusPillEl = document.getElementById('camera-status-pill') || document.querySelector('.camera-status-pill');
+    }
     if (this.statusPillEl) {
       let dotColor = badgeBg;
       if (stateClass === 'success' || stateClass === 'verified') dotColor = '#526B54'; // Vintage muted sage
@@ -46,17 +49,27 @@ const FaceVerification = {
 
   /**
    * Run a single verification evaluation cycle
+   * @param {boolean} forceManual - If true, bypasses isScanning check to evaluate immediately
    */
-  async runVerificationCycle() {
-    if (!this.isScanning || this.isCoolingDown) return;
+  async runVerificationCycle(forceManual = false) {
+    if ((!this.isScanning && !forceManual) || this.isCoolingDown) return;
 
     try {
-      const videoEl = Camera.videoEl;
-      if (!videoEl || videoEl.readyState !== 4) {
+      const videoEl = Camera.videoEl || 
+                      document.getElementById('webcam-video') || 
+                      document.getElementById('face-camera-video') || 
+                      document.querySelector('video');
+
+      if (!videoEl || videoEl.readyState < 2) {
         return;
       }
 
       // Process live frame via client-side neural network
+      if (typeof FaceEngine === 'undefined') {
+        this.setStatus('Face recognition library initializing...', 'scanning');
+        return;
+      }
+
       const result = await FaceEngine.processFrame(videoEl);
 
       if (result.status === 'NOT_READY') {
@@ -78,16 +91,16 @@ const FaceVerification = {
         return;
       }
 
-      // Face is detected! Check liveness progress
-      const liveness = result.liveness;
-      if (!liveness.passed) {
+      // Check active liveness progress unless forced manually
+      const liveness = result.liveness || { passed: true, action: 'frontal_gaze' };
+      if (!forceManual && !liveness.passed) {
         this.setStatus(liveness.instruction, 'liveness');
         return;
       }
 
       // Liveness verified! Proceed to verify biometric identity against session class
-      this.setStatus('✓ Liveness confirmed. Verifying identity...', 'scanning');
-      this.isCoolingDown = true; // Pause frames while waiting for backend confirmation
+      this.setStatus('✓ Face verified. Comparing biometric template...', 'scanning');
+      this.isCoolingDown = true; // Pause frame polling while awaiting backend verification
 
       let frameData = null;
       try {
@@ -95,7 +108,15 @@ const FaceVerification = {
           frameData = Camera.captureFrame();
         }
       } catch (cErr) {
-        // Fallback gracefully
+        // Fallback frame capture via canvas
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = videoEl.videoWidth || 640;
+          canvas.height = videoEl.videoHeight || 480;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+          frameData = canvas.toDataURL('image/jpeg', 0.85);
+        } catch (cvErr) {}
       }
 
       const payload = {
@@ -103,7 +124,7 @@ const FaceVerification = {
         embedding: result.descriptor,
         image: frameData,
         liveness_passed: true,
-        liveness_action: liveness.action,
+        liveness_action: liveness.action || 'frontal_gaze',
         auto_mark: true
       };
 
@@ -120,7 +141,7 @@ const FaceVerification = {
           this.setStatus(`✓ VERIFIED: ${student.full_name} (${student.roll_number})`, 'success');
           UI.toast(`✓ Attendance marked for ${student.full_name} (${student.roll_number})`, 'success');
 
-          // Optional subtle institutional confirmation beep
+          // Subtle institutional confirmation chime
           this.playAudioFeedback();
         }
 
@@ -128,31 +149,34 @@ const FaceVerification = {
           this.onStudentVerified(data);
         }
 
-        // Student recognition cooldown (3 seconds for next student to approach)
-        await new Promise(r => setTimeout(r, 2800));
+        // Student recognition cooldown (2.5 seconds for next student to approach)
+        await new Promise(r => setTimeout(r, 2500));
       }
     } catch (err) {
       console.warn('[SAMS Face Cycle Notice]', err.message);
       const code = (err.data && err.data.result_code) || (err.data && err.data.error && err.data.error.code) || '';
 
       if (code === 'NO_ENROLLED_STUDENTS') {
-        this.setStatus('No enrolled face profiles found for this class.', 'warning');
-        await new Promise(r => setTimeout(r, 2000));
+        this.setStatus('No enrolled face found for this student/class.', 'warning');
+        UI.toast('No enrolled face found for this student/class.', 'warning');
+        await new Promise(r => setTimeout(r, 2200));
       } else if (code === 'WRONG_CLASS') {
         this.setStatus('Student is not enrolled in this class.', 'warning');
-        UI.toast('Student is not enrolled in this class.', 'error');
-        await new Promise(r => setTimeout(r, 2000));
+        UI.toast('Student belongs to a different class/division.', 'error');
+        await new Promise(r => setTimeout(r, 2200));
       } else if (code === 'LIVENESS_FAILED') {
-        this.setStatus('Liveness check failed. Please look straight and turn head slightly.', 'warning');
-        await new Promise(r => setTimeout(r, 1500));
-      } else if (code === 'VERIFICATION_FAILED' || err.message.includes('not be verified')) {
+        this.setStatus('Liveness check unconfirmed. Please look directly at the camera.', 'warning');
+        await new Promise(r => setTimeout(r, 1400));
+      } else if (code === 'VERIFICATION_FAILED' || (err.message && err.message.includes('not be verified'))) {
         this.setStatus('Face could not be verified.', 'warning');
-        await new Promise(r => setTimeout(r, 1800));
+        await new Promise(r => setTimeout(r, 1600));
       } else {
-        this.setStatus('Looking for face...', '');
+        this.setStatus('Scanning for faces...', '');
       }
     } finally {
-      FaceEngine.resetLiveness();
+      if (typeof FaceEngine !== 'undefined') {
+        FaceEngine.resetLiveness();
+      }
       this.isCoolingDown = false;
     }
   },

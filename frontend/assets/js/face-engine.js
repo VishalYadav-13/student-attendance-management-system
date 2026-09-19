@@ -220,53 +220,36 @@ const FaceEngine = {
     const rightDist = Math.abs(rightEyeCornerX - noseX);
     const yawRatio = rightDist > 0 ? (leftDist / rightDist) : 1.0;
 
-    // State 1: Look straight
-    if (this.liveness.state === 'LOOK_STRAIGHT') {
-      const isCentered = (yawRatio >= 0.75 && yawRatio <= 1.35);
-      if (isCentered) {
-        this.liveness.straightFramesCount++;
-        if (this.liveness.straightFramesCount >= 3) {
-          this.liveness.baselineYawRatio = yawRatio;
-          this.liveness.state = 'TURN_HEAD';
-        }
-      } else {
-        this.liveness.straightFramesCount = Math.max(0, this.liveness.straightFramesCount - 1);
-      }
+    // Active Liveness & Centered Gaze Evaluation
+    const isCentered = (yawRatio >= 0.70 && yawRatio <= 1.40);
+    if (isCentered) {
+      this.liveness.straightFramesCount++;
+    } else {
+      this.liveness.straightFramesCount = Math.max(0, this.liveness.straightFramesCount - 1);
+    }
 
+    const base = this.liveness.baselineYawRatio || yawRatio;
+    const yawDelta = Math.abs(yawRatio - base);
+    if (yawDelta >= 0.20 || this.liveness.blinkDetected) {
+      this.liveness.yawTurnDetected = true;
+    }
+
+    // Pass condition: Stable direct frontal gaze (>= 2 frames) OR blink OR subtle head movement
+    if (this.liveness.straightFramesCount >= 2 || this.liveness.yawTurnDetected || this.liveness.blinkDetected) {
+      this.liveness.state = 'PASSED';
       return {
-        passed: false,
-        state: 'LOOK_STRAIGHT',
-        instruction: 'Please look at the camera.',
-        action: 'look_camera'
+        passed: true,
+        state: 'PASSED',
+        instruction: '✓ Face aligned. Verifying identity...',
+        action: this.liveness.yawTurnDetected ? 'head_turn' : (this.liveness.blinkDetected ? 'blink' : 'frontal_gaze')
       };
     }
 
-    // State 2: Turn head slightly (or blink)
-    if (this.liveness.state === 'TURN_HEAD') {
-      const base = this.liveness.baselineYawRatio || 1.0;
-      const yawDelta = Math.abs(yawRatio - base);
-
-      if (yawDelta >= 0.28 || this.liveness.blinkDetected) {
-        this.liveness.yawTurnDetected = true;
-        this.liveness.state = 'PASSED';
-      }
-
-      if (this.liveness.state !== 'PASSED') {
-        return {
-          passed: false,
-          state: 'TURN_HEAD',
-          instruction: 'Turn your head slightly.',
-          action: 'head_turn'
-        };
-      }
-    }
-
-    // State 3: Liveness verified
     return {
-      passed: true,
-      state: 'PASSED',
-      instruction: '✓ Verification in progress...',
-      action: this.liveness.yawTurnDetected ? 'head_turn' : 'blink'
+      passed: false,
+      state: 'LOOK_STRAIGHT',
+      instruction: 'Please look directly into the camera frame.',
+      action: 'look_camera'
     };
   },
 

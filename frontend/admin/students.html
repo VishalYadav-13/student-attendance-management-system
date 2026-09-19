@@ -370,12 +370,12 @@
     </div>
   </div>
 
-  <script src="/frontend/assets/js/config.js"></script>
-  <script src="/frontend/assets/js/api.js"></script>
-  <script src="/frontend/assets/js/auth.js"></script>
-  <script src="/frontend/assets/js/ui.js"></script>
-  <script src="/frontend/assets/js/camera.js"></script>
-  <script src="/frontend/assets/js/face-engine.js"></script>
+  <script src="/frontend/assets/js/config.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/api.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/auth.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/ui.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/camera.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/face-engine.js?v=2.3.2"></script>
   <script>
     const currentUser = Auth.requireRole('ADMIN');
     Auth.renderUserProfile(currentUser);
@@ -610,10 +610,22 @@
             guideOverlay.className = 'face-guide-overlay scanning';
             statusPill.textContent = 'Please look naturally toward the camera.';
 
-            // Collect sample descriptor
+            // Capture image snapshot from the live video frame
+            let sampleFrame = null;
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = videoEl.videoWidth || 640;
+              canvas.height = videoEl.videoHeight || 480;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+              sampleFrame = canvas.toDataURL('image/jpeg', 0.88);
+            } catch (snapErr) {}
+
+            // Collect sample descriptor and frame snapshot
             enrollmentSamples.push({
               descriptor: result.descriptor,
-              score: result.score
+              score: result.score,
+              image: sampleFrame
             });
 
             const count = enrollmentSamples.length;
@@ -676,14 +688,34 @@
           throw new Error('Face model failed to generate a valid 128-dimensional embedding. Please reposition and recapture.');
         }
 
-        // Capture current camera frame for dual-compatible deployment support
+        // Retrieve frame snapshot from sample 3 or earlier sample
         let frameData = null;
-        try {
-          if (typeof Camera !== 'undefined' && Camera.captureFrame) {
-            frameData = Camera.captureFrame();
+        for (let i = enrollmentSamples.length - 1; i >= 0; i--) {
+          if (enrollmentSamples[i].image && enrollmentSamples[i].image.startsWith('data:image/')) {
+            frameData = enrollmentSamples[i].image;
+            break;
           }
-        } catch (cErr) {
-          console.warn('[Camera Capture Frame Notice]', cErr.message);
+        }
+        if (!frameData) {
+          try {
+            if (typeof Camera !== 'undefined' && Camera.captureFrame) {
+              frameData = Camera.captureFrame();
+            }
+          } catch (cErr) {}
+        }
+        if (!frameData) {
+          // Final fallback canvas snapshot to ensure field is never null/empty
+          try {
+            const videoEl = document.getElementById('enroll-video');
+            if (videoEl) {
+              const canvas = document.createElement('canvas');
+              canvas.width = videoEl.videoWidth || 640;
+              canvas.height = videoEl.videoHeight || 480;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+              frameData = canvas.toDataURL('image/jpeg', 0.88);
+            }
+          } catch (e) {}
         }
 
         const payload = {
@@ -715,20 +747,23 @@
           viewStudentDetails(currentViewingStudent.student_id);
         }
       } catch (err) {
-        let displayError = err.message || 'Enrollment failed. Please ensure good lighting and face visibility.';
+        console.error('[Face Enrollment Error]', err);
+        let displayError = 'Face template enrollment failed.';
         if (err.data && err.data.error && err.data.error.details) {
           const details = err.data.error.details;
           if (typeof details === 'object') {
-            const firstKey = Object.keys(details)[0];
-            if (firstKey && details[firstKey]) {
-              displayError = details[firstKey];
-            }
+            const values = Object.values(details);
+            if (values.length > 0) displayError = values[0];
           }
-        } else if (err.data && err.data.message) {
+        } else if (err.data && err.data.message && err.data.message !== 'Validation failed') {
           displayError = err.data.message;
+        } else if (err.message && err.message !== 'Validation failed') {
+          displayError = err.message;
+        } else {
+          displayError = 'Face template validation failed on server. Please recapture your face with good lighting.';
         }
 
-        UI.toast('Enrollment failed: ' + displayError, 'error');
+        UI.toast('Enrollment failed: ' + displayError, 'error', 6000);
         document.getElementById('enroll-status-pill').textContent = 'Error: ' + displayError;
         isEnrolling = false;
       }
