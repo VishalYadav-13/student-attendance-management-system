@@ -35,6 +35,8 @@ use SAMS\Controllers\SettingsController;
 use SAMS\Controllers\StudentController;
 use SAMS\Controllers\TeacherController;
 use SAMS\Controllers\AttendanceController;
+use SAMS\Controllers\AuthController;
+use SAMS\Controllers\DashboardController;
 use SAMS\Config\Database;
 
 class SamsTest
@@ -63,6 +65,9 @@ class SamsTest
 
         // RBAC & IDOR Authorization Security Tests
         $this->testRoleAuthorizationAndIdor();
+
+        // Production Teacher & Admin Authentication Tests
+        $this->testAuthenticationSuite();
 
         // Auto-Increment Sequence & User Insertion Regression Tests
         $this->testUserInsertionAndSequenceAutoIncrement();
@@ -304,9 +309,73 @@ class SamsTest
         AuthMiddleware::setAuthenticatedUser(null);
     }
 
+    private function testAuthenticationSuite(): void
+    {
+        echo "\n[5] Production Authentication & Role Resolution Tests\n";
+        Response::enableTestMode();
+        AuthMiddleware::setAuthenticatedUser(null);
+
+        // 1. Teacher Login with teacher@sams.edu / Teacher@12345
+        $_POST = [
+            'email' => 'teacher@sams.edu',
+            'password' => 'Teacher@12345'
+        ];
+        AuthController::login();
+        $resp = Response::getLastResponse();
+        $this->assert("Teacher login with teacher@sams.edu succeeds (200)", ($resp['status_code'] ?? 0) === 200);
+        $this->assert("Teacher login returns role TEACHER", ($resp['data']['user']['role'] ?? '') === 'TEACHER');
+        $this->assert("Teacher login returns redirect_url for teacher dashboard", ($resp['data']['redirect_url'] ?? '') === '/frontend/teacher/dashboard.html');
+        $this->assert("Teacher login issues valid JWT token", !empty($resp['data']['token']));
+
+        // 2. Admin Login with admin@sams.edu / Admin@12345
+        $_POST = [
+            'email' => 'admin@sams.edu',
+            'password' => 'Admin@12345'
+        ];
+        AuthController::login();
+        $adminResp = Response::getLastResponse();
+        $this->assert("Admin login with admin@sams.edu succeeds (200)", ($adminResp['status_code'] ?? 0) === 200);
+        $this->assert("Admin login returns role ADMIN", ($adminResp['data']['user']['role'] ?? '') === 'ADMIN');
+        $this->assert("Admin login returns redirect_url for admin dashboard", ($adminResp['data']['redirect_url'] ?? '') === '/frontend/admin/dashboard.html');
+
+        // 3. Invalid credentials rejected
+        $_POST = [
+            'email' => 'teacher@sams.edu',
+            'password' => 'WrongPassword!99'
+        ];
+        AuthController::login();
+        $failResp = Response::getLastResponse();
+        $this->assert("Invalid password rejected with 401 Unauthorized", ($failResp['status_code'] ?? 0) === 401);
+
+        // 4. Non-existent email rejected
+        $_POST = [
+            'email' => 'ghost.user@sams.edu',
+            'password' => 'Teacher@12345'
+        ];
+        AuthController::login();
+        $ghostResp = Response::getLastResponse();
+        $this->assert("Non-existent account rejected with 401 Unauthorized", ($ghostResp['status_code'] ?? 0) === 401);
+
+        // 5. Teacher Dashboard Access with Teacher context
+        AuthMiddleware::setAuthenticatedUser([
+            'user_id' => 2,
+            'teacher_id' => 1,
+            'role_id' => 2,
+            'role_name' => 'TEACHER'
+        ]);
+        DashboardController::teacher();
+        $dashResp = Response::getLastResponse();
+        $this->assert("Teacher dashboard data loads successfully (200)", ($dashResp['status_code'] ?? 0) === 200);
+        $this->assert("Teacher dashboard contains assigned classes array", isset($dashResp['data']['assigned_classes']));
+
+        $_POST = [];
+        AuthMiddleware::setAuthenticatedUser(null);
+        Response::disableTestMode();
+    }
+
     private function testUserInsertionAndSequenceAutoIncrement(): void
     {
-        echo "\n[5] User Insertion & Auto-Increment Sequence Synchronization Tests\n";
+        echo "\n[6] User Insertion & Auto-Increment Sequence Synchronization Tests\n";
         Response::enableTestMode();
 
         $pdo = Database::getConnection();

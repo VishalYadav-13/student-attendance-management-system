@@ -80,13 +80,13 @@ ON CONFLICT (subject_id) DO NOTHING;
 -- login or use institutional Single Sign-On (SSO / LDAP / Google Workspace).
 -- Seed Demo Passwords:
 -- Admin:    admin@sams.edu           / Admin@12345
--- Teachers: teacher.sharma@sams.edu  / Teacher@12345
+-- Teachers: teacher@sams.edu         / Teacher@12345
 -- Students: vishal.yadav@sams.edu    / Student@12345
 -- =====================================================================
 INSERT INTO users (user_id, role_id, email, password_hash, status) VALUES
 (1, 1, 'admin@sams.edu', '$2y$10$T0lhi.fBoPbG16ePMKbaBuayUjpPfXVz1B9sHZL3pi5cCDhNXgdES', 'ACTIVE'),
 -- Teachers (IDs 2-6)
-(2, 2, 'teacher.sharma@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
+(2, 2, 'teacher@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
 (3, 2, 'teacher.patel@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
 (4, 2, 'teacher.verma@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
 (5, 2, 'teacher.iyer@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),

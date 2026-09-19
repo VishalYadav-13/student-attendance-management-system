@@ -54,7 +54,7 @@ All test accounts use standardized development credentials. You can also click t
 | Role | Name | Email | Password |
 | :--- | :--- | :--- | :--- |
 | **Administrator** | Prof. Arvind Kulkarni | `admin@sams.edu` | `Admin@12345` |
-| **Faculty (Teacher)**| Dr. Rajesh Sharma (HOD) | `teacher.sharma@sams.edu` | `Teacher@12345` |
+| **Faculty (Teacher)**| Dr. Rajesh Sharma (HOD) | `teacher@sams.edu` | `Teacher@12345` |
 | **Faculty (Teacher)**| Prof. Priya Patel | `teacher.patel@sams.edu` | `Teacher@12345` |
 | **Student (At Risk)**| Vishal Yadav (70.8% - Shortage) | `vishal.yadav@sams.edu` | `Student@12345` |
 | **Student (Good)** | Aarav Sharma (91.6%) | `aarav.sharma@sams.edu` | `Student@12345` |

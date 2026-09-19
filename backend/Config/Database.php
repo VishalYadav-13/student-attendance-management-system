@@ -125,11 +125,19 @@ class Database
                     $pdo->exec($seedSql);
                 }
             } else {
-                // For existing initialized databases, ensure student_face_templates table exists
-                $migrationFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations' . DIRECTORY_SEPARATOR . 'add_student_face_templates.sql';
-                if (file_exists($migrationFile)) {
-                    $migrationSql = file_get_contents($migrationFile);
-                    $pdo->exec($migrationSql);
+                // For existing initialized databases, execute all pending migrations in order
+                $migrationsDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations';
+                if (is_dir($migrationsDir)) {
+                    $files = glob($migrationsDir . DIRECTORY_SEPARATOR . '*.sql');
+                    sort($files);
+                    foreach ($files as $file) {
+                        try {
+                            $migrationSql = file_get_contents($file);
+                            $pdo->exec($migrationSql);
+                        } catch (\Throwable $mEx) {
+                            error_log("[SAMS Migration Error] File " . basename($file) . ": " . $mEx->getMessage());
+                        }
+                    }
                 }
             }
 
@@ -302,6 +310,7 @@ class Database
                 );
                 CREATE INDEX IF NOT EXISTS idx_face_templates_student ON student_face_templates(student_id);
                 CREATE INDEX IF NOT EXISTS idx_face_templates_status ON student_face_templates(status);
+                UPDATE users SET email = 'teacher@sams.edu', status = 'ACTIVE' WHERE user_id = 2 OR email = 'teacher.sharma@sams.edu';
             ");
             return;
         }
