@@ -216,6 +216,61 @@ class FaceVerificationTest
         $stuStmt = $this->pdo->prepare("SELECT face_verification_status FROM students WHERE student_id = 1");
         $stuStmt->execute();
         $this->assert("Student status reset to NOT_ENROLLED", $stuStmt->fetchColumn() === 'NOT_ENROLLED');
+
+        // 6. Regression Test: 3 face samples averaged with camera frame payload
+        $s1 = $this->generateSyntheticVector(1.1);
+        $s2 = $this->generateSyntheticVector(1.12);
+        $s3 = $this->generateSyntheticVector(1.08);
+        $averaged = [];
+        for ($i = 0; $i < 128; $i++) {
+            $averaged[] = ($s1[$i] + $s2[$i] + $s3[$i]) / 3.0;
+        }
+        $norm = sqrt(array_sum(array_map(fn($x) => $x * $x, $averaged)));
+        $averagedNorm = array_map(fn($x) => $x / $norm, $averaged);
+
+        $_POST = [
+            'student_id' => 1,
+            'embedding' => $averagedNorm,
+            'image' => 'data:image/jpeg;base64,' . base64_encode(str_repeat('A', 4000)),
+            'consent' => true,
+            'quality_score' => 0.95,
+            'model_version' => 'face-api-v1-128d'
+        ];
+        FaceController::enroll();
+        $resp = Response::getLastResponse();
+        $this->assert("3-sample averaged embedding with dual frame payload succeeds (200)", ($resp['status_code'] ?? 0) === 200);
+
+        // 7. Regression Test: Missing consent returns clear error message
+        $_POST = [
+            'student_id' => 1,
+            'embedding' => $averagedNorm,
+            'consent' => false
+        ];
+        FaceController::enroll();
+        $resp = Response::getLastResponse();
+        $this->assert("Missing consent rejected with 422", ($resp['status_code'] ?? 0) === 422);
+        $this->assert("Missing consent has clear descriptive message", str_contains($resp['message'] ?? '', 'consent'));
+
+        // 8. Regression Test: Missing embedding & image returns clear message
+        $_POST = [
+            'student_id' => 1,
+            'consent' => true
+        ];
+        FaceController::enroll();
+        $resp = Response::getLastResponse();
+        $this->assert("Missing face template rejected with 422", ($resp['status_code'] ?? 0) === 422);
+        $this->assert("Missing face template message is informative", str_contains($resp['message'] ?? '', 'missing required face template'));
+
+        // 9. Regression Test: Corrupted embedding (wrong dimensions or NaN) rejected
+        $_POST = [
+            'student_id' => 1,
+            'embedding' => [0.1, 0.2, 0.3], // only 3 dimensions instead of 128
+            'consent' => true
+        ];
+        FaceController::enroll();
+        $resp = Response::getLastResponse();
+        $this->assert("Invalid dimension embedding rejected with 422", ($resp['status_code'] ?? 0) === 422);
+        $this->assert("Invalid dimension error message identifies 128 dimensions", str_contains($resp['message'] ?? '', '128-dimensional'));
     }
 
     private function testEuclideanDistanceEngine(): void

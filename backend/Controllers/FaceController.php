@@ -295,20 +295,24 @@ class FaceController
 
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
 
-        $validator = Validator::make($input)
-            ->required('student_id', 'embedding', 'consent')
-            ->numeric('student_id');
-
-        if ($validator->fails()) {
-            Response::validationError($validator->errors());
+        $studentId = isset($input['student_id']) ? (int)$input['student_id'] : 0;
+        if ($studentId <= 0) {
+            Response::validationError(['student_id' => 'Valid student ID is required.'], 'Student ID is missing or invalid.');
             return;
         }
 
-        $studentId = (int)$input['student_id'];
-        $consent = (bool)$input['consent'];
-        $embedding = is_array($input['embedding']) ? $input['embedding'] : json_decode($input['embedding'], true);
-        $qualityScore = isset($input['quality_score']) ? (float)$input['quality_score'] : 1.0;
-        $modelVersion = (string)($input['model_version'] ?? FaceVerificationService::DEFAULT_MODEL_VERSION);
+        if (empty($input['consent'])) {
+            Response::validationError(['consent' => 'Student biometric consent confirmation is required.'], 'Student biometric consent is required prior to enrollment.');
+            return;
+        }
+
+        $rawEmbedding = $input['embedding'] ?? null;
+        $rawImage = $input['image'] ?? null;
+
+        if (empty($rawEmbedding) && empty($rawImage)) {
+            Response::validationError(['embedding' => 'Biometric face descriptor or camera capture is required.'], 'Enrollment request is missing required face template data.');
+            return;
+        }
 
         // RBAC: Student can only enroll themselves; Admin & Teacher can enroll students
         if ($user['role_name'] === 'STUDENT' && (int)($user['student_id'] ?? 0) !== $studentId) {
@@ -316,19 +320,41 @@ class FaceController
             return;
         }
 
-        if (!is_array($embedding) || count($embedding) !== 128) {
-            Response::error('Invalid biometric embedding: Must provide 128-dimensional float descriptor.', 'INVALID_EMBEDDING', 422);
-            return;
-        }
+        $qualityScore = isset($input['quality_score']) ? (float)$input['quality_score'] : 1.0;
+        $modelVersion = (string)($input['model_version'] ?? FaceVerificationService::DEFAULT_MODEL_VERSION);
 
-        $result = FaceVerificationService::enroll(
-            $studentId,
-            $embedding,
-            (int)$user['user_id'],
-            $consent,
-            $qualityScore,
-            $modelVersion
-        );
+        if (!empty($rawEmbedding)) {
+            $embedding = is_array($rawEmbedding) ? $rawEmbedding : json_decode((string)$rawEmbedding, true);
+            if (!is_array($embedding) || count($embedding) !== 128) {
+                Response::error('Face embedding is invalid: Must provide a 128-dimensional facial landmark descriptor.', 'INVALID_EMBEDDING', 422);
+                return;
+            }
+
+            foreach ($embedding as $v) {
+                if (!is_numeric($v) || is_nan((float)$v) || is_infinite((float)$v)) {
+                    Response::error('Face model failed to generate a valid embedding. Please recapture your face.', 'CORRUPTED_EMBEDDING', 422);
+                    return;
+                }
+            }
+
+            $result = FaceVerificationService::enroll(
+                $studentId,
+                $embedding,
+                (int)$user['user_id'],
+                true,
+                $qualityScore,
+                $modelVersion
+            );
+        } else {
+            // Fallback for camera frame image
+            $result = FaceVerificationService::enrollWithImage(
+                $studentId,
+                (string)$rawImage,
+                (int)$user['user_id'],
+                true,
+                $modelVersion
+            );
+        }
 
         if (!$result['success']) {
             Response::error($result['message'], $result['result_code'] ?? 'ENROLLMENT_FAILED', 422, $result);

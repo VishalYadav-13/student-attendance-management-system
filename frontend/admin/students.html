@@ -653,16 +653,55 @@
         const avgVector = FaceEngine.averageEmbeddings(rawVectors);
         const avgScore = enrollmentSamples.reduce((acc, s) => acc + s.score, 0) / enrollmentSamples.length;
 
+        // Verify and log safe metadata (NO biometric vectors exposed!)
+        const isArray = Array.isArray(avgVector);
+        const embLen = isArray ? avgVector.length : 0;
+        const hasNaN = isArray && avgVector.some(v => isNaN(v));
+        const hasNull = isArray && avgVector.some(v => v === null || v === undefined);
+        const allNumeric = isArray && embLen === 128 && avgVector.every(v => typeof v === 'number' && !isNaN(v) && isFinite(v));
+
+        console.log('[SAMS Biometric Enrollment Metadata]', {
+          embedding_generated: (isArray && embLen === 128 && allNumeric) ? 'YES' : 'NO',
+          embedding_type: isArray ? 'array' : typeof avgVector,
+          embedding_length: embLen,
+          contains_nan: hasNaN ? 'YES' : 'NO',
+          contains_null: hasNull ? 'YES' : 'NO',
+          all_numeric: allNumeric ? 'YES' : 'NO',
+          model_version: 'face-api-v1-128d',
+          samples_count: enrollmentSamples.length
+        });
+
+        // Client-side validation prior to network request
+        if (!isArray || embLen !== 128 || !allNumeric) {
+          throw new Error('Face model failed to generate a valid 128-dimensional embedding. Please reposition and recapture.');
+        }
+
+        // Capture current camera frame for dual-compatible deployment support
+        let frameData = null;
+        try {
+          if (typeof Camera !== 'undefined' && Camera.captureFrame) {
+            frameData = Camera.captureFrame();
+          }
+        } catch (cErr) {
+          console.warn('[Camera Capture Frame Notice]', cErr.message);
+        }
+
         const payload = {
           student_id: currentViewingStudent.student_id,
           embedding: avgVector,
+          image: frameData,
           consent: true,
           quality_score: Math.round(avgScore * 10000) / 10000,
           model_version: 'face-api-v1-128d'
         };
 
         const res = await API.post('/api/face/enroll', payload);
-        if (!res || !res.success) throw new Error((res && res.message) || 'Enrollment failed');
+        if (!res || !res.success) {
+          const detailedMsg = (res && res.error && res.error.details && Object.values(res.error.details)[0]) ||
+                              (res && res.message) ||
+                              'Enrollment failed';
+          throw new Error(detailedMsg);
+        }
 
         Camera.stop();
         document.getElementById('enroll-camera-view').style.display = 'none';
@@ -676,8 +715,21 @@
           viewStudentDetails(currentViewingStudent.student_id);
         }
       } catch (err) {
-        UI.toast('Enrollment failed: ' + err.message, 'error');
-        document.getElementById('enroll-status-pill').textContent = 'Error: ' + err.message;
+        let displayError = err.message || 'Enrollment failed. Please ensure good lighting and face visibility.';
+        if (err.data && err.data.error && err.data.error.details) {
+          const details = err.data.error.details;
+          if (typeof details === 'object') {
+            const firstKey = Object.keys(details)[0];
+            if (firstKey && details[firstKey]) {
+              displayError = details[firstKey];
+            }
+          }
+        } else if (err.data && err.data.message) {
+          displayError = err.data.message;
+        }
+
+        UI.toast('Enrollment failed: ' + displayError, 'error');
+        document.getElementById('enroll-status-pill').textContent = 'Error: ' + displayError;
         isEnrolling = false;
       }
     }

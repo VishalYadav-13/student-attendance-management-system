@@ -89,9 +89,19 @@ const FaceVerification = {
       this.setStatus('✓ Liveness confirmed. Verifying identity...', 'scanning');
       this.isCoolingDown = true; // Pause frames while waiting for backend confirmation
 
+      let frameData = null;
+      try {
+        if (typeof Camera !== 'undefined' && Camera.captureFrame) {
+          frameData = Camera.captureFrame();
+        }
+      } catch (cErr) {
+        // Fallback gracefully
+      }
+
       const payload = {
         session_id: this.sessionId,
         embedding: result.descriptor,
+        image: frameData,
         liveness_passed: true,
         liveness_action: liveness.action,
         auto_mark: true
