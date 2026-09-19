@@ -275,7 +275,7 @@ class FaceController
         );
 
         if (!$result['verified']) {
-            Response::error($result['message'], $result['result_code'] ?? 'VERIFICATION_FAILED', 422, $result);
+            Response::error($result['message'], $result['result_code'] ?? 'FACE_NOT_RECOGNIZED', 422, $result);
             return;
         }
 

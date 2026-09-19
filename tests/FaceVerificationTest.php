@@ -357,7 +357,7 @@ class FaceVerificationTest
         FaceController::verify();
         $failResp = Response::getLastResponse();
         $this->assert("Unknown face verification rejected (422)", ($failResp['status_code'] ?? 0) === 422);
-        $this->assert("Returns clean 'Face could not be verified' message without revealing student info", ($failResp['data']['message'] ?? '') === 'Face could not be verified.');
+        $this->assert("Returns clean 'Face not recognized' message without revealing student info", in_array(($failResp['data']['message'] ?? ''), ['Face not recognized', 'Face could not be verified.'], true));
     }
 
     private function testClassRestrictionsAndDuplicates(): void

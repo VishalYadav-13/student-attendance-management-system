@@ -82,9 +82,93 @@
     .status-opt-btn.active-abs { background: var(--danger); color: #fff; }
     .status-opt-btn.active-lte { background: var(--warning); color: #fff; }
     .status-opt-btn.active-exc { background: var(--secondary); color: #fff; }
+
+    /* Success Confirmation Popup */
+    .attendance-success-popup {
+      position: fixed;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      animation: popupSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes popupSlideDown {
+      0% { opacity: 0; transform: translate(-50%, -24px) scale(0.95); }
+      100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    }
+    .popup-card {
+      background: var(--bg-surface, #FDFCFA);
+      border: 2px solid var(--primary-accent, #526B54);
+      border-radius: var(--radius-lg, 12px);
+      padding: 20px 32px;
+      box-shadow: 0 16px 36px rgba(45, 74, 62, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
+      min-width: 340px;
+      max-width: 440px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .popup-icon-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #526B54;
+      color: #ffffff;
+      font-size: 1.6rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 10px rgba(82, 107, 84, 0.35);
+    }
+    .popup-header-title {
+      font-family: 'Newsreader', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #526B54;
+      margin-bottom: 4px;
+    }
+    .popup-student-name {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-main, #24292E);
+      margin-bottom: 2px;
+      letter-spacing: -0.01em;
+    }
+    .popup-roll-number {
+      font-size: 0.88rem;
+      color: var(--text-muted, #6E7F8D);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .popup-meta-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 14px;
+      background: var(--bg-surface-subtle, #F4F1EA);
+      border-radius: 20px;
+      font-size: 0.82rem;
+    }
   </style>
 </head>
 <body>
+
+  <!-- Floating Attendance Success Confirmation Popup -->
+  <div id="attendance-success-popup" class="attendance-success-popup" style="display: none;">
+    <div class="popup-card">
+      <div class="popup-icon-badge">✓</div>
+      <div class="popup-header-title" id="popup-title">Attendance Marked</div>
+      <div class="popup-student-name" id="popup-student-name">—</div>
+      <div class="popup-roll-number" id="popup-student-roll">—</div>
+      <div class="popup-meta-row">
+        <span class="badge badge-present" id="popup-status-badge">PRESENT</span>
+        <span class="popup-timestamp" id="popup-timestamp">—</span>
+      </div>
+    </div>
+  </div>
 
   <div class="app-layout">
     <!-- Sidebar -->
@@ -491,6 +575,10 @@
           sessionId: activeSessionId,
           onStudentVerified: (data) => {
             const stu = data.student;
+
+            // Show real-time Attendance Success Popup with actual student name
+            showAttendancePopup(data);
+
             document.getElementById('last-stu-name').textContent = stu.full_name;
             document.getElementById('last-stu-roll').textContent = `Roll: ${stu.roll_number}`;
             document.getElementById('last-stu-avatar').textContent = (stu.full_name || 'S').charAt(0).toUpperCase();
@@ -553,6 +641,34 @@
       if (statusPill) {
         statusPill.innerHTML = '<span class="status-dot" style="background:#6E7F8D"></span><span>Camera stopped. Click "Start AI Camera" to resume.</span>';
       }
+    }
+
+    function showAttendancePopup(data) {
+      const popup = document.getElementById('attendance-success-popup');
+      const titleEl = document.getElementById('popup-title');
+      const nameEl = document.getElementById('popup-student-name');
+      const rollEl = document.getElementById('popup-student-roll');
+      const badgeEl = document.getElementById('popup-status-badge');
+      const timeEl = document.getElementById('popup-timestamp');
+
+      if (!popup || !data || !data.student) return;
+
+      const stu = data.student;
+      titleEl.textContent = data.already_marked ? 'Already Marked Present' : 'Attendance Marked';
+      nameEl.textContent = stu.full_name;
+      rollEl.textContent = `Roll No: ${stu.roll_number}`;
+      badgeEl.textContent = 'PRESENT';
+      badgeEl.className = 'badge badge-present';
+
+      const now = new Date();
+      timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      popup.style.display = 'block';
+
+      if (window._popupTimeout) clearTimeout(window._popupTimeout);
+      window._popupTimeout = setTimeout(() => {
+        popup.style.display = 'none';
+      }, 3500);
     }
 
     document.addEventListener('DOMContentLoaded', loadRoster);

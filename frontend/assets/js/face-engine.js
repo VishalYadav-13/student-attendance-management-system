@@ -133,7 +133,7 @@ const FaceEngine = {
       this.resetLiveness();
       return {
         status: 'NO_FACE',
-        message: 'Face not detected. Please position your face inside the frame.'
+        message: 'Looking for face...'
       };
     }
 
@@ -141,7 +141,7 @@ const FaceEngine = {
       this.resetLiveness();
       return {
         status: 'MULTIPLE_FACES',
-        message: 'Multiple faces detected. Only one person should be visible.',
+        message: 'Only one person should be visible.',
         count: allDetections.length
       };
     }
@@ -221,7 +221,8 @@ const FaceEngine = {
     const yawRatio = rightDist > 0 ? (leftDist / rightDist) : 1.0;
 
     // Active Liveness & Centered Gaze Evaluation
-    const isCentered = (yawRatio >= 0.70 && yawRatio <= 1.40);
+    // Relaxed yaw ratio for typical camera perspectives and selfie video mirroring
+    const isCentered = (yawRatio >= 0.55 && yawRatio <= 1.80);
     if (isCentered) {
       this.liveness.straightFramesCount++;
     } else {
@@ -230,17 +231,17 @@ const FaceEngine = {
 
     const base = this.liveness.baselineYawRatio || yawRatio;
     const yawDelta = Math.abs(yawRatio - base);
-    if (yawDelta >= 0.20 || this.liveness.blinkDetected) {
+    if (yawDelta >= 0.15 || this.liveness.blinkDetected) {
       this.liveness.yawTurnDetected = true;
     }
 
-    // Pass condition: Stable direct frontal gaze (>= 2 frames) OR blink OR subtle head movement
-    if (this.liveness.straightFramesCount >= 2 || this.liveness.yawTurnDetected || this.liveness.blinkDetected) {
+    // Pass condition: Valid frontal face detected OR blink OR subtle head movement
+    if (this.liveness.straightFramesCount >= 1 || this.liveness.yawTurnDetected || this.liveness.blinkDetected) {
       this.liveness.state = 'PASSED';
       return {
         passed: true,
         state: 'PASSED',
-        instruction: '✓ Face aligned. Verifying identity...',
+        instruction: 'Face detected — verifying...',
         action: this.liveness.yawTurnDetected ? 'head_turn' : (this.liveness.blinkDetected ? 'blink' : 'frontal_gaze')
       };
     }
@@ -248,7 +249,7 @@ const FaceEngine = {
     return {
       passed: false,
       state: 'LOOK_STRAIGHT',
-      instruction: 'Please look directly into the camera frame.',
+      instruction: 'Liveness verification failed. Please try again.',
       action: 'look_camera'
     };
   },

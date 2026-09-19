@@ -437,8 +437,9 @@ class FaceVerificationService
 
             return [
                 'verified' => false,
-                'result_code' => 'VERIFICATION_FAILED',
-                'message' => 'Face could not be verified.'
+                'result_code' => 'FACE_NOT_RECOGNIZED',
+                'code' => 'FACE_NOT_RECOGNIZED',
+                'message' => 'Face not recognized'
             ];
         }
 
@@ -454,7 +455,8 @@ class FaceVerificationService
             return [
                 'verified' => false,
                 'result_code' => 'WRONG_CLASS',
-                'message' => 'Student is not enrolled in this class.'
+                'code' => 'WRONG_CLASS',
+                'message' => 'Student belongs to another class/division.'
             ];
         }
 
@@ -472,6 +474,7 @@ class FaceVerificationService
             return [
                 'verified' => true,
                 'result_code' => 'ALREADY_MARKED',
+                'code' => 'ALREADY_MARKED',
                 'already_marked' => true,
                 'attendance_status' => $existing['status'],
                 'confidence' => $confidence,
@@ -481,7 +484,7 @@ class FaceVerificationService
                     'roll_number' => $bestStudent['roll_number'],
                     'student_uid' => $bestStudent['student_uid']
                 ],
-                'message' => 'Attendance already recorded.'
+                'message' => 'Already marked present. (Attendance already recorded.)'
             ];
         }
 
