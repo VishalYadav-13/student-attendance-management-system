@@ -35,7 +35,40 @@ const Camera = {
 
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.videoEl.srcObject = this.stream;
-      await this.videoEl.play();
+
+      // Ensure video metadata and dimensions are populated before resolving
+      await new Promise((resolve) => {
+        if (this.videoEl.readyState >= 2 && this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
+          resolve();
+        } else {
+          let resolved = false;
+          const onMeta = () => {
+            if (!resolved && this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
+              resolved = true;
+              this.videoEl.removeEventListener('loadedmetadata', onMeta);
+              this.videoEl.removeEventListener('canplay', onMeta);
+              resolve();
+            }
+          };
+          this.videoEl.addEventListener('loadedmetadata', onMeta);
+          this.videoEl.addEventListener('canplay', onMeta);
+          // Safety timeout so initialization never hangs indefinitely
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              this.videoEl.removeEventListener('loadedmetadata', onMeta);
+              this.videoEl.removeEventListener('canplay', onMeta);
+              resolve();
+            }
+          }, 1500);
+        }
+      });
+
+      try {
+        await this.videoEl.play();
+      } catch (playErr) {
+        console.warn("[SAMS Camera] play() notice:", playErr.message);
+      }
 
       return true;
     } catch (err) {
@@ -53,7 +86,7 @@ const Camera = {
    * Capture a single frame from the live video stream as a Base64 JPEG
    */
   captureFrame() {
-    if (!this.videoEl || !this.stream || this.videoEl.readyState !== 4) {
+    if (!this.videoEl || !this.stream || this.videoEl.readyState < 2 || !this.videoEl.videoWidth || !this.videoEl.videoHeight) {
       throw new Error("Camera feed is not ready for capture.");
     }
 

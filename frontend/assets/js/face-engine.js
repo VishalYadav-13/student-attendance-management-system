@@ -57,15 +57,27 @@ const FaceEngine = {
       }
 
       // 2. Load model weights
-      console.log('[SAMS FaceEngine] Loading neural network models...');
+      console.log('[SAMS FaceEngine] Loading neural network models from:', this.modelBaseUrl);
       await Promise.all([
         window.faceapi.nets.tinyFaceDetector.loadFromUri(this.modelBaseUrl),
         window.faceapi.nets.faceLandmark68Net.loadFromUri(this.modelBaseUrl),
         window.faceapi.nets.faceRecognitionNet.loadFromUri(this.modelBaseUrl)
       ]);
 
+      const tinyOk = !!(window.faceapi.nets.tinyFaceDetector && window.faceapi.nets.tinyFaceDetector.isLoaded);
+      const landmarkOk = !!(window.faceapi.nets.faceLandmark68Net && window.faceapi.nets.faceLandmark68Net.isLoaded);
+      const recogOk = !!(window.faceapi.nets.faceRecognitionNet && window.faceapi.nets.faceRecognitionNet.isLoaded);
+
+      if (!tinyOk || !landmarkOk || !recogOk) {
+        throw new Error(`Models failed to load fully. Verification status: tiny=${tinyOk}, landmarks=${landmarkOk}, recognition=${recogOk}`);
+      }
+
       this.isLoaded = true;
-      console.log('[SAMS FaceEngine] Models successfully initialized.');
+      console.log('[SAMS FaceEngine] Neural network models successfully initialized and verified.', {
+        tinyFaceDetector: tinyOk,
+        faceLandmark68Net: landmarkOk,
+        faceRecognitionNet: recogOk
+      });
       return true;
     } catch (err) {
       console.error('[SAMS FaceEngine Init Error]', err);
@@ -80,10 +92,20 @@ const FaceEngine = {
    */
   loadScript(url) {
     return new Promise((resolve, reject) => {
+      if (typeof window.faceapi !== 'undefined') {
+        return resolve();
+      }
       const existing = document.querySelector(`script[src="${url}"]`);
       if (existing) {
+        if (typeof window.faceapi !== 'undefined') {
+          return resolve();
+        }
         existing.addEventListener('load', () => resolve());
         existing.addEventListener('error', (e) => reject(e));
+        setTimeout(() => {
+          if (typeof window.faceapi !== 'undefined') resolve();
+          else reject(new Error(`Timeout loading ${url}`));
+        }, 4000);
         return;
       }
       const s = document.createElement('script');
@@ -117,23 +139,44 @@ const FaceEngine = {
       await this.init();
     }
 
-    if (!videoEl || videoEl.readyState !== 4) {
-      return { status: 'NOT_READY' };
+    // Requirement 4: Only begin detection when video is valid, ready, and has real dimensions
+    if (!videoEl || videoEl.readyState < 2 || !videoEl.videoWidth || !videoEl.videoHeight || videoEl.videoWidth <= 0 || videoEl.videoHeight <= 0) {
+      return { 
+        status: 'NOT_READY',
+        message: 'Camera ready — looking for face...'
+      };
     }
 
+    // Requirement 5 & 6: Balanced threshold (0.40) and input size (320) for reliable detection
     const detectorOptions = new window.faceapi.TinyFaceDetectorOptions({
-      inputSize: 416,
-      scoreThreshold: 0.55
+      inputSize: 320,
+      scoreThreshold: 0.40
     });
 
-    // 1. Check total face count in frame
-    const allDetections = await window.faceapi.detectAllFaces(videoEl, detectorOptions);
+    // Detect all faces with landmarks and 128D descriptors in a single forward pass
+    const allDetections = await window.faceapi
+      .detectAllFaces(videoEl, detectorOptions)
+      .withFaceLandmarks()
+      .withFaceDescriptors();
+
+    const hasFace = Array.isArray(allDetections) && allDetections.length > 0;
+    const detectionCount = Array.isArray(allDetections) ? allDetections.length : 0;
+
+    // Requirement 3: Development diagnostics log after every detection attempt
+    console.log('[SAMS Face Detection Audit]', {
+      faceDetectionAttempt: true,
+      faceDetected: hasFace,
+      detectionCount: detectionCount,
+      videoWidth: videoEl.videoWidth || 0,
+      videoHeight: videoEl.videoHeight || 0,
+      modelLoaded: this.isLoaded
+    });
 
     if (!allDetections || allDetections.length === 0) {
       this.resetLiveness();
       return {
         status: 'NO_FACE',
-        message: 'Looking for face...'
+        message: 'Camera ready — looking for face...'
       };
     }
 
@@ -146,27 +189,16 @@ const FaceEngine = {
       };
     }
 
-    // 2. Extract landmarks and 128D descriptor for the single face
-    const detection = await window.faceapi
-      .detectSingleFace(videoEl, detectorOptions)
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-
-    if (!detection) {
-      return {
-        status: 'NO_FACE',
-        message: 'Face not detected. Please position your face inside the frame.'
-      };
-    }
-
+    // Single face extracted
+    const detection = allDetections[0];
     const box = detection.detection.box;
     const score = detection.detection.score;
 
-    // Check minimum size (must not be too far)
-    if (box.width < 100 || box.height < 100 || score < 0.60) {
+    // Minimum face size check (at least 60px wide and high)
+    if (box.width < 60 || box.height < 60) {
       return {
         status: 'POOR_QUALITY',
-        message: 'Face quality is insufficient. Please improve lighting and face the camera.',
+        message: 'Face is too far from camera. Please move closer.',
         score: score
       };
     }
@@ -175,7 +207,7 @@ const FaceEngine = {
     const rawDescriptor = Array.from(detection.descriptor); // 128 float array
     const descriptor = this.normalizeEmbedding(rawDescriptor);
 
-    // 3. Evaluate Liveness / Anti-Spoofing
+    // Evaluate Liveness / Anti-Spoofing
     const livenessResult = this.evaluateLiveness(landmarks);
 
     return {

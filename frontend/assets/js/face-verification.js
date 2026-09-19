@@ -60,19 +60,21 @@ const FaceVerification = {
                       document.getElementById('face-camera-video') || 
                       document.querySelector('video');
 
-      if (!videoEl || videoEl.readyState < 2) {
+      // Requirement 4: Ensure video is active, has dimensions and readyState >= 2
+      if (!videoEl || videoEl.readyState < 2 || !videoEl.videoWidth || !videoEl.videoHeight || videoEl.videoWidth <= 0 || videoEl.videoHeight <= 0) {
         return;
       }
 
-      // Process live frame via client-side neural network
-      if (typeof FaceEngine === 'undefined') {
-        this.setStatus('Face recognition library initializing...', 'scanning');
+      // Check model load state
+      if (typeof FaceEngine === 'undefined' || !FaceEngine.isLoaded) {
+        this.setStatus('Loading face recognition model...', 'scanning');
         return;
       }
 
       const result = await FaceEngine.processFrame(videoEl);
 
       if (result.status === 'NOT_READY') {
+        this.setStatus('Camera ready — looking for face...', 'scanning');
         return;
       }
 
@@ -80,7 +82,7 @@ const FaceVerification = {
         if (typeof FaceEngine !== 'undefined') {
           FaceEngine.resetLiveness();
         }
-        this.setStatus('Looking for face...', '');
+        this.setStatus('Camera ready — looking for face...', '');
         return;
       }
 
@@ -93,19 +95,20 @@ const FaceVerification = {
       }
 
       if (result.status === 'POOR_QUALITY') {
-        this.setStatus('Face quality is insufficient. Please improve lighting and face the camera.', 'warning');
+        this.setStatus('Face detected — checking quality...', 'warning');
         return;
       }
 
-      // Check active liveness progress unless forced manually
+      // Face detected! Check quality & evaluate liveness
+      this.setStatus('Face detected — checking quality...', 'scanning');
       const liveness = result.liveness || { passed: true, action: 'frontal_gaze' };
       if (!forceManual && !liveness.passed) {
-        this.setStatus(liveness.instruction || 'Liveness verification failed. Please try again.', 'liveness');
+        this.setStatus(liveness.instruction || 'Face detected — checking quality...', 'liveness');
         return;
       }
 
-      // Liveness verified! Announce verification in progress
-      this.setStatus('Preparing verification...', 'scanning');
+      // Liveness & quality confirmed! Announce verification in progress
+      this.setStatus('Face ready — verifying identity...', 'scanning');
       this.isCoolingDown = true; // Pause frame polling while awaiting backend verification
 
       // Safe Audit Log (never logs raw biometric vectors)
@@ -124,8 +127,6 @@ const FaceVerification = {
         modelVersion: 'face-api-v1-128d',
         sessionId: this.sessionId
       });
-
-      this.setStatus('Verifying identity...', 'scanning');
 
       let frameData = null;
       try {
@@ -192,7 +193,7 @@ const FaceVerification = {
         if (typeof FaceEngine !== 'undefined') {
           FaceEngine.resetLiveness();
         }
-        this.setStatus('Looking for face...', 'scanning');
+        this.setStatus('Camera ready — looking for face...', 'scanning');
       }
     } catch (err) {
       console.warn('[SAMS Face Cycle Notice]', err.message);
@@ -213,10 +214,10 @@ const FaceVerification = {
         this.setStatus('Liveness verification failed. Please try again.', 'warning');
         await new Promise(r => setTimeout(r, 2000));
       } else if (code === 'FACE_NOT_RECOGNIZED' || code === 'VERIFICATION_FAILED' || (err.message && (err.message.includes('not recognized') || err.message.includes('not be verified')))) {
-        this.setStatus('Face not recognized. Please look at the camera.', 'warning');
+        this.setStatus('Face not recognized', 'warning');
         await new Promise(r => setTimeout(r, 2000));
       } else {
-        this.setStatus('Looking for face...', '');
+        this.setStatus('Camera ready — looking for face...', '');
       }
     } finally {
       this.isCoolingDown = false;
@@ -230,7 +231,7 @@ const FaceVerification = {
     this.stopContinuousScan();
     this.isScanning = true;
     FaceEngine.resetLiveness();
-    this.setStatus('Looking for face...', 'scanning');
+    this.setStatus('Camera ready — looking for face...', 'scanning');
 
     const loop = async () => {
       if (!this.isScanning) return;
@@ -253,7 +254,7 @@ const FaceVerification = {
       this.scanTimer = null;
     }
     this.isCoolingDown = false;
-    this.setStatus('Camera ready. Position face in oval frame.', '');
+    this.setStatus('Camera stopped. Click "Start AI Camera" to resume.', '');
   },
 
   /**

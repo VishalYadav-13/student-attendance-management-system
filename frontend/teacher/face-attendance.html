@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/frontend/assets/css/academic-theme.css?v=2.3.0">
   <link rel="stylesheet" href="/frontend/assets/css/main.css?v=2.3.0">
+  <!-- Facial Recognition Engine Dependency -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
   <style>
     .face-layout-grid {
       display: grid;
@@ -618,6 +620,11 @@
       const hh = String(today.getHours()).padStart(2, '0');
       const min = String(today.getMinutes()).padStart(2, '0');
       document.getElementById('setup-time').value = `${hh}:${min}`;
+
+      // Preload FaceEngine neural network models in background so camera start is instantaneous
+      if (typeof FaceEngine !== 'undefined') {
+        FaceEngine.init().catch(err => console.warn('[SAMS Preload Notice]', err.message));
+      }
     });
 
     // Handle session launch
@@ -699,13 +706,18 @@
       const videoEl = document.getElementById('face-camera-video');
 
       try {
-        // Start webcam stream
+        FaceVerification.setStatus('Loading face recognition model...', 'scanning');
+
+        // Step 1: Preload FaceEngine neural network models FIRST
+        if (typeof FaceEngine !== 'undefined') {
+          await FaceEngine.init();
+        }
+
+        // Step 2: Request and start webcam feed
+        FaceVerification.setStatus('Starting camera...', 'scanning');
         await Camera.start(videoEl);
 
-        // Preload FaceEngine models
-        await FaceEngine.init();
-
-        // Initialize verification pipeline
+        // Step 3: Initialize verification pipeline
         FaceVerification.init({
           sessionId: activeSession.session_id,
           onStudentVerified: (data) => {
@@ -713,7 +725,8 @@
           }
         });
 
-        // Start continuous live frame scanning
+        // Step 4: Camera ready — start continuous live frame scanning
+        FaceVerification.setStatus('Camera ready — looking for face...', 'scanning');
         FaceVerification.startContinuousScan();
       } catch (err) {
         console.error('[SAMS Camera Error]', err);

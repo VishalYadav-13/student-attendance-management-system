@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/frontend/assets/css/academic-theme.css?v=2.2.0">
   <link rel="stylesheet" href="/frontend/assets/css/main.css?v=2.2.0">
+  <!-- Facial Recognition Engine Dependency -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
   <style>
     .studio-tabs {
       display: flex;
@@ -549,28 +551,27 @@
       const statusPill = document.getElementById('camera-status-pill');
 
       try {
-        startBtn.textContent = '⏳ Initializing AI Models...';
+        startBtn.textContent = '⏳ Loading AI Models...';
         startBtn.disabled = true;
-        if (statusPill) {
-          statusPill.innerHTML = '<span class="status-dot" style="background:#6E7F8D;"></span><span>Accessing camera and loading facial AI models...</span>';
-        }
+        FaceVerification.setStatus('Loading face recognition model...', 'scanning');
 
-        // 1. Start webcam feed
-        await Camera.start(video, 'user');
-
-        // 2. Preload FaceEngine neural network models
+        // Step 1: Preload FaceEngine neural network models FIRST
         if (typeof FaceEngine !== 'undefined') {
           await FaceEngine.init();
         }
 
-        // 3. Switch UI controls
+        // Step 2: Request and start webcam feed
+        FaceVerification.setStatus('Starting camera...', 'scanning');
+        await Camera.start(video, 'user');
+
+        // Step 3: Switch UI controls
         startBtn.style.display = 'none';
         stopBtn.style.display = 'inline-flex';
         stopBtn.disabled = false;
         capBtn.disabled = false;
         flipBtn.disabled = false;
 
-        // 4. Init Face Verification Pipeline
+        // Step 4: Init Face Verification Pipeline
         FaceVerification.init({
           sessionId: activeSessionId,
           onStudentVerified: (data) => {
@@ -596,8 +597,9 @@
           }
         });
 
-        // 5. Start responsive continuous scanning (every 250ms)
-        FaceVerification.startContinuousScan(250);
+        // Step 5: Camera ready — start responsive continuous scanning
+        FaceVerification.setStatus('Camera ready — looking for face...', 'scanning');
+        FaceVerification.startContinuousScan(200);
       } catch (err) {
         console.error('[SAMS Camera Start Error]', err);
         UI.toast(err.message, 'error', 5000);
@@ -671,7 +673,13 @@
       }, 3500);
     }
 
-    document.addEventListener('DOMContentLoaded', loadRoster);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadRoster();
+      // Preload FaceEngine neural network models in background so camera start is instantaneous
+      if (typeof FaceEngine !== 'undefined') {
+        FaceEngine.init().catch(err => console.warn('[SAMS Preload Notice]', err.message));
+      }
+    });
   </script>
 </body>
 </html>
