@@ -124,6 +124,13 @@ class Database
                     $seedSql = file_get_contents($seedFile);
                     $pdo->exec($seedSql);
                 }
+            } else {
+                // For existing initialized databases, ensure student_face_templates table exists
+                $migrationFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations' . DIRECTORY_SEPARATOR . 'add_student_face_templates.sql';
+                if (file_exists($migrationFile)) {
+                    $migrationSql = file_get_contents($migrationFile);
+                    $pdo->exec($migrationSql);
+                }
             }
 
             // Always synchronize all PostgreSQL sequences to MAX(column_value)
@@ -224,6 +231,7 @@ class Database
             'attendance_records' => 'record_id',
             'attendance_overrides' => 'override_id',
             'face_profiles' => 'profile_id',
+            'student_face_templates' => 'id',
             'face_verification_logs' => 'log_id',
             'notifications' => 'notification_id',
             'audit_logs' => 'log_id',
@@ -279,7 +287,23 @@ class Database
         // Check if users table already exists
         $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
         if ($stmt->fetch()) {
-            return; // Already initialized
+            // Already initialized; ensure student_face_templates table exists
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS student_face_templates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER UNIQUE NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+                    embedding TEXT NOT NULL,
+                    model_version TEXT DEFAULT 'face-api-v1-128d',
+                    quality_score REAL DEFAULT 1.0,
+                    enrolled_by INTEGER REFERENCES users(user_id),
+                    status TEXT DEFAULT 'ACTIVE',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_face_templates_student ON student_face_templates(student_id);
+                CREATE INDEX IF NOT EXISTS idx_face_templates_status ON student_face_templates(status);
+            ");
+            return;
         }
 
         // Disable foreign keys during initial table setup and seed import
@@ -489,6 +513,18 @@ class Database
             consent_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             enrolled_by INTEGER REFERENCES users(user_id),
             enrolled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE student_face_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER UNIQUE NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+            embedding TEXT NOT NULL,
+            model_version TEXT DEFAULT 'face-api-v1-128d',
+            quality_score REAL DEFAULT 1.0,
+            enrolled_by INTEGER REFERENCES users(user_id),
+            status TEXT DEFAULT 'ACTIVE',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 

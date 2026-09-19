@@ -1,26 +1,40 @@
 /**
  * SAMS - Face Verification & Attendance Pipeline Orchestrator
+ * Coordinates camera feeds, real-time FaceEngine landmark analysis,
+ * active anti-spoofing liveness verification, and secure backend communication.
  */
 
 const FaceVerification = {
   sessionId: null,
   isScanning: false,
-  scanInterval: null,
+  scanTimer: null,
+  isCoolingDown: false,
   overlayEl: null,
   statusPillEl: null,
   onStudentVerified: null,
+  onStatsUpdated: null,
 
   init(options = {}) {
     this.sessionId = options.sessionId;
     this.overlayEl = document.querySelector('.face-guide-overlay');
     this.statusPillEl = document.querySelector('.camera-status-pill');
     this.onStudentVerified = options.onStudentVerified || null;
+    this.onStatsUpdated = options.onStatsUpdated || null;
+
+    if (options.sessionId) {
+      FaceEngine.resetLiveness();
+    }
   },
 
-  setStatus(text, stateClass = '') {
+  setStatus(text, stateClass = '', badgeBg = '#6E7F8D') {
     if (this.statusPillEl) {
+      let dotColor = badgeBg;
+      if (stateClass === 'success' || stateClass === 'verified') dotColor = '#526B54'; // Vintage muted sage
+      else if (stateClass === 'warning' || stateClass === 'spoof') dotColor = '#A56B52'; // Muted terracotta
+      else if (stateClass === 'scanning' || stateClass === 'liveness') dotColor = '#6E7F8D'; // Dusty blue
+
       this.statusPillEl.innerHTML = `
-        <span class="status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${stateClass === 'success' ? '#10b981' : (stateClass === 'warning' ? '#f59e0b' : '#3b82f6')};"></span>
+        <span class="status-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dotColor};"></span>
         <span>${text}</span>
       `;
     }
@@ -31,86 +45,166 @@ const FaceVerification = {
   },
 
   /**
-   * Run a single verification cycle
+   * Run a single verification evaluation cycle
    */
-  async runVerificationCycle(targetStudentId = null) {
-    if (this.isScanning) return;
-    this.isScanning = true;
+  async runVerificationCycle() {
+    if (!this.isScanning || this.isCoolingDown) return;
 
     try {
-      // Step 1: Looking for face
-      this.setStatus('Looking for face...', 'scanning');
-      await new Promise(r => setTimeout(r, 400));
+      const videoEl = Camera.videoEl;
+      if (!videoEl || videoEl.readyState !== 4) {
+        return;
+      }
 
-      // Step 2: Capture frame
-      const frameData = Camera.captureFrame();
+      // Process live frame via client-side neural network
+      const result = await FaceEngine.processFrame(videoEl);
 
-      // Step 3: Face detected & Checking quality
-      this.setStatus('Face detected. Checking quality...', 'detected');
-      await new Promise(r => setTimeout(r, 350));
+      if (result.status === 'NOT_READY') {
+        return;
+      }
 
-      // Step 4: Verifying identity with backend & Gemini assistance
-      this.setStatus('Verifying biometric identity...', 'scanning');
+      if (result.status === 'NO_FACE') {
+        this.setStatus('Face not detected. Please position your face inside the frame.', '');
+        return;
+      }
+
+      if (result.status === 'MULTIPLE_FACES') {
+        this.setStatus('Multiple faces detected. Only one person should be visible.', 'warning');
+        return;
+      }
+
+      if (result.status === 'POOR_QUALITY') {
+        this.setStatus('Face quality is insufficient. Please improve lighting and face the camera.', 'warning');
+        return;
+      }
+
+      // Face is detected! Check liveness progress
+      const liveness = result.liveness;
+      if (!liveness.passed) {
+        this.setStatus(liveness.instruction, 'liveness');
+        return;
+      }
+
+      // Liveness verified! Proceed to verify biometric identity against session class
+      this.setStatus('✓ Liveness confirmed. Verifying identity...', 'scanning');
+      this.isCoolingDown = true; // Pause frames while waiting for backend confirmation
 
       const payload = {
         session_id: this.sessionId,
-        image: frameData,
-        auto_mark: true,
-        liveness_passed: true
+        embedding: result.descriptor,
+        liveness_passed: true,
+        liveness_action: liveness.action,
+        auto_mark: true
       };
-      if (targetStudentId) {
-        payload.student_id = targetStudentId;
-      }
 
       const res = await API.post('/api/face/verify', payload);
 
-      if (res && res.success && res.data && res.data.verified) {
-        // Step 5: Identity verified
-        const student = res.data.student;
-        const confidencePct = Math.round((res.data.confidence || 0.95) * 100);
-        this.setStatus(`Verified: ${student.full_name} (${confidencePct}%)`, 'detected');
+      if (res && res.success && res.data) {
+        const data = res.data;
+        const student = data.student;
 
-        UI.toast(`✓ Attendance marked for ${student.full_name} (${student.roll_number})`, 'success');
+        if (data.already_marked) {
+          this.setStatus(`✓ Recognized: ${student.full_name} — Attendance already recorded.`, 'verified');
+          UI.toast(`Notice: Attendance for ${student.full_name} was already recorded.`, 'info');
+        } else {
+          this.setStatus(`✓ VERIFIED: ${student.full_name} (${student.roll_number})`, 'success');
+          UI.toast(`✓ Attendance marked for ${student.full_name} (${student.roll_number})`, 'success');
+
+          // Optional subtle institutional confirmation beep
+          this.playAudioFeedback();
+        }
 
         if (typeof this.onStudentVerified === 'function') {
-          this.onStudentVerified(res.data);
+          this.onStudentVerified(data);
         }
+
+        // Student recognition cooldown (3 seconds for next student to approach)
+        await new Promise(r => setTimeout(r, 2800));
       }
     } catch (err) {
-      console.warn("[SAMS Face Cycle Notice]", err.message);
-      const code = (err.data && err.data.error && err.data.error.code) || '';
-      
-      if (code === 'NO_FACE') {
-        this.setStatus('No face detected. Please look directly at the camera.', 'warning');
-      } else if (code === 'MULTIPLE_FACES') {
-        this.setStatus('Multiple faces in frame. One student at a time.', 'warning');
-      } else if (code === 'CONFLICT' || err.message.includes('already')) {
-        this.setStatus('Attendance already recorded.', 'detected');
-        UI.toast('Student attendance was already marked.', 'info');
+      console.warn('[SAMS Face Cycle Notice]', err.message);
+      const code = (err.data && err.data.result_code) || (err.data && err.data.error && err.data.error.code) || '';
+
+      if (code === 'NO_ENROLLED_STUDENTS') {
+        this.setStatus('No enrolled face profiles found for this class.', 'warning');
+        await new Promise(r => setTimeout(r, 2000));
+      } else if (code === 'WRONG_CLASS') {
+        this.setStatus('Student is not enrolled in this class.', 'warning');
+        UI.toast('Student is not enrolled in this class.', 'error');
+        await new Promise(r => setTimeout(r, 2000));
+      } else if (code === 'LIVENESS_FAILED') {
+        this.setStatus('Liveness check failed. Please look straight and turn head slightly.', 'warning');
+        await new Promise(r => setTimeout(r, 1500));
+      } else if (code === 'VERIFICATION_FAILED' || err.message.includes('not be verified')) {
+        this.setStatus('Face could not be verified.', 'warning');
+        await new Promise(r => setTimeout(r, 1800));
       } else {
-        this.setStatus('Verification unconfirmed. Re-aligning...', '');
+        this.setStatus('Looking for face...', '');
       }
     } finally {
-      this.isScanning = false;
+      FaceEngine.resetLiveness();
+      this.isCoolingDown = false;
     }
   },
 
   /**
-   * Start auto-polling verification loop
+   * Start continuous scanning loop (runs every 150ms for responsive tracking)
    */
-  startContinuousScan(intervalMs = 3000) {
+  startContinuousScan(intervalMs = 150) {
     this.stopContinuousScan();
-    this.runVerificationCycle();
-    this.scanInterval = setInterval(() => {
-      this.runVerificationCycle();
-    }, intervalMs);
+    this.isScanning = true;
+    FaceEngine.resetLiveness();
+    this.setStatus('Camera ready. Please look at the camera.', 'scanning');
+
+    const loop = async () => {
+      if (!this.isScanning) return;
+      await this.runVerificationCycle();
+      if (this.isScanning) {
+        this.scanTimer = setTimeout(loop, intervalMs);
+      }
+    };
+
+    loop();
   },
 
+  /**
+   * Stop continuous scanning loop
+   */
   stopContinuousScan() {
-    if (this.scanInterval) {
-      clearInterval(this.scanInterval);
-      this.scanInterval = null;
+    this.isScanning = false;
+    if (this.scanTimer) {
+      clearTimeout(this.scanTimer);
+      this.scanTimer = null;
     }
+    this.isCoolingDown = false;
     this.setStatus('Camera ready. Position face in oval frame.', '');
+  },
+
+  /**
+   * Soft institutional confirmation audio chime using Web Audio API
+   */
+  playAudioFeedback() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880.00, ctx.currentTime + 0.12); // A5
+
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {
+      // Audio playback is purely optional
+    }
   }
 };

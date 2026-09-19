@@ -245,10 +245,42 @@ if ($requestMethod === 'POST' && $requestUri === '/api/face/verify') {
 if ($requestMethod === 'POST' && $requestUri === '/api/face/enroll') {
     FaceController::enroll();
 }
+if ($requestMethod === 'POST' && $requestUri === '/api/face/session/start') {
+    FaceController::startSession();
+}
+if ($requestMethod === 'POST' && $requestUri === '/api/face/session/end') {
+    FaceController::endSession();
+}
+if (preg_match('#^/api/face/session/(\d+)/results$#', $requestUri, $m)) {
+    if ($requestMethod === 'GET') {
+        FaceController::getSessionResults((int)$m[1]);
+    }
+}
+if (preg_match('#^/api/face/session/(\d+)$#', $requestUri, $m)) {
+    if ($requestMethod === 'GET') {
+        FaceController::getSession((int)$m[1]);
+    }
+}
+if (preg_match('#^/api/face/status/(\d+)$#', $requestUri, $m)) {
+    if ($requestMethod === 'GET') {
+        FaceController::status((int)$m[1]);
+    }
+}
+if (preg_match('#^/api/face/enrollment/(\d+)$#', $requestUri, $m)) {
+    if ($requestMethod === 'DELETE') {
+        FaceController::deleteBiometrics((int)$m[1]);
+    }
+}
 if (preg_match('#^/api/face/(\d+)$#', $requestUri, $m)) {
     if ($requestMethod === 'DELETE') {
         FaceController::deleteBiometrics((int)$m[1]);
     }
+}
+if ($requestMethod === 'GET' && $requestUri === '/api/face/settings') {
+    FaceController::getSettings();
+}
+if ($requestMethod === 'POST' && $requestUri === '/api/face/settings') {
+    FaceController::updateSettings();
 }
 
 // 7. Reports & Analytics

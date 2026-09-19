@@ -67,6 +67,14 @@ class SamsTest
         // Auto-Increment Sequence & User Insertion Regression Tests
         $this->testUserInsertionAndSequenceAutoIncrement();
 
+        // Face Verification & Biometric Attendance System Tests
+        require_once __DIR__ . '/FaceVerificationTest.php';
+        $faceSuite = new \FaceVerificationTest();
+        $faceResults = $faceSuite->run(false);
+        $this->passed += $faceResults['passed'];
+        $this->failed += $faceResults['failed'];
+        $this->failures = array_merge($this->failures, $faceResults['failures']);
+
         // Results Summary
         echo "\n------------------------------------------------------\n";
         echo sprintf("Total Tests: %d | Passed: %d | Failed: %d\n", $this->passed + $this->failed, $this->passed, $this->failed);

@@ -23,7 +23,8 @@ class Validator
     public function required(string ...$fields): self
     {
         foreach ($fields as $field) {
-            if (!isset($this->data[$field]) || trim((string)$this->data[$field]) === '') {
+            $val = $this->data[$field] ?? null;
+            if ($val === null || (is_array($val) ? empty($val) : trim((string)$val) === '')) {
                 $this->errors[$field] = "Field '{$field}' is required.";
             }
         }

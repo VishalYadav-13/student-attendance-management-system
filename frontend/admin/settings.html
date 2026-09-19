@@ -132,31 +132,72 @@
           </div>
 
           <!-- Card 3: AI & Face Verification Controls -->
+          <!-- Card 3: Face Verification & Biometric Parameters -->
           <div class="card" style="margin-bottom: 24px;">
-            <h3 class="card-title" style="margin-bottom: 16px;">AI & Facial Recognition Parameters</h3>
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+              <h3 class="card-title" style="margin: 0;">Face Verification & Biometric Parameters</h3>
+              <span class="badge badge-enrolled" id="face-model-badge">Model: face-api-v1-128d</span>
+            </div>
+
+            <!-- Enrollment Coverage Metric Widget -->
+            <div style="margin-bottom: 20px; padding: 16px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">Institutional Enrollment Coverage</span>
+                <span id="enrollment-cov-text" style="font-weight: 800; font-size: 1rem; color: var(--primary-accent);">0%</span>
+              </div>
+              <div class="progress-bar-wrap" style="margin-bottom: 10px;">
+                <div id="enrollment-cov-bar" class="progress-bar-fill fill-success" style="width: 0%;"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary);">
+                <span>Enrolled Students: <strong id="stat-enrolled-count" style="color:var(--text-main);">0</strong></span>
+                <span>Total Active Students: <strong id="stat-total-count" style="color:var(--text-main);">0</strong></span>
+                <span>Pending Enrollment: <strong id="stat-pending-count" style="color:var(--warning);">0</strong></span>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Master Toggle -->
+              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 12px 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
                 <div>
-                  <div style="font-weight: 600; font-size: 0.9rem;">Enable AI Face Verification</div>
-                  <div style="font-size: 0.78rem; color: var(--text-muted);">Allow camera biometric verification during classroom sessions.</div>
+                  <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">Enable Face Verification Attendance</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Permits faculty to initiate camera verification sessions in classrooms.</div>
                 </div>
-                <input type="checkbox" id="face-toggle" checked style="width: 18px; height: 18px;">
+                <input type="checkbox" id="face-toggle" checked style="width: 20px; height: 20px;">
               </label>
 
-              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm);">
-                <div>
-                  <div style="font-weight: 600; font-size: 0.9rem;">Require Liveness & Quality Challenge</div>
-                  <div style="font-size: 0.78rem; color: var(--text-muted);">Requires student to blink or re-orient face to mitigate printed photo spoofing.</div>
+              <!-- Verification Threshold -->
+              <div style="padding: 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+                  <label class="form-label" for="face-threshold-input" style="margin: 0; font-weight: 700;">
+                    Verification Similarity Threshold (Euclidean Distance)
+                  </label>
+                  <span id="threshold-display-val" style="font-weight: 800; font-family: monospace; font-size: 1rem; color: var(--primary-accent);">0.50</span>
                 </div>
-                <input type="checkbox" id="liveness-toggle" checked style="width: 18px; height: 18px;">
+                <div style="display: flex; gap: 14px; align-items: center;">
+                  <input type="range" id="face-threshold-slider" min="0.30" max="0.70" step="0.01" value="0.50" style="flex: 1;">
+                  <input type="number" id="face-threshold-input" class="form-control" style="width: 90px; text-align: center; font-weight: 700;" min="0.30" max="0.70" step="0.01" value="0.50">
+                </div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
+                  Standard safe threshold is <strong>0.50</strong> (Euclidean distance). Lower values (e.g. 0.40) require stricter similarity; values above 0.60 increase risk of false positive matches.
+                </div>
+              </div>
+
+              <!-- Liveness Toggle -->
+              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 12px 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">Require Active Anti-Spoofing Liveness</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Enforces natural head rotation or eye blink challenge before verifying attendance to prevent printed photo spoofing.</div>
+                </div>
+                <input type="checkbox" id="liveness-toggle" checked style="width: 20px; height: 20px;">
               </label>
 
-              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm);">
+              <!-- Manual Teacher Overrides -->
+              <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 12px 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
                 <div>
-                  <div style="font-weight: 600; font-size: 0.9rem;">Allow Manual Teacher Overrides</div>
-                  <div style="font-size: 0.78rem; color: var(--text-muted);">Permits faculty to adjust attendance status with mandatory audit explanation.</div>
+                  <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main);">Allow Manual Faculty Overrides</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Permits authorized faculty to adjust attendance status with mandatory justification and audit logging.</div>
                 </div>
-                <input type="checkbox" id="override-toggle" checked style="width: 18px; height: 18px;">
+                <input type="checkbox" id="override-toggle" checked style="width: 20px; height: 20px;">
               </label>
             </div>
           </div>
@@ -177,36 +218,92 @@
     const currentUser = Auth.requireRole('ADMIN');
     Auth.renderUserProfile(currentUser);
 
+    // Sync threshold slider & number input
+    const slider = document.getElementById('face-threshold-slider');
+    const numberInput = document.getElementById('face-threshold-input');
+    const displayVal = document.getElementById('threshold-display-val');
+
+    slider.addEventListener('input', () => {
+      numberInput.value = slider.value;
+      displayVal.textContent = parseFloat(slider.value).toFixed(2);
+    });
+
+    numberInput.addEventListener('input', () => {
+      let val = parseFloat(numberInput.value);
+      if (val >= 0.30 && val <= 0.70) {
+        slider.value = val;
+        displayVal.textContent = val.toFixed(2);
+      }
+    });
+
     async function loadSettings() {
       try {
-        const res = await API.get('/api/settings');
-        if (!res || !res.data) return;
+        const [settingsRes, faceRes] = await Promise.allSettled([
+          API.get('/api/settings'),
+          API.get('/api/face/settings')
+        ]);
 
-        const s = res.data;
-        if (s.institution_name) document.getElementById('inst-name').value = s.institution_name;
-        if (s.institution_code) document.getElementById('inst-code').value = s.institution_code;
-        if (s.academic_year) document.getElementById('acad-year').value = s.academic_year;
-        if (s.attendance_threshold) document.getElementById('threshold').value = s.attendance_threshold;
-        if (s.late_grace_minutes) document.getElementById('grace-mins').value = s.late_grace_minutes;
-        if (s.face_verification_enabled !== undefined) {
-          document.getElementById('face-toggle').checked = s.face_verification_enabled === 'true';
+        if (settingsRes.status === 'fulfilled' && settingsRes.value && settingsRes.value.data) {
+          const s = settingsRes.value.data;
+          if (s.institution_name) document.getElementById('inst-name').value = s.institution_name;
+          if (s.institution_code) document.getElementById('inst-code').value = s.institution_code;
+          if (s.academic_year) document.getElementById('acad-year').value = s.academic_year;
+          if (s.attendance_threshold) document.getElementById('threshold').value = s.attendance_threshold;
+          if (s.late_grace_minutes) document.getElementById('grace-mins').value = s.late_grace_minutes;
+          if (s.manual_override_allowed !== undefined) {
+            document.getElementById('override-toggle').checked = s.manual_override_allowed === 'true';
+          }
+          if (s.face_verification_enabled !== undefined) {
+            document.getElementById('face-toggle').checked = s.face_verification_enabled === 'true';
+          }
+          if (s.liveness_required !== undefined) {
+            document.getElementById('liveness-toggle').checked = s.liveness_required === 'true';
+          }
         }
-        if (s.liveness_required !== undefined) {
-          document.getElementById('liveness-toggle').checked = s.liveness_required === 'true';
-        }
-        if (s.manual_override_allowed !== undefined) {
-          document.getElementById('override-toggle').checked = s.manual_override_allowed === 'true';
+
+        if (faceRes.status === 'fulfilled' && faceRes.value && faceRes.value.data) {
+          const f = faceRes.value.data;
+          if (f.similarity_threshold !== undefined) {
+            const thresh = parseFloat(f.similarity_threshold).toFixed(2);
+            slider.value = thresh;
+            numberInput.value = thresh;
+            displayVal.textContent = thresh;
+          }
+          if (f.liveness_required !== undefined) {
+            document.getElementById('liveness-toggle').checked = f.liveness_required;
+          }
+          if (f.face_verification_enabled !== undefined) {
+            document.getElementById('face-toggle').checked = f.face_verification_enabled;
+          }
+          if (f.model_version) {
+            document.getElementById('face-model-badge').textContent = `Model: ${f.model_version}`;
+          }
+
+          if (f.stats) {
+            const stats = f.stats;
+            document.getElementById('stat-enrolled-count').textContent = stats.enrolled_students;
+            document.getElementById('stat-total-count').textContent = stats.total_students;
+            document.getElementById('stat-pending-count').textContent = stats.pending_students;
+            document.getElementById('enrollment-cov-text').textContent = `${stats.enrollment_coverage_percentage}%`;
+            document.getElementById('enrollment-cov-bar').style.width = `${stats.enrollment_coverage_percentage}%`;
+          }
         }
       } catch (err) {
-        UI.toast("Failed to load settings: " + err.message, "error");
+        UI.toast("Failed to load institutional settings: " + err.message, "error");
       }
     }
 
     document.getElementById('settings-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('save-settings-btn');
-      btn.textContent = 'Saving...';
-      btn.disabled = true;
+      UI.setButtonLoading(btn, true, 'Saving Settings...');
+
+      const thresholdVal = parseFloat(numberInput.value);
+      if (isNaN(thresholdVal) || thresholdVal < 0.30 || thresholdVal > 0.70) {
+        UI.toast('Verification threshold must be a safe value between 0.30 and 0.70.', 'warning');
+        UI.setButtonLoading(btn, false, 'Save Institutional Settings');
+        return;
+      }
 
       const payload = {
         institution_name: document.getElementById('inst-name').value.trim(),
@@ -215,6 +312,8 @@
         attendance_threshold: document.getElementById('threshold').value,
         late_grace_minutes: document.getElementById('grace-mins').value,
         face_verification_enabled: document.getElementById('face-toggle').checked ? 'true' : 'false',
+        face_verification_threshold: thresholdVal.toFixed(2),
+        face_liveness_required: document.getElementById('liveness-toggle').checked ? 'true' : 'false',
         liveness_required: document.getElementById('liveness-toggle').checked ? 'true' : 'false',
         manual_override_allowed: document.getElementById('override-toggle').checked ? 'true' : 'false'
       };
@@ -222,11 +321,11 @@
       try {
         await API.post('/api/settings', payload);
         UI.toast("Institutional settings updated successfully.", "success");
+        loadSettings();
       } catch (err) {
         UI.toast(err.message, "error");
       } finally {
-        btn.textContent = 'Save Institutional Settings';
-        btn.disabled = false;
+        UI.setButtonLoading(btn, false, 'Save Institutional Settings');
       }
     });
 

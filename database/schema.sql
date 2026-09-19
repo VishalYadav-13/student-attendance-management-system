@@ -269,6 +269,20 @@ CREATE TABLE face_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS student_face_templates (
+    id SERIAL PRIMARY KEY,
+    student_id INT UNIQUE NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+    embedding TEXT NOT NULL, -- JSON-encoded 128-dimensional normalized float32 vector array
+    model_version VARCHAR(50) DEFAULT 'face-api-v1-128d',
+    quality_score NUMERIC(5, 4) DEFAULT 1.0000,
+    enrolled_by INT REFERENCES users(user_id) ON DELETE SET NULL,
+    status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'REVOKED')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_face_templates_student ON student_face_templates(student_id);
+CREATE INDEX IF NOT EXISTS idx_face_templates_status ON student_face_templates(status);
+
 CREATE TABLE face_verification_logs (
     log_id SERIAL PRIMARY KEY,
     student_id INT REFERENCES students(student_id) ON DELETE SET NULL,

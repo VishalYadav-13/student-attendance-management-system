@@ -243,9 +243,129 @@
         <div id="view-student-subjects" style="display: flex; flex-direction: column; gap: 8px;">
           <!-- Loaded dynamically -->
         </div>
+
+        <!-- Face Verification Biometrics Section -->
+        <div style="margin-top: 20px; padding: 16px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+              <span>📷 Face Verification Biometrics</span>
+            </div>
+            <div id="view-student-bio-badge">
+              <span class="badge" style="background: var(--bg-surface); color: var(--text-muted);">Checking...</span>
+            </div>
+          </div>
+          <p id="view-student-bio-desc" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+            Biometric face verification status for automated classroom attendance.
+          </p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="view-student-enroll-btn" class="btn btn-primary btn-sm" onclick="openEnrollmentModalForCurrentStudent()">
+              📸 Enroll Face
+            </button>
+            <button id="view-student-delete-bio-btn" class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239,68,68,0.3); display: none;" onclick="deleteCurrentStudentBio()">
+              Remove Biometrics
+            </button>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="UI.closeModal('student-view-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Face Verification Enrollment Modal -->
+  <div id="face-enrollment-modal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <h3 id="enroll-modal-title">Enroll Face Verification</h3>
+        <button class="modal-close-btn" onclick="closeEnrollmentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: Camera Permission & Privacy Explanation -->
+        <div id="enroll-intro-view">
+          <div style="padding: 14px 16px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 16px;">
+            <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); margin-bottom: 6px;">
+              🛡️ Biometric Privacy & Institutional Consent
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45; margin: 0 0 10px;">
+              Face verification is used strictly for automated classroom attendance. During enrollment, 3 landmark samples are captured to calculate a standardized 128-dimensional mathematical descriptor vector.
+            </p>
+            <ul style="font-size: 0.78rem; color: var(--text-muted); margin: 0; padding-left: 18px; line-height: 1.5;">
+              <li>Permanent raw camera photographs are <strong>never stored</strong> in the institutional database.</li>
+              <li>Only mathematical coordinate vectors are retained in secure institutional records.</li>
+              <li>Students or administrators may request deletion of biometric records at any time.</li>
+            </ul>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.84rem; font-weight: 600; color: var(--text-main);">
+              <input type="checkbox" id="enroll-consent-check" checked style="width: 17px; height: 17px;">
+              <span>I confirm student consent for biometric attendance enrollment.</span>
+            </label>
+          </div>
+
+          <div style="text-align: center; margin-top: 20px;">
+            <button type="button" class="btn btn-primary" onclick="startEnrollmentCamera()" style="padding: 11px 24px;">
+              📷 Enable Camera & Begin Enrollment
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Live Camera Capture Viewport -->
+        <div id="enroll-camera-view" style="display: none;">
+          <div style="position: relative; width: 100%; height: 360px; background: #1a1f1d; border-radius: var(--radius-md); overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-subtle);">
+            <video id="enroll-video" playsinline muted autoplay style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+            
+            <div id="enroll-guide-overlay" class="face-guide-overlay" style="width: 190px; height: 250px; border: 2.5px dashed rgba(244,239,230,0.5); border-radius: 50% 50% 46% 46%; position: absolute; pointer-events: none;">
+              <div class="scan-beam" style="position: absolute; width: 90%; height: 2px; background: linear-gradient(90deg, transparent, #6F7F6A, transparent); animation: scanSweep 2.2s infinite ease-in-out;"></div>
+            </div>
+
+            <div id="enroll-status-pill" class="camera-status-pill" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(36,42,39,0.9); color: #F4EFE6; font-size: 0.78rem; font-weight: 600; padding: 6px 16px; border-radius: var(--radius-full); z-index: 10;">
+              Looking for face...
+            </div>
+          </div>
+
+          <!-- Sample Progress Indicators -->
+          <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);" id="enroll-sample-text">
+              Samples captured: 0 of 3
+            </span>
+            <div style="display: flex; gap: 6px;">
+              <span id="sample-dot-1" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">Sample 1</span>
+              <span id="sample-dot-2" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">Sample 2</span>
+              <span id="sample-dot-3" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">Sample 3</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 14px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="restartEnrollment()">
+              Restart Capture
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="Camera.switchCamera()">
+              Flip Camera
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Success View -->
+        <div id="enroll-success-view" style="display: none; text-align: center; padding: 24px 16px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--success-bg); color: var(--success); font-size: 2rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            ✓
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+            Face verification enrolled successfully.
+          </h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+            The student is now registered for automated camera-based classroom attendance.
+          </p>
+          <button type="button" class="btn btn-primary" onclick="closeEnrollmentModal()">
+            Done
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer" id="enroll-modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeEnrollmentModal()">Cancel</button>
       </div>
     </div>
   </div>
@@ -254,6 +374,8 @@
   <script src="/frontend/assets/js/api.js"></script>
   <script src="/frontend/assets/js/auth.js"></script>
   <script src="/frontend/assets/js/ui.js"></script>
+  <script src="/frontend/assets/js/camera.js"></script>
+  <script src="/frontend/assets/js/face-engine.js"></script>
   <script>
     const currentUser = Auth.requireRole('ADMIN');
     Auth.renderUserProfile(currentUser);
@@ -321,6 +443,10 @@
                     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 3px;"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                     View
                   </button>
+                  <button class="btn btn-secondary btn-sm" onclick="openFaceEnrollment(${s.student_id}, '${s.full_name.replace(/'/g, "\\'")}', '${s.roll_number}')" title="Enroll Face Verification" style="padding: 5px 10px; font-size: 0.78rem;">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 3px;"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    Face
+                  </button>
                   <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239,68,68,0.25); padding: 5px 10px; font-size: 0.78rem;" onclick="deactivateStudent(${s.student_id}, '${s.full_name.replace(/'/g, "\\'")}')" title="Deactivate Student">
                     Deactivate
                   </button>
@@ -334,12 +460,18 @@
       }
     }
 
+    let currentViewingStudent = null;
+    let enrollmentSamples = [];
+    let enrollmentTimer = null;
+    let isEnrolling = false;
+
     async function viewStudentDetails(studentId) {
       try {
         const res = await API.get(`/api/students/${studentId}`);
         if (!res || !res.data) return;
 
         const s = res.data.student;
+        currentViewingStudent = s;
         const stats = res.data.attendance_stats;
         const subjects = res.data.subject_breakdown || [];
 
@@ -351,6 +483,25 @@
         document.getElementById('view-student-pct').style.color = stats.is_low_attendance ? 'var(--danger)' : 'var(--success)';
         document.getElementById('view-student-prs').textContent = stats.present;
         document.getElementById('view-student-abs').textContent = stats.absent;
+
+        // Biometrics section
+        const isEnrolled = s.face_verification_status === 'ENROLLED';
+        const bioBadgeEl = document.getElementById('view-student-bio-badge');
+        const enrollBtn = document.getElementById('view-student-enroll-btn');
+        const deleteBioBtn = document.getElementById('view-student-delete-bio-btn');
+        const bioDesc = document.getElementById('view-student-bio-desc');
+
+        if (isEnrolled) {
+          bioBadgeEl.innerHTML = '<span class="badge badge-enrolled"><span class="status-dot dot-present"></span> Enrolled (face-api-v1-128d)</span>';
+          enrollBtn.textContent = '🔄 Re-enroll Face';
+          deleteBioBtn.style.display = 'inline-flex';
+          bioDesc.textContent = 'Facial biometric template is active and ready for automated attendance verification.';
+        } else {
+          bioBadgeEl.innerHTML = '<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-muted); border:1px solid var(--border-subtle);">Not Enrolled</span>';
+          enrollBtn.textContent = '📸 Enroll Face';
+          deleteBioBtn.style.display = 'none';
+          bioDesc.textContent = 'No biometric template enrolled. Student must rely on manual attendance until enrolled.';
+        }
 
         const subContainer = document.getElementById('view-student-subjects');
         if (subjects.length === 0) {
@@ -376,6 +527,196 @@
       } catch (err) {
         UI.toast(err.message, 'error');
       }
+    }
+
+    function openEnrollmentModalForCurrentStudent() {
+      if (!currentViewingStudent) return;
+      openFaceEnrollment(currentViewingStudent.student_id, currentViewingStudent.full_name, currentViewingStudent.roll_number);
+    }
+
+    function openFaceEnrollment(studentId, studentName, rollNumber) {
+      currentViewingStudent = { student_id: studentId, full_name: studentName, roll_number: rollNumber };
+      document.getElementById('enroll-modal-title').textContent = `Enroll Face: ${studentName} (${rollNumber})`;
+      document.getElementById('enroll-intro-view').style.display = 'block';
+      document.getElementById('enroll-camera-view').style.display = 'none';
+      document.getElementById('enroll-success-view').style.display = 'none';
+      document.getElementById('enroll-modal-footer').style.display = 'flex';
+      enrollmentSamples = [];
+      resetSampleIndicators();
+      UI.openModal('face-enrollment-modal');
+    }
+
+    async function startEnrollmentCamera() {
+      const consentCheck = document.getElementById('enroll-consent-check');
+      if (!consentCheck.checked) {
+        UI.toast('Student consent confirmation is required before biometric capture.', 'warning');
+        return;
+      }
+
+      document.getElementById('enroll-intro-view').style.display = 'none';
+      document.getElementById('enroll-camera-view').style.display = 'block';
+
+      const videoEl = document.getElementById('enroll-video');
+      const statusPill = document.getElementById('enroll-status-pill');
+
+      try {
+        statusPill.textContent = 'Accessing camera device...';
+        await Camera.start(videoEl);
+        statusPill.textContent = 'Loading AI models...';
+        await FaceEngine.init();
+
+        enrollmentSamples = [];
+        resetSampleIndicators();
+        isEnrolling = true;
+        startEnrollmentSampleCollection();
+      } catch (err) {
+        statusPill.textContent = 'Camera error: ' + err.message;
+        UI.toast('Camera error: ' + err.message, 'error');
+      }
+    }
+
+    function resetSampleIndicators() {
+      document.getElementById('enroll-sample-text').textContent = 'Samples captured: 0 of 3';
+      for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById(`sample-dot-${i}`);
+        if (dot) {
+          dot.style.background = 'var(--bg-surface-subtle)';
+          dot.style.color = 'var(--text-muted)';
+        }
+      }
+    }
+
+    function startEnrollmentSampleCollection() {
+      const videoEl = document.getElementById('enroll-video');
+      const statusPill = document.getElementById('enroll-status-pill');
+      const guideOverlay = document.getElementById('enroll-guide-overlay');
+
+      const collectLoop = async () => {
+        if (!isEnrolling) return;
+
+        try {
+          const result = await FaceEngine.processFrame(videoEl);
+
+          if (result.status === 'NO_FACE') {
+            statusPill.textContent = 'Face not detected. Please position your face inside the frame.';
+            guideOverlay.className = 'face-guide-overlay';
+          } else if (result.status === 'MULTIPLE_FACES') {
+            statusPill.textContent = 'Multiple faces detected. Only one person should be visible.';
+            guideOverlay.className = 'face-guide-overlay warning';
+          } else if (result.status === 'POOR_QUALITY') {
+            statusPill.textContent = 'Face quality is insufficient. Please improve lighting and face the camera.';
+            guideOverlay.className = 'face-guide-overlay warning';
+          } else if (result.status === 'FACE_DETECTED') {
+            guideOverlay.className = 'face-guide-overlay scanning';
+            statusPill.textContent = 'Please look naturally toward the camera.';
+
+            // Collect sample descriptor
+            enrollmentSamples.push({
+              descriptor: result.descriptor,
+              score: result.score
+            });
+
+            const count = enrollmentSamples.length;
+            document.getElementById('enroll-sample-text').textContent = `Samples captured: ${count} of 3`;
+            const dot = document.getElementById(`sample-dot-${count}`);
+            if (dot) {
+              dot.style.background = 'var(--success)';
+              dot.style.color = '#fff';
+            }
+
+            if (count >= 3) {
+              isEnrolling = false;
+              guideOverlay.className = 'face-guide-overlay success';
+              statusPill.textContent = 'Processing biometric template...';
+              await submitEnrollmentTemplate();
+              return;
+            }
+
+            // Small gap between captures
+            await new Promise(r => setTimeout(r, 650));
+          }
+        } catch (e) {
+          console.warn('[Enrollment Frame Error]', e);
+        }
+
+        if (isEnrolling) {
+          enrollmentTimer = setTimeout(collectLoop, 200);
+        }
+      };
+
+      collectLoop();
+    }
+
+    async function submitEnrollmentTemplate() {
+      try {
+        const rawVectors = enrollmentSamples.map(s => s.descriptor);
+        const avgVector = FaceEngine.averageEmbeddings(rawVectors);
+        const avgScore = enrollmentSamples.reduce((acc, s) => acc + s.score, 0) / enrollmentSamples.length;
+
+        const payload = {
+          student_id: currentViewingStudent.student_id,
+          embedding: avgVector,
+          consent: true,
+          quality_score: Math.round(avgScore * 10000) / 10000,
+          model_version: 'face-api-v1-128d'
+        };
+
+        const res = await API.post('/api/face/enroll', payload);
+        if (!res || !res.success) throw new Error((res && res.message) || 'Enrollment failed');
+
+        Camera.stop();
+        document.getElementById('enroll-camera-view').style.display = 'none';
+        document.getElementById('enroll-success-view').style.display = 'block';
+        document.getElementById('enroll-modal-footer').style.display = 'none';
+
+        UI.toast('Face verification enrolled successfully.', 'success');
+        loadStudents();
+
+        if (currentViewingStudent) {
+          viewStudentDetails(currentViewingStudent.student_id);
+        }
+      } catch (err) {
+        UI.toast('Enrollment failed: ' + err.message, 'error');
+        document.getElementById('enroll-status-pill').textContent = 'Error: ' + err.message;
+        isEnrolling = false;
+      }
+    }
+
+    function restartEnrollment() {
+      isEnrolling = false;
+      if (enrollmentTimer) clearTimeout(enrollmentTimer);
+      enrollmentSamples = [];
+      resetSampleIndicators();
+      isEnrolling = true;
+      startEnrollmentSampleCollection();
+    }
+
+    function closeEnrollmentModal() {
+      isEnrolling = false;
+      if (enrollmentTimer) clearTimeout(enrollmentTimer);
+      Camera.stop();
+      UI.closeModal('face-enrollment-modal');
+    }
+
+    function deleteCurrentStudentBio() {
+      if (!currentViewingStudent) return;
+      const s = currentViewingStudent;
+      UI.confirm({
+        title: 'Remove Biometric Profile',
+        message: `Are you sure you want to permanently remove facial biometric records for ${s.full_name}? The student will need to be re-enrolled before face attendance can be used.`,
+        confirmText: 'Remove Biometrics',
+        danger: true,
+        onConfirm: async () => {
+          try {
+            await API.delete(`/api/face/enrollment/${s.student_id}`);
+            UI.toast('Biometric profile deleted successfully.', 'info');
+            loadStudents();
+            viewStudentDetails(s.student_id);
+          } catch (err) {
+            UI.toast(err.message, 'error');
+          }
+        }
+      });
     }
 
     function deactivateStudent(id, name) {

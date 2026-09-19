@@ -53,7 +53,11 @@ class Response
 
         self::$lastResponse = [
             'status_code' => $statusCode,
-            'payload' => $payload
+            'payload' => $payload,
+            'data' => $data ?? ($error['details'] ?? null),
+            'message' => $message,
+            'error' => $error,
+            'success' => $success
         ];
 
         if (self::$testMode) {

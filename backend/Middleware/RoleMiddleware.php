@@ -15,6 +15,9 @@ class RoleMiddleware
     public static function authorize(array $allowedRoles): array
     {
         $user = AuthMiddleware::authenticate();
+        if (empty($user)) {
+            return [];
+        }
 
         $userRole = strtoupper($user['role_name'] ?? '');
         $allowed = array_map('strtoupper', $allowedRoles);

@@ -63,7 +63,8 @@ class SettingsController
         $allowedKeys = [
             'institution_name', 'institution_code', 'academic_year',
             'attendance_threshold', 'late_grace_minutes', 'late_weight',
-            'face_verification_enabled', 'liveness_required', 'manual_override_allowed'
+            'face_verification_enabled', 'liveness_required', 'face_liveness_required',
+            'face_verification_threshold', 'face_model_version', 'manual_override_allowed'
         ];
 
         $updatedCount = 0;

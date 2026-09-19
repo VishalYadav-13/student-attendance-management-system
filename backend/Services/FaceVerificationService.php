@@ -2,7 +2,8 @@
 /**
  * SAMS - Face Verification & Biometric Matcher Service
  * Implements privacy-compliant, zero-raw-storage face template enrollment
- * and multi-stage verification with liveness heuristics and Gemini quality assistance.
+ * using 128-dimensional standardized feature embeddings, active anti-spoofing
+ * liveness verification, Euclidean distance matching, and audit logging.
  */
 
 namespace SAMS\Services;
@@ -14,251 +15,534 @@ use Exception;
 
 class FaceVerificationService
 {
+    public const DEFAULT_MODEL_VERSION = 'face-api-v1-128d';
+    public const DEFAULT_SIMILARITY_THRESHOLD = 0.50; // Standard Euclidean distance (lower is stricter)
+
     /**
-     * Enroll face profile for a student
+     * Enroll face embedding vector for a student
+     * Never stores raw camera images; stores only normalized 128-dimensional float embeddings.
      */
-    public static function enroll(int $studentId, string $base64Image, int $enrolledByUserId, bool $consent = true): array
+    public static function enroll(int $studentId, array $embedding, int $enrolledByUserId, bool $consent = true, ?float $qualityScore = 1.0, string $modelVersion = self::DEFAULT_MODEL_VERSION): array
     {
         if (!$consent) {
             throw new Exception("Explicit student consent is required prior to biometric enrollment.");
         }
 
-        // 1. Run quality check via Gemini or local heuristic
-        $quality = GeminiService::checkFaceQuality($base64Image);
-        if (!$quality['face_visible'] || $quality['quality_score'] < 0.60) {
+        // Validate 128-dimensional float embedding array
+        if (count($embedding) !== 128) {
             return [
                 'success' => false,
-                'message' => 'Image quality check failed: ' . ($quality['feedback'] ?? 'Low quality face capture'),
-                'details' => $quality
+                'message' => 'Invalid biometric vector: Embedding must contain exactly 128 numeric dimensions.',
+                'result_code' => 'INVALID_EMBEDDING'
             ];
         }
 
-        if (($quality['face_count'] ?? 1) > 1) {
-            return [
-                'success' => false,
-                'message' => 'Multiple faces detected. Please ensure only the student being enrolled is in frame.',
-                'details' => $quality
-            ];
+        foreach ($embedding as $val) {
+            if (!is_numeric($val)) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid biometric vector: All embedding values must be numeric floating-point numbers.',
+                    'result_code' => 'INVALID_EMBEDDING'
+                ];
+            }
         }
-
-        // 2. Generate secure cryptographic representation & numerical descriptor (Never store raw image)
-        $cleanData = preg_replace('/^data:image\/[a-z]+;base64,/', '', $base64Image);
-        $biometricHash = hash('sha256', $cleanData . '_student_' . $studentId);
-        
-        // Landmark feature descriptor simulation
-        $featureVector = json_encode([
-            'landmarks_count' => 128,
-            'embedding_version' => 'sams-biometric-v2',
-            'hash_prefix' => substr($biometricHash, 0, 16),
-            'sample_quality' => $quality['quality_score']
-        ]);
 
         $pdo = Database::getConnection();
-        
-        // Upsert into face_profiles
+
+        // Validate student exists
+        $stuCheck = $pdo->prepare("SELECT student_id, full_name, roll_number, class_id, division_id FROM students WHERE student_id = :sid");
+        $stuCheck->execute([':sid' => $studentId]);
+        $student = $stuCheck->fetch();
+
+        if (!$student) {
+            return [
+                'success' => false,
+                'message' => "Student #{$studentId} does not exist in institution registry.",
+                'result_code' => 'STUDENT_NOT_FOUND'
+            ];
+        }
+
+        $jsonVector = json_encode(array_values(array_map('floatval', $embedding)));
+        $qScore = max(0.1, min(1.0, (float)($qualityScore ?? 1.0)));
+
         $driver = Database::getActiveDriver();
         if ($driver === 'pgsql') {
             $stmt = $pdo->prepare("
-                INSERT INTO face_profiles (student_id, status, biometric_hash, feature_vector, samples_count, consent_given, enrolled_by, enrolled_at, updated_at)
-                VALUES (:sid, 'ENROLLED', :hash, :vector, 3, true, :by, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT INTO student_face_templates (student_id, embedding, model_version, quality_score, enrolled_by, status, created_at, updated_at)
+                VALUES (:sid, :emb, :model, :qual, :by, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ON CONFLICT (student_id) DO UPDATE SET
-                    status = 'ENROLLED',
-                    biometric_hash = EXCLUDED.biometric_hash,
-                    feature_vector = EXCLUDED.feature_vector,
-                    consent_given = true,
+                    embedding = EXCLUDED.embedding,
+                    model_version = EXCLUDED.model_version,
+                    quality_score = EXCLUDED.quality_score,
                     enrolled_by = EXCLUDED.enrolled_by,
+                    status = 'ACTIVE',
                     updated_at = CURRENT_TIMESTAMP
             ");
         } else {
             $stmt = $pdo->prepare("
-                INSERT OR REPLACE INTO face_profiles (student_id, status, biometric_hash, feature_vector, samples_count, consent_given, enrolled_by, enrolled_at, updated_at)
-                VALUES (:sid, 'ENROLLED', :hash, :vector, 3, 1, :by, datetime('now'), datetime('now'))
+                INSERT OR REPLACE INTO student_face_templates (student_id, embedding, model_version, quality_score, enrolled_by, status, created_at, updated_at)
+                VALUES (:sid, :emb, :model, :qual, :by, 'ACTIVE', datetime('now'), datetime('now'))
             ");
         }
 
         $stmt->execute([
             ':sid' => $studentId,
-            ':hash' => $biometricHash,
-            ':vector' => $featureVector,
+            ':emb' => $jsonVector,
+            ':model' => $modelVersion,
+            ':qual' => $qScore,
             ':by' => $enrolledByUserId
         ]);
 
-        // Update student face_verification_status
+        // Update student face_verification_status to ENROLLED
         $upd = $pdo->prepare("UPDATE students SET face_verification_status = 'ENROLLED' WHERE student_id = :sid");
         $upd->execute([':sid' => $studentId]);
 
-        AuditService::log($enrolledByUserId, 'FACE_ENROLLED', 'students', (string)$studentId, [
-            'quality_score' => $quality['quality_score'],
-            'consent' => true
+        // Keep legacy face_profiles table in sync if present
+        try {
+            $hash = hash('sha256', $jsonVector . '_student_' . $studentId);
+            $metaDesc = json_encode(['landmarks_count' => 68, 'embedding_version' => $modelVersion]);
+            if ($driver === 'pgsql') {
+                $legacyStmt = $pdo->prepare("
+                    INSERT INTO face_profiles (student_id, status, biometric_hash, feature_vector, samples_count, consent_given, enrolled_by, enrolled_at, updated_at)
+                    VALUES (:sid, 'ENROLLED', :hash, :vector, 3, true, :by, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (student_id) DO UPDATE SET
+                        status = 'ENROLLED',
+                        biometric_hash = EXCLUDED.biometric_hash,
+                        feature_vector = EXCLUDED.feature_vector,
+                        enrolled_by = EXCLUDED.enrolled_by,
+                        updated_at = CURRENT_TIMESTAMP
+                ");
+            } else {
+                $legacyStmt = $pdo->prepare("
+                    INSERT OR REPLACE INTO face_profiles (student_id, status, biometric_hash, feature_vector, samples_count, consent_given, enrolled_by, enrolled_at, updated_at)
+                    VALUES (:sid, 'ENROLLED', :hash, :vector, 3, 1, :by, datetime('now'), datetime('now'))
+                ");
+            }
+            $legacyStmt->execute([
+                ':sid' => $studentId,
+                ':hash' => $hash,
+                ':vector' => $metaDesc,
+                ':by' => $enrolledByUserId
+            ]);
+        } catch (\Throwable $t) {
+            // Optional legacy table sync notice
+        }
+
+        // Audit log (Never log the raw embedding or image!)
+        AuditService::log($enrolledByUserId, 'FACE_ENROLLED', 'student_face_templates', (string)$studentId, [
+            'student_name' => $student['full_name'],
+            'roll_number' => $student['roll_number'],
+            'model_version' => $modelVersion,
+            'quality_score' => $qScore
         ]);
 
         return [
             'success' => true,
-            'message' => 'Face biometric profile successfully enrolled with institutional consent.',
+            'message' => 'Face verification enrolled successfully.',
             'status' => 'ENROLLED',
-            'quality' => $quality
+            'model_version' => $modelVersion,
+            'student_id' => $studentId
         ];
     }
 
     /**
-     * Delete student's face biometric data (Right to Erasure / Privacy)
+     * Delete student's biometric template (Right to Erasure / Privacy Policy)
      */
     public static function deleteBiometricData(int $studentId, int $actorUserId): bool
     {
         $pdo = Database::getConnection();
-        $stmt = $pdo->prepare("DELETE FROM face_profiles WHERE student_id = :sid");
+
+        // Verify student exists
+        $stuCheck = $pdo->prepare("SELECT student_id, full_name, roll_number FROM students WHERE student_id = :sid");
+        $stuCheck->execute([':sid' => $studentId]);
+        $student = $stuCheck->fetch();
+
+        $stmt = $pdo->prepare("DELETE FROM student_face_templates WHERE student_id = :sid");
         $stmt->execute([':sid' => $studentId]);
+
+        try {
+            $stmtLegacy = $pdo->prepare("DELETE FROM face_profiles WHERE student_id = :sid");
+            $stmtLegacy->execute([':sid' => $studentId]);
+        } catch (\Throwable $t) {}
 
         $upd = $pdo->prepare("UPDATE students SET face_verification_status = 'NOT_ENROLLED' WHERE student_id = :sid");
         $upd->execute([':sid' => $studentId]);
 
-        AuditService::log($actorUserId, 'FACE_DATA_DELETED', 'students', (string)$studentId);
+        AuditService::log($actorUserId, 'FACE_ENROLLMENT_REMOVED', 'student_face_templates', (string)$studentId, [
+            'student_name' => $student['full_name'] ?? 'Unknown',
+            'roll_number' => $student['roll_number'] ?? 'Unknown'
+        ]);
+
         return true;
     }
 
     /**
-     * Verify live webcam capture against enrolled class roster
-     * Returns matching student, confidence score, and logs result
+     * Retrieve face enrollment status for a student without exposing raw embedding
      */
-    public static function verify(int $sessionId, string $base64Image, ?int $targetStudentId = null, bool $livenessPassed = true): array
+    public static function getEnrollmentStatus(int $studentId): array
     {
         $pdo = Database::getConnection();
+        $stmt = $pdo->prepare("
+            SELECT id, student_id, model_version, quality_score, status, created_at, updated_at
+            FROM student_face_templates
+            WHERE student_id = :sid AND status = 'ACTIVE'
+        ");
+        $stmt->execute([':sid' => $studentId]);
+        $template = $stmt->fetch();
 
-        // 1. Basic quality analysis
-        $quality = GeminiService::checkFaceQuality($base64Image);
-        if (!$quality['face_visible']) {
-            self::logAttempt(null, $sessionId, 'NO_FACE', 0.0, $quality['quality_score'] ?? 0.0, 'No recognizable face in viewport');
+        if ($template) {
             return [
-                'verified' => false,
-                'result_code' => 'NO_FACE',
-                'message' => 'No face detected in camera viewport. Please center your face inside the guide frame.',
-                'quality' => $quality
+                'enrolled' => true,
+                'status' => 'ENROLLED',
+                'model_version' => $template['model_version'],
+                'quality_score' => (float)$template['quality_score'],
+                'enrolled_at' => $template['created_at'],
+                'updated_at' => $template['updated_at']
             ];
         }
 
-        if (($quality['face_count'] ?? 1) > 1) {
-            self::logAttempt(null, $sessionId, 'MULTIPLE_FACES', 0.0, $quality['quality_score'] ?? 0.0, 'Multiple faces in frame');
-            return [
-                'verified' => false,
-                'result_code' => 'MULTIPLE_FACES',
-                'message' => 'Multiple faces detected. Please ensure only one student is in front of the camera.',
-                'quality' => $quality
-            ];
-        }
+        return [
+            'enrolled' => false,
+            'status' => 'NOT_ENROLLED',
+            'model_version' => null,
+            'enrolled_at' => null
+        ];
+    }
 
-        if (!$livenessPassed) {
-            self::logAttempt($targetStudentId, $sessionId, 'FAILED', 0.0, $quality['quality_score'] ?? 0.0, 'Liveness challenge failed');
-            return [
-                'verified' => false,
-                'result_code' => 'LIVENESS_FAILED',
-                'message' => 'Liveness check failed. Please blink or turn your head slightly as prompted.',
-                'quality' => $quality
-            ];
-        }
+    /**
+     * Verify a probe embedding against enrolled students in an active attendance session
+     */
+    public static function verify(
+        int $sessionId,
+        array $probeEmbedding,
+        bool $livenessPassed = true,
+        string $livenessAction = 'none',
+        ?int $actorUserId = null,
+        bool $autoMark = true
+    ): array {
+        $pdo = Database::getConnection();
 
-        // 2. Load enrolled profiles for this class session
-        $sessStmt = $pdo->prepare("SELECT class_id, division_id FROM attendance_sessions WHERE session_id = :sess");
-        $sessStmt->execute([':sess' => $sessionId]);
+        // 1. Validate Attendance Session
+        $sessStmt = $pdo->prepare("
+            SELECT s.session_id, s.class_id, s.division_id, s.subject_id, s.teacher_id, s.status, s.session_date,
+                   c.class_name, c.class_code, d.division_name, sub.subject_name
+            FROM attendance_sessions s
+            JOIN classes c ON s.class_id = c.class_id
+            JOIN divisions d ON s.division_id = d.division_id
+            JOIN subjects sub ON s.subject_id = sub.subject_id
+            WHERE s.session_id = :sid
+        ");
+        $sessStmt->execute([':sid' => $sessionId]);
         $session = $sessStmt->fetch();
 
         if (!$session) {
-            throw new Exception("Attendance session #{$sessionId} not found.");
-        }
-
-        $classId = (int)$session['class_id'];
-        $divId = (int)$session['division_id'];
-
-        // If a target student was specified (e.g. 1-to-1 verification), check that student
-        if ($targetStudentId !== null) {
-            $stuStmt = $pdo->prepare("
-                SELECT s.student_id, s.full_name, s.roll_number, s.profile_photo, s.face_verification_status, fp.biometric_hash
-                FROM students s
-                JOIN face_profiles fp ON s.student_id = fp.student_id
-                WHERE s.student_id = :sid AND fp.status = 'ENROLLED'
-            ");
-            $stuStmt->execute([':sid' => $targetStudentId]);
-            $candidate = $stuStmt->fetch();
-
-            if (!$candidate) {
-                return [
-                    'verified' => false,
-                    'result_code' => 'NOT_ENROLLED',
-                    'message' => 'Student has not enrolled facial biometrics yet.',
-                    'quality' => $quality
-                ];
-            }
-
-            $confidence = 0.9450; // High confidence match
-            self::logAttempt($candidate['student_id'], $sessionId, 'SUCCESS', $confidence, $quality['quality_score'] ?? 0.9, '1-to-1 match confirmed');
-
             return [
-                'verified' => true,
-                'result_code' => 'SUCCESS',
-                'confidence' => $confidence,
-                'student' => [
-                    'student_id' => (int)$candidate['student_id'],
-                    'full_name' => $candidate['full_name'],
-                    'roll_number' => $candidate['roll_number']
-                ],
-                'quality' => $quality,
-                'message' => "Identity verified for {$candidate['full_name']} ({$candidate['roll_number']})."
+                'verified' => false,
+                'result_code' => 'SESSION_NOT_FOUND',
+                'message' => "Attendance session #{$sessionId} not found."
             ];
         }
 
-        // 1-to-N verification: Match against enrolled students in this class
-        // Prioritize enrolled students who have not yet been marked in this session
-        $candStmt = $pdo->prepare("
-            SELECT s.student_id, s.full_name, s.roll_number, s.profile_photo, fp.biometric_hash,
-                   (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = :sess AND r.student_id = s.student_id) AS is_marked
+        if ($session['status'] === 'CLOSED') {
+            return [
+                'verified' => false,
+                'result_code' => 'SESSION_CLOSED',
+                'message' => 'Attendance session has been closed. Modifications require administrator override.'
+            ];
+        }
+
+        // 2. Validate Liveness / Anti-Spoofing
+        if (!$livenessPassed) {
+            self::logVerificationAttempt(null, $sessionId, 'LIVENESS_FAILED', 0.0, 0.0, 'Anti-spoofing challenge failed or unconfirmed');
+            AuditService::log($actorUserId, 'FACE_LIVENESS_FAILED', 'attendance_sessions', (string)$sessionId, [
+                'action_attempted' => $livenessAction
+            ]);
+
+            return [
+                'verified' => false,
+                'result_code' => 'LIVENESS_FAILED',
+                'message' => 'Face could not be verified. Please look at the camera and turn your head slightly.'
+            ];
+        }
+
+        // 3. Validate 128D probe embedding
+        if (count($probeEmbedding) !== 128) {
+            return [
+                'verified' => false,
+                'result_code' => 'INVALID_PROBE_EMBEDDING',
+                'message' => 'Invalid biometric probe: Descriptor must contain exactly 128 dimensions.'
+            ];
+        }
+
+        // 4. Retrieve configurable matching threshold
+        $threshold = self::getConfiguredThreshold();
+
+        // 5. Query all enrolled face templates for this session's class and division
+        $classId = (int)$session['class_id'];
+        $divisionId = (int)$session['division_id'];
+
+        $enrolledStmt = $pdo->prepare("
+            SELECT 
+                s.student_id,
+                s.roll_number,
+                s.student_uid,
+                s.full_name,
+                s.email,
+                s.profile_photo,
+                s.class_id,
+                s.division_id,
+                sft.embedding,
+                sft.model_version,
+                (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = :sess AND r.student_id = s.student_id) AS is_marked
             FROM students s
-            JOIN face_profiles fp ON s.student_id = fp.student_id
-            WHERE s.class_id = :cid AND s.division_id = :did AND fp.status = 'ENROLLED'
-            ORDER BY is_marked ASC, s.roll_number ASC
+            JOIN student_face_templates sft ON s.student_id = sft.student_id
+            WHERE s.class_id = :cid AND s.division_id = :did AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+            ORDER BY s.roll_number ASC
         ");
-        $candStmt->execute([':sess' => $sessionId, ':cid' => $classId, ':did' => $divId]);
-        $enrolledList = $candStmt->fetchAll();
+        $enrolledStmt->execute([
+            ':sess' => $sessionId,
+            ':cid' => $classId,
+            ':did' => $divisionId
+        ]);
+        $enrolledList = $enrolledStmt->fetchAll();
 
         if (empty($enrolledList)) {
+            self::logVerificationAttempt(null, $sessionId, 'NO_ENROLLED_STUDENTS', 0.0, 0.0, 'No enrolled face profiles in class');
             return [
                 'verified' => false,
                 'result_code' => 'NO_ENROLLED_STUDENTS',
-                'message' => 'No enrolled face profiles found for this class division.',
-                'quality' => $quality
+                'message' => 'No enrolled face verification profiles found for this class and division.'
             ];
         }
 
-        // Match top candidate (unmarked first). If all already marked, report status
-        $matched = $enrolledList[0];
-        $allMarked = ((int)$matched['is_marked'] > 0);
+        // 6. Compute Euclidean Distance across enrolled class templates
+        $bestDistance = INF;
+        $bestStudent = null;
 
-        $qScore = (float)($quality['quality_score'] ?? 0.90);
-        $confidence = round(min(0.9850, max(0.8800, 0.9100 + ($qScore * 0.0700))), 4);
+        foreach ($enrolledList as $candidate) {
+            $enrolledVector = json_decode($candidate['embedding'], true);
+            if (!is_array($enrolledVector) || count($enrolledVector) !== 128) {
+                continue;
+            }
 
-        self::logAttempt((int)$matched['student_id'], $sessionId, 'SUCCESS', $confidence, $qScore, '1-to-N classroom match');
+            $dist = self::euclideanDistance($probeEmbedding, $enrolledVector);
+            if ($dist < $bestDistance) {
+                $bestDistance = $dist;
+                $bestStudent = $candidate;
+            }
+        }
+
+        // Convert distance to standard normalized confidence score (0.0000 - 1.0000)
+        // At distance 0.0 -> 0.9999 confidence; at threshold 0.50 -> ~0.80 confidence
+        $confidence = round(max(0.5000, min(0.9999, 1.0 - ($bestDistance * 0.40))), 4);
+
+        // 7. Check if best match meets threshold
+        if ($bestStudent === null || $bestDistance > $threshold) {
+            self::logVerificationAttempt(null, $sessionId, 'FAILED', $confidence, 0.9, "Unknown face, best distance: " . round($bestDistance, 4));
+            AuditService::log($actorUserId, 'FACE_VERIFY_FAILED', 'attendance_sessions', (string)$sessionId, [
+                'best_distance' => round($bestDistance, 4),
+                'threshold' => $threshold
+            ]);
+
+            return [
+                'verified' => false,
+                'result_code' => 'VERIFICATION_FAILED',
+                'message' => 'Face could not be verified.'
+            ];
+        }
+
+        // 8. Server-Side Class Restriction: Confirm student belongs to session's class & division
+        $matchedStudentId = (int)$bestStudent['student_id'];
+        if ((int)$bestStudent['class_id'] !== $classId || (int)$bestStudent['division_id'] !== $divisionId) {
+            self::logVerificationAttempt($matchedStudentId, $sessionId, 'WRONG_CLASS', $confidence, 0.9, 'Student belongs to different division');
+            AuditService::log($actorUserId, 'FACE_WRONG_CLASS_ATTEMPT', 'students', (string)$matchedStudentId, [
+                'session_id' => $sessionId,
+                'required_class' => "{$session['class_name']} Div {$session['division_name']}"
+            ]);
+
+            return [
+                'verified' => false,
+                'result_code' => 'WRONG_CLASS',
+                'message' => 'Student is not enrolled in this class.'
+            ];
+        }
+
+        // 9. Duplicate Attendance Protection: Check if already marked for this session
+        $dupStmt = $pdo->prepare("SELECT record_id, status, marked_at FROM attendance_records WHERE session_id = :sess AND student_id = :sid");
+        $dupStmt->execute([':sess' => $sessionId, ':sid' => $matchedStudentId]);
+        $existing = $dupStmt->fetch();
+
+        if ($existing) {
+            AuditService::log($actorUserId, 'FACE_DUPLICATE_ATTEMPT', 'attendance_records', (string)$existing['record_id'], [
+                'student_id' => $matchedStudentId,
+                'session_id' => $sessionId
+            ]);
+
+            return [
+                'verified' => true,
+                'result_code' => 'ALREADY_MARKED',
+                'already_marked' => true,
+                'attendance_status' => $existing['status'],
+                'confidence' => $confidence,
+                'student' => [
+                    'student_id' => $matchedStudentId,
+                    'full_name' => $bestStudent['full_name'],
+                    'roll_number' => $bestStudent['roll_number'],
+                    'student_uid' => $bestStudent['student_uid']
+                ],
+                'message' => 'Attendance already recorded.'
+            ];
+        }
+
+        // 10. Record Attendance as Present
+        if ($autoMark) {
+            $ins = $pdo->prepare("
+                INSERT INTO attendance_records (session_id, student_id, status, marked_at, verification_method, confidence_score, ip_address)
+                VALUES (:sess, :sid, 'PRESENT', CURRENT_TIMESTAMP, 'FACE_AI', :conf, :ip)
+            ");
+            $ins->execute([
+                ':sess' => $sessionId,
+                ':sid' => $matchedStudentId,
+                ':conf' => $confidence,
+                ':ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
+            ]);
+        }
+
+        self::logVerificationAttempt($matchedStudentId, $sessionId, 'SUCCESS', $confidence, 0.95, "Verified via face-api Euclidean distance: " . round($bestDistance, 4));
+        AuditService::log($actorUserId, 'FACE_VERIFY_SUCCESS', 'attendance_records', (string)$matchedStudentId, [
+            'session_id' => $sessionId,
+            'student_name' => $bestStudent['full_name'],
+            'roll_number' => $bestStudent['roll_number'],
+            'confidence' => $confidence,
+            'liveness_action' => $livenessAction
+        ]);
 
         return [
             'verified' => true,
             'result_code' => 'SUCCESS',
+            'already_marked' => false,
+            'attendance_status' => 'PRESENT',
             'confidence' => $confidence,
             'student' => [
-                'student_id' => (int)$matched['student_id'],
-                'full_name' => $matched['full_name'],
-                'roll_number' => $matched['roll_number']
+                'student_id' => $matchedStudentId,
+                'full_name' => $bestStudent['full_name'],
+                'roll_number' => $bestStudent['roll_number'],
+                'student_uid' => $bestStudent['student_uid']
             ],
-            'quality' => $quality,
-            'message' => $allMarked
-                ? "Recognized {$matched['full_name']} ({$matched['roll_number']}) — already recorded in this session."
-                : "Identity successfully matched: {$matched['full_name']} ({$matched['roll_number']})."
+            'message' => "Identity verified for {$bestStudent['full_name']} ({$bestStudent['roll_number']}). Attendance marked as Present."
         ];
     }
 
-    private static function logAttempt(?int $studentId, ?int $sessionId, string $result, float $conf, float $quality, string $notes): void
+    /**
+     * Compute standard Euclidean distance between two 128-dimensional vectors
+     */
+    public static function euclideanDistance(array $v1, array $v2): float
+    {
+        $sum = 0.0;
+        $len = min(count($v1), count($v2));
+        for ($i = 0; $i < $len; $i++) {
+            $diff = (float)$v1[$i] - (float)$v2[$i];
+            $sum += $diff * $diff;
+        }
+        return sqrt($sum);
+    }
+
+    /**
+     * Retrieve configured Euclidean distance threshold from system settings
+     */
+    public static function getConfiguredThreshold(): float
+    {
+        try {
+            $pdo = Database::getConnection();
+            $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'face_verification_threshold'");
+            $stmt->execute();
+            $val = $stmt->fetchColumn();
+            if ($val !== false && is_numeric($val)) {
+                return (float)$val;
+            }
+        } catch (\Throwable $e) {}
+
+        return self::DEFAULT_SIMILARITY_THRESHOLD;
+    }
+
+    /**
+     * Retrieve face verification institutional settings and enrollment statistics
+     */
+    public static function getSettings(): array
+    {
+        $pdo = Database::getConnection();
+
+        // Settings from system_settings
+        $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'face_%' OR setting_key = 'liveness_required'");
+        $raw = $stmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+
+        // Live enrollment stats
+        $totalStudents = (int)$pdo->query("SELECT COUNT(*) FROM students WHERE status = 'ACTIVE'")->fetchColumn();
+        $enrolledCount = (int)$pdo->query("SELECT COUNT(*) FROM student_face_templates WHERE status = 'ACTIVE'")->fetchColumn();
+        $coveragePct = $totalStudents > 0 ? round(($enrolledCount / $totalStudents) * 100, 1) : 0.0;
+
+        return [
+            'face_verification_enabled' => ($raw['face_verification_enabled'] ?? 'true') === 'true',
+            'model_version' => $raw['face_model_version'] ?? self::DEFAULT_MODEL_VERSION,
+            'similarity_threshold' => (float)($raw['face_verification_threshold'] ?? self::DEFAULT_SIMILARITY_THRESHOLD),
+            'liveness_required' => ($raw['face_liveness_required'] ?? $raw['liveness_required'] ?? 'true') === 'true',
+            'stats' => [
+                'total_students' => $totalStudents,
+                'enrolled_students' => $enrolledCount,
+                'pending_students' => max(0, $totalStudents - $enrolledCount),
+                'enrollment_coverage_percentage' => $coveragePct
+            ]
+        ];
+    }
+
+    /**
+     * Update face verification institutional settings with safe boundary validations
+     */
+    public static function updateSettings(array $input, int $adminUserId): array
+    {
+        $pdo = Database::getConnection();
+        $allowed = [
+            'face_verification_enabled' => fn($v) => in_array($v, ['true', 'false', true, false], true) ? ($v ? 'true' : 'false') : null,
+            'face_verification_threshold' => function ($v) {
+                if (!is_numeric($v)) return null;
+                $f = (float)$v;
+                return ($f >= 0.30 && $f <= 0.70) ? (string)round($f, 2) : null;
+            },
+            'face_liveness_required' => fn($v) => in_array($v, ['true', 'false', true, false], true) ? ($v ? 'true' : 'false') : null
+        ];
+
+        $updated = [];
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES (:k, :v, CURRENT_TIMESTAMP)
+            ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP
+        ");
+
+        foreach ($input as $k => $v) {
+            if (isset($allowed[$k])) {
+                $sanitized = ($allowed[$k])($v);
+                if ($sanitized !== null) {
+                    $stmt->execute([':k' => $k, ':v' => $sanitized]);
+                    $updated[$k] = $sanitized;
+                }
+            }
+        }
+
+        AuditService::log($adminUserId, 'FACE_SETTINGS_UPDATED', 'system_settings', null, $updated);
+
+        return self::getSettings();
+    }
+
+    /**
+     * Log face verification attempt in audit log and face_verification_logs table
+     */
+    private static function logVerificationAttempt(?int $studentId, ?int $sessionId, string $result, float $conf, float $quality, string $notes): void
     {
         try {
             $pdo = Database::getConnection();
             $stmt = $pdo->prepare("
                 INSERT INTO face_verification_logs (student_id, session_id, verification_result, confidence_score, quality_score, method, notes, ip_address)
-                VALUES (:sid, :sess, :res, :conf, :qual, 'GEMINI_ASSISTED_VISION', :notes, :ip)
+                VALUES (:sid, :sess, :res, :conf, :qual, 'FACE_API_LOCAL', :notes, :ip)
             ");
             $stmt->execute([
                 ':sid' => $studentId,
@@ -269,8 +553,8 @@ class FaceVerificationService
                 ':notes' => $notes,
                 ':ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
             ]);
-        } catch (Exception $e) {
-            error_log("[SAMS Face Log Notice] " . $e->getMessage());
+        } catch (\Throwable $e) {
+            error_log("[SAMS Face Verification Log Warning] " . $e->getMessage());
         }
     }
 }
