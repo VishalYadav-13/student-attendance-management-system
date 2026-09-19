@@ -16,7 +16,7 @@ use Exception;
 class FaceVerificationService
 {
     public const DEFAULT_MODEL_VERSION = 'face-api-v1-128d';
-    public const DEFAULT_SIMILARITY_THRESHOLD = 0.50; // Standard Euclidean distance (lower is stricter)
+    public const DEFAULT_SIMILARITY_THRESHOLD = 0.55; // Standard Euclidean distance for face-api.js embeddings (lower is stricter)
 
     /**
      * Enroll face embedding vector for a student
@@ -401,7 +401,8 @@ class FaceVerificationService
             self::logVerificationAttempt(null, $sessionId, 'NO_ENROLLED_STUDENTS', 0.0, 0.0, 'No enrolled face profiles in class');
             return [
                 'verified' => false,
-                'result_code' => 'NO_ENROLLED_STUDENTS',
+                'result_code' => 'FACE_NOT_ENROLLED',
+                'code' => 'FACE_NOT_ENROLLED',
                 'message' => 'No enrolled face verification profiles found for this class and division.'
             ];
         }
@@ -424,7 +425,7 @@ class FaceVerificationService
         }
 
         // Convert distance to standard normalized confidence score (0.0000 - 1.0000)
-        // At distance 0.0 -> 0.9999 confidence; at threshold 0.50 -> ~0.80 confidence
+        // At distance 0.0 -> 0.9999 confidence; at threshold 0.55 -> ~0.80 confidence
         $confidence = round(max(0.5000, min(0.9999, 1.0 - ($bestDistance * 0.40))), 4);
 
         // 7. Check if best match meets threshold
@@ -439,6 +440,8 @@ class FaceVerificationService
                 'verified' => false,
                 'result_code' => 'FACE_NOT_RECOGNIZED',
                 'code' => 'FACE_NOT_RECOGNIZED',
+                'best_distance' => round($bestDistance, 4),
+                'threshold' => $threshold,
                 'message' => 'Face not recognized'
             ];
         }
@@ -478,13 +481,15 @@ class FaceVerificationService
                 'already_marked' => true,
                 'attendance_status' => $existing['status'],
                 'confidence' => $confidence,
+                'best_distance' => round($bestDistance, 4),
+                'threshold' => $threshold,
                 'student' => [
                     'student_id' => $matchedStudentId,
                     'full_name' => $bestStudent['full_name'],
                     'roll_number' => $bestStudent['roll_number'],
                     'student_uid' => $bestStudent['student_uid']
                 ],
-                'message' => 'Already marked present. (Attendance already recorded.)'
+                'message' => "Already Present. (Attendance already recorded for {$bestStudent['full_name']}.)"
             ];
         }
 
@@ -513,10 +518,13 @@ class FaceVerificationService
 
         return [
             'verified' => true,
-            'result_code' => 'SUCCESS',
+            'result_code' => 'FACE_RECOGNIZED',
+            'code' => 'FACE_RECOGNIZED',
             'already_marked' => false,
             'attendance_status' => 'PRESENT',
             'confidence' => $confidence,
+            'best_distance' => round($bestDistance, 4),
+            'threshold' => $threshold,
             'student' => [
                 'student_id' => $matchedStudentId,
                 'full_name' => $bestStudent['full_name'],

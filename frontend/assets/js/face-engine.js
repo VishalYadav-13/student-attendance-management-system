@@ -172,7 +172,8 @@ const FaceEngine = {
     }
 
     const landmarks = detection.landmarks;
-    const descriptor = Array.from(detection.descriptor); // 128 float array
+    const rawDescriptor = Array.from(detection.descriptor); // 128 float array
+    const descriptor = this.normalizeEmbedding(rawDescriptor);
 
     // 3. Evaluate Liveness / Anti-Spoofing
     const livenessResult = this.evaluateLiveness(landmarks);
@@ -274,6 +275,23 @@ const FaceEngine = {
   },
 
   /**
+   * Strictly L2 normalize a 128-dimensional embedding vector
+   */
+  normalizeEmbedding(vec) {
+    if (!vec || !Array.isArray(vec) || vec.length !== 128) return vec;
+    let sumSq = 0.0;
+    for (let j = 0; j < 128; j++) {
+      const v = Number(vec[j]) || 0;
+      sumSq += v * v;
+    }
+    const norm = Math.sqrt(sumSq);
+    if (norm > 0) {
+      return vec.map(v => (Number(v) || 0) / norm);
+    }
+    return vec;
+  },
+
+  /**
    * Average and normalize an array of 128D embedding vectors
    */
   averageEmbeddings(vectorList) {
@@ -284,7 +302,7 @@ const FaceEngine = {
     for (let i = 0; i < n; i++) {
       const vec = vectorList[i];
       for (let j = 0; j < 128; j++) {
-        avg[j] += vec[j];
+        avg[j] += Number(vec[j]) || 0;
       }
     }
 
@@ -292,18 +310,6 @@ const FaceEngine = {
       avg[j] /= n;
     }
 
-    // L2 Normalize
-    let norm = 0.0;
-    for (let j = 0; j < 128; j++) {
-      norm += avg[j] * avg[j];
-    }
-    norm = Math.sqrt(norm);
-    if (norm > 0) {
-      for (let j = 0; j < 128; j++) {
-        avg[j] /= norm;
-      }
-    }
-
-    return avg;
+    return this.normalizeEmbedding(avg);
   }
 };

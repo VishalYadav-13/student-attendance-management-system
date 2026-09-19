@@ -174,6 +174,7 @@
   <script src="/frontend/assets/js/auth.js"></script>
   <script src="/frontend/assets/js/ui.js"></script>
   <script src="/frontend/assets/js/camera.js"></script>
+  <script src="/frontend/assets/js/face-engine.js"></script>
   <script>
     const currentUser = Auth.requireRole('STUDENT');
     Auth.renderUserProfile(currentUser);
@@ -238,12 +239,42 @@
       btn.disabled = true;
 
       try {
+        const video = document.getElementById('enrollment-video');
+        if (typeof FaceEngine !== 'undefined') {
+          await FaceEngine.init();
+        }
+
+        let descriptor = null;
+        let qualityScore = 0.95;
+
+        if (video && typeof FaceEngine !== 'undefined') {
+          const result = await FaceEngine.processFrame(video);
+          if (result.status === 'NO_FACE') {
+            throw new Error('Face not detected. Please position your face clearly inside the frame.');
+          }
+          if (result.status === 'MULTIPLE_FACES') {
+            throw new Error('Multiple faces detected. Only one student should be visible.');
+          }
+          if (result.status === 'POOR_QUALITY') {
+            throw new Error('Face quality is insufficient. Please improve lighting and look directly at camera.');
+          }
+          if (result.descriptor) {
+            descriptor = result.descriptor;
+            qualityScore = Math.round((result.score || 0.95) * 10000) / 10000;
+          }
+        }
+
         const frameData = Camera.captureFrame();
-        const res = await API.post('/api/face/enroll', {
+        const payload = {
           student_id: studentData.student_id,
+          embedding: descriptor,
           image: frameData,
-          consent: true
-        });
+          consent: true,
+          quality_score: qualityScore,
+          model_version: 'face-api-v1-128d'
+        };
+
+        const res = await API.post('/api/face/enroll', payload);
 
         UI.toast("✓ Biometric face profile enrolled successfully!", "success");
         closeEnrollmentModal();

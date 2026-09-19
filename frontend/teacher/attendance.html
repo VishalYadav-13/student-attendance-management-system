@@ -654,14 +654,14 @@
       if (!popup || !data || !data.student) return;
 
       const stu = data.student;
-      titleEl.textContent = data.already_marked ? 'Already Marked Present' : 'Attendance Marked';
+      titleEl.textContent = data.already_marked ? 'Already Present' : '✓ Attendance Marked';
       nameEl.textContent = stu.full_name;
-      rollEl.textContent = `Roll No: ${stu.roll_number}`;
-      badgeEl.textContent = 'PRESENT';
-      badgeEl.className = 'badge badge-present';
+      rollEl.textContent = `Roll No: ${stu.roll_number} | UID: ${stu.student_uid || ''}`;
+      badgeEl.textContent = 'Status: PRESENT';
+      badgeEl.className = data.already_marked ? 'badge' : 'badge badge-present';
 
       const now = new Date();
-      timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      timeEl.textContent = `Time: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
       popup.style.display = 'block';
 
