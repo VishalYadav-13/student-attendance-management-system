@@ -147,9 +147,46 @@ if ($requestMethod === 'GET' && $requestUri === '/api/health') {
         'database' => $dbStatus,
         'driver' => $dbDriver,
         'app_env' => Env::get('APP_ENV', 'development'),
-        'version' => '2.3.1',
+        'version' => '2.4.0',
         'timestamp' => date('c')
     ], $dbStatus === 'error' ? "Database note: {$dbError}" : 'SAMS API is operating normally.');
+}
+
+// 0.1 Admin Maintenance & Database Migration Routes
+if ($requestMethod === 'POST' && $requestUri === '/api/admin/maintenance/migrate') {
+    $admin = \SAMS\Middleware\RoleMiddleware::adminOnly();
+    if (empty($admin)) {
+        return;
+    }
+    $pdo = Database::getConnection();
+    $report = Database::executeSingleTeacherMigration($pdo);
+    Response::success($report, 'Single teacher and admin structure migration executed successfully.');
+}
+if ($requestMethod === 'GET' && $requestUri === '/api/admin/maintenance/status') {
+    $admin = \SAMS\Middleware\RoleMiddleware::adminOnly();
+    if (empty($admin)) {
+        return;
+    }
+    $pdo = Database::getConnection();
+    $activeT = (int)$pdo->query("SELECT COUNT(*) FROM teachers WHERE status = 'ACTIVE'")->fetchColumn();
+    $inactiveT = (int)$pdo->query("SELECT COUNT(*) FROM teachers WHERE status = 'INACTIVE'")->fetchColumn();
+    $teachers = $pdo->query("SELECT teacher_id, user_id, employee_id, full_name, status FROM teachers ORDER BY teacher_id ASC")->fetchAll();
+    $adminRow = $pdo->query("SELECT admin_id, user_id, full_name FROM admins WHERE admin_id = 1 OR user_id = 1 LIMIT 1")->fetch();
+    $s25 = $pdo->query("SELECT s.session_id, s.teacher_id, t.full_name AS teacher_name, s.status FROM attendance_sessions s LEFT JOIN teachers t ON s.teacher_id = t.teacher_id WHERE s.session_id = 25")->fetch();
+    $totalSessions = (int)$pdo->query("SELECT COUNT(*) FROM attendance_sessions")->fetchColumn();
+    $canonicalId = (int)$pdo->query("SELECT t.teacher_id FROM users u JOIN teachers t ON u.user_id = t.user_id WHERE LOWER(u.email) = 'teacher@sams.edu' LIMIT 1")->fetchColumn();
+    $canonicalSessions = (int)$pdo->query("SELECT COUNT(*) FROM attendance_sessions WHERE teacher_id = {$canonicalId}")->fetchColumn();
+
+    Response::success([
+        'admin' => $adminRow,
+        'active_teachers_count' => $activeT,
+        'inactive_teachers_count' => $inactiveT,
+        'teachers' => $teachers,
+        'session_25' => $s25,
+        'total_sessions' => $totalSessions,
+        'canonical_teacher_id' => $canonicalId,
+        'canonical_sessions_count' => $canonicalSessions
+    ], 'Maintenance status retrieved.');
 }
 
 // 1. Authentication

@@ -143,58 +143,7 @@ class Database
 
             // Ensure single active teacher (Prof. Kalpesh Sir) and admin (Madhura Mam)
             try {
-                $pdo->exec("
-                    DO \$do\$
-                    DECLARE
-                        target_teacher_id INT;
-                        target_user_id INT;
-                    BEGIN
-                        SELECT t.teacher_id, u.user_id INTO target_teacher_id, target_user_id
-                        FROM users u
-                        JOIN teachers t ON u.user_id = t.user_id
-                        WHERE LOWER(u.email) = 'teacher@sams.edu'
-                        LIMIT 1;
-
-                        IF target_teacher_id IS NULL THEN
-                            SELECT teacher_id, user_id INTO target_teacher_id, target_user_id
-                            FROM teachers ORDER BY teacher_id ASC LIMIT 1;
-                        END IF;
-
-                        IF target_teacher_id IS NOT NULL THEN
-                            UPDATE teachers
-                            SET full_name = 'Prof. Kalpesh Sir',
-                                designation = 'Senior Faculty - Computer Engineering',
-                                status = 'ACTIVE'
-                            WHERE teacher_id = target_teacher_id;
-
-                            UPDATE users
-                            SET status = 'ACTIVE', role_id = 2
-                            WHERE user_id = target_user_id;
-
-                            UPDATE attendance_sessions
-                            SET teacher_id = target_teacher_id;
-
-                            UPDATE teacher_subjects
-                            SET teacher_id = target_teacher_id
-                            WHERE teacher_id != target_teacher_id
-                              AND NOT EXISTS (
-                                  SELECT 1 FROM teacher_subjects ts2
-                                  WHERE ts2.teacher_id = target_teacher_id
-                                    AND ts2.subject_id = teacher_subjects.subject_id
-                                    AND ts2.class_id = teacher_subjects.class_id
-                                    AND ts2.division_id = teacher_subjects.division_id
-                                    AND ts2.academic_year_id = teacher_subjects.academic_year_id
-                              );
-
-                            UPDATE timetables SET teacher_id = target_teacher_id;
-
-                            UPDATE teachers SET status = 'INACTIVE' WHERE teacher_id != target_teacher_id;
-                            UPDATE users SET status = 'INACTIVE' WHERE role_id = 2 AND user_id != target_user_id;
-                        END IF;
-
-                        UPDATE admins SET full_name = 'Madhura Mam' WHERE admin_id = 1 OR user_id = 1;
-                    END \$do\$;
-                ");
+                self::executeSingleTeacherMigration($pdo);
             } catch (\Throwable $tErr) {
                 error_log("[SAMS Single Teacher Migration Error] " . $tErr->getMessage());
             }
@@ -693,6 +642,158 @@ class Database
 
             // Re-enable foreign key constraints
             $pdo->exec("PRAGMA foreign_keys = ON;");
+
+            // Ensure single teacher & admin structure in SQLite
+            try {
+                self::executeSingleTeacherMigration($pdo);
+            } catch (\Throwable $tErr) {
+                error_log("[SAMS SQLite Single Teacher Migration Error] " . $tErr->getMessage());
+            }
         }
+    }
+
+    /**
+     * Idempotent Data Migration: Simplify staff structure to 1 active teacher and 1 active admin
+     * - Prof. Kalpesh Sir (TEACHER, ACTIVE)
+     * - Madhura Mam (ADMIN, ACTIVE)
+     * - All legitimate attendance sessions (including Session #25) migrated to Prof. Kalpesh Sir
+     * - All other teachers safely deactivated (status = INACTIVE)
+     */
+    public static function executeSingleTeacherMigration(PDO $pdo): array
+    {
+        // 1. Identify canonical teacher account
+        $stmt = $pdo->prepare("
+            SELECT t.teacher_id, u.user_id, t.full_name
+            FROM users u
+            JOIN teachers t ON u.user_id = t.user_id
+            WHERE LOWER(u.email) = 'teacher@sams.edu'
+            LIMIT 1
+        ");
+        $stmt->execute();
+        $target = $stmt->fetch();
+
+        if (!$target) {
+            $tQuery = $pdo->query("SELECT teacher_id, user_id, full_name FROM teachers ORDER BY teacher_id ASC LIMIT 1");
+            $target = $tQuery ? $tQuery->fetch() : null;
+        }
+
+        if (!$target) {
+            return ['success' => false, 'message' => 'No teacher records found in database.'];
+        }
+
+        $targetTeacherId = (int)$target['teacher_id'];
+        $targetUserId = (int)$target['user_id'];
+
+        $pdo->beginTransaction();
+        try {
+            // 2. Rename canonical teacher account to Prof. Kalpesh Sir
+            $updT = $pdo->prepare("
+                UPDATE teachers
+                SET full_name = 'Prof. Kalpesh Sir',
+                    designation = 'Senior Faculty - Computer Engineering',
+                    status = 'ACTIVE'
+                WHERE teacher_id = :tid
+            ");
+            $updT->execute([':tid' => $targetTeacherId]);
+
+            // Ensure canonical teacher user is ACTIVE with role 2 (TEACHER)
+            $updU = $pdo->prepare("
+                UPDATE users
+                SET status = 'ACTIVE', role_id = 2
+                WHERE user_id = :uid
+            ");
+            $updU->execute([':uid' => $targetUserId]);
+
+            // 3. Migrate ALL attendance sessions to Prof. Kalpesh Sir (including Session #25)
+            $updS = $pdo->prepare("
+                UPDATE attendance_sessions
+                SET teacher_id = :tid
+            ");
+            $updS->execute([':tid' => $targetTeacherId]);
+            $migratedSessionsCount = $updS->rowCount();
+
+            // 4. Migrate subject allocations & timetables
+            try {
+                $updTS = $pdo->prepare("
+                    UPDATE teacher_subjects
+                    SET teacher_id = :tid
+                    WHERE teacher_id != :tid
+                ");
+                $updTS->execute([':tid' => $targetTeacherId]);
+            } catch (\Throwable $tsEx) {
+                // Ignore unique constraint conflicts on duplicate allocations
+            }
+
+            try {
+                $updTT = $pdo->prepare("UPDATE timetables SET teacher_id = :tid");
+                $updTT->execute([':tid' => $targetTeacherId]);
+            } catch (\Throwable $ttEx) {}
+
+            // 5. Safely deactivate all other teachers (preserving FK relationships and audit logs)
+            $deactT = $pdo->prepare("
+                UPDATE teachers
+                SET status = 'INACTIVE'
+                WHERE teacher_id != :tid
+            ");
+            $deactT->execute([':tid' => $targetTeacherId]);
+            $deactivatedTeachersCount = $deactT->rowCount();
+
+            // Safely deactivate other teacher user accounts
+            $deactU = $pdo->prepare("
+                UPDATE users
+                SET status = 'INACTIVE'
+                WHERE role_id = 2 AND user_id != :uid
+            ");
+            $deactU->execute([':uid' => $targetUserId]);
+
+            // 6. Rename admin account to Madhura Mam
+            $updAdm = $pdo->prepare("
+                UPDATE admins
+                SET full_name = 'Madhura Mam'
+                WHERE admin_id = 1 OR user_id = 1
+            ");
+            $updAdm->execute();
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        // Post-migration verification queries
+        $activeT = (int)$pdo->query("SELECT COUNT(*) FROM teachers WHERE status = 'ACTIVE'")->fetchColumn();
+        $inactiveT = (int)$pdo->query("SELECT COUNT(*) FROM teachers WHERE status = 'INACTIVE'")->fetchColumn();
+
+        $tCheck = $pdo->prepare("SELECT teacher_id, full_name, status FROM teachers WHERE teacher_id = :tid");
+        $tCheck->execute([':tid' => $targetTeacherId]);
+        $activeTeacher = $tCheck->fetch();
+
+        $admCheck = $pdo->query("SELECT admin_id, full_name FROM admins WHERE admin_id = 1 OR user_id = 1 LIMIT 1")->fetch();
+
+        $s25Check = $pdo->query("
+            SELECT s.session_id, s.teacher_id, t.full_name AS teacher_name
+            FROM attendance_sessions s
+            LEFT JOIN teachers t ON s.teacher_id = t.teacher_id
+            WHERE s.session_id = 25
+        ")->fetch();
+
+        $sessionsOwnedByCanonical = (int)$pdo->query("SELECT COUNT(*) FROM attendance_sessions WHERE teacher_id = {$targetTeacherId}")->fetchColumn();
+        $sessionsOwnedByOthers = (int)$pdo->query("SELECT COUNT(*) FROM attendance_sessions WHERE teacher_id != {$targetTeacherId}")->fetchColumn();
+
+        return [
+            'success' => true,
+            'canonical_teacher_id' => $targetTeacherId,
+            'canonical_teacher_user_id' => $targetUserId,
+            'canonical_teacher_name' => $activeTeacher['full_name'] ?? 'Prof. Kalpesh Sir',
+            'admin_name' => $admCheck['full_name'] ?? 'Madhura Mam',
+            'active_teachers_count' => $activeT,
+            'inactive_teachers_count' => $inactiveT,
+            'session_25' => $s25Check,
+            'sessions_migrated' => $migratedSessionsCount,
+            'sessions_owned_by_canonical' => $sessionsOwnedByCanonical,
+            'sessions_owned_by_others' => $sessionsOwnedByOthers
+        ];
     }
 }

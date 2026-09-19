@@ -85,12 +85,12 @@ ON CONFLICT (subject_id) DO NOTHING;
 -- =====================================================================
 INSERT INTO users (user_id, role_id, email, password_hash, status) VALUES
 (1, 1, 'admin@sams.edu', '$2y$10$T0lhi.fBoPbG16ePMKbaBuayUjpPfXVz1B9sHZL3pi5cCDhNXgdES', 'ACTIVE'),
--- Teachers (IDs 2-6)
+-- Teachers (IDs 2-6) - Single active teacher: Prof. Kalpesh Sir
 (2, 2, 'teacher@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
-(3, 2, 'teacher.patel@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
-(4, 2, 'teacher.verma@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
-(5, 2, 'teacher.iyer@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
-(6, 2, 'teacher.deshmukh@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE'),
+(3, 2, 'teacher.patel@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'INACTIVE'),
+(4, 2, 'teacher.verma@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'INACTIVE'),
+(5, 2, 'teacher.iyer@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'INACTIVE'),
+(6, 2, 'teacher.deshmukh@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'INACTIVE'),
 -- Students (IDs 7-26)
 (7, 3, 'vishal.yadav@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
 (8, 3, 'aarav.sharma@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
