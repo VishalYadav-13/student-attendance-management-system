@@ -141,6 +141,18 @@ class Database
                 }
             }
 
+            // Ensure teacher demo account exists and is active with role TEACHER
+            try {
+                $pdo->exec("
+                    UPDATE users SET email = 'teacher@sams.edu', status = 'ACTIVE' WHERE user_id = 2 OR email = 'teacher.sharma@sams.edu';
+                    INSERT INTO users (user_id, role_id, email, password_hash, status)
+                    VALUES (2, 2, 'teacher@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE')
+                    ON CONFLICT (user_id) DO UPDATE SET email = 'teacher@sams.edu', status = 'ACTIVE', role_id = 2;
+                ");
+            } catch (\Throwable $tErr) {
+                error_log("[SAMS Teacher Ensure Error] " . $tErr->getMessage());
+            }
+
             // Always synchronize all PostgreSQL sequences to MAX(column_value)
             // Safe to run repeatedly; only synchronizes when a sequence is behind MAX(id)
             self::syncPgsqlSequences($pdo);

@@ -147,6 +147,7 @@ if ($requestMethod === 'GET' && $requestUri === '/api/health') {
         'database' => $dbStatus,
         'driver' => $dbDriver,
         'app_env' => Env::get('APP_ENV', 'development'),
+        'version' => '2.3.1',
         'timestamp' => date('c')
     ], $dbStatus === 'error' ? "Database note: {$dbError}" : 'SAMS API is operating normally.');
 }
