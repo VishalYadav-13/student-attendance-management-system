@@ -37,7 +37,17 @@ class AttendanceController
             Response::validationError($validator->errors());
         }
 
-        $teacherId = $user['role_name'] === 'TEACHER' ? (int)$user['teacher_id'] : (int)($input['teacher_id'] ?? 1);
+        $pdo = Database::getConnection();
+
+        if ($user['role_name'] === 'TEACHER') {
+            $teacherId = (int)$user['teacher_id'];
+        } else {
+            $teacherId = !empty($input['teacher_id']) ? (int)$input['teacher_id'] : null;
+            if (!$teacherId) {
+                $tQuery = $pdo->query("SELECT teacher_id FROM teachers WHERE status = 'ACTIVE' ORDER BY teacher_id ASC LIMIT 1");
+                $teacherId = (int)($tQuery ? $tQuery->fetchColumn() : 1);
+            }
+        }
         $classId = (int)$input['class_id'];
         $divisionId = (int)$input['division_id'];
         $subjectId = (int)$input['subject_id'];
@@ -46,8 +56,6 @@ class AttendanceController
         $endTime = $input['end_time'] ?? null;
         $mode = $input['verification_mode'] ?? 'HYBRID';
         $lectureNum = (int)($input['lecture_number'] ?? 1);
-
-        $pdo = Database::getConnection();
 
         // Check if an identical open session already exists
         $dupStmt = $pdo->prepare("
@@ -182,13 +190,21 @@ class AttendanceController
 
         $pdo = Database::getConnection();
 
-        // 1. Verify session exists and is OPEN
-        $sessStmt = $pdo->prepare("SELECT status FROM attendance_sessions WHERE session_id = :sid");
+        // 1. Verify session exists, belongs to teacher, and is OPEN
+        $sessStmt = $pdo->prepare("SELECT session_id, teacher_id, status FROM attendance_sessions WHERE session_id = :sid");
         $sessStmt->execute([':sid' => $sessionId]);
         $session = $sessStmt->fetch();
 
         if (!$session) {
             Response::notFound("Attendance session #{$sessionId} not found.");
+        }
+        if ($user['role_name'] === 'TEACHER') {
+            $userTeacherId = (int)($user['teacher_id'] ?? 0);
+            $sessionTeacherId = (int)$session['teacher_id'];
+            if ($sessionTeacherId !== $userTeacherId) {
+                Response::forbidden("Access denied: You can only record attendance for your own sessions.");
+                return;
+            }
         }
         if ($session['status'] === 'CLOSED') {
             Response::forbidden("This attendance session has been closed. Modifications require administrator override.");
@@ -274,15 +290,8 @@ class AttendanceController
             $userTeacherId = (int)($user['teacher_id'] ?? 0);
             $sessionTeacherId = (int)$session['teacher_id'];
             if ($sessionTeacherId !== $userTeacherId) {
-                $matchStmt = $pdo->prepare("
-                    SELECT 1 FROM teachers t1, teachers t2 
-                    WHERE t1.teacher_id = :sid AND t2.teacher_id = :uid 
-                      AND (LOWER(t1.full_name) = LOWER(t2.full_name) OR t1.department_id = t2.department_id)
-                ");
-                $matchStmt->execute([':sid' => $sessionTeacherId, ':uid' => $userTeacherId]);
-                if (!$matchStmt->fetch()) {
-                    Response::forbidden("Access denied: You can only save attendance for your own sessions.");
-                }
+                Response::forbidden("Access denied: You can only save attendance for your own sessions.");
+                return;
             }
         }
 
@@ -524,15 +533,8 @@ class AttendanceController
             $userTeacherId = (int)($user['teacher_id'] ?? 0);
             $sessionTeacherId = (int)$session['teacher_id'];
             if ($sessionTeacherId !== $userTeacherId) {
-                $matchStmt = $pdo->prepare("
-                    SELECT 1 FROM teachers t1, teachers t2 
-                    WHERE t1.teacher_id = :sid AND t2.teacher_id = :uid 
-                      AND (LOWER(t1.full_name) = LOWER(t2.full_name) OR t1.department_id = t2.department_id)
-                ");
-                $matchStmt->execute([':sid' => $sessionTeacherId, ':uid' => $userTeacherId]);
-                if (!$matchStmt->fetch()) {
-                    Response::forbidden("Access denied: You can only close your own attendance sessions.");
-                }
+                Response::forbidden("Access denied: You can only close your own attendance sessions.");
+                return;
             }
         }
 

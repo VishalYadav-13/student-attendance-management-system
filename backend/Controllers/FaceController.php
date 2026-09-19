@@ -38,15 +38,23 @@ class FaceController
             Response::validationError($validator->errors());
         }
 
-        $teacherId = $user['role_name'] === 'TEACHER' ? (int)$user['teacher_id'] : (int)($input['teacher_id'] ?? 1);
+        $pdo = Database::getConnection();
+
+        if ($user['role_name'] === 'TEACHER') {
+            $teacherId = (int)$user['teacher_id'];
+        } else {
+            $teacherId = !empty($input['teacher_id']) ? (int)$input['teacher_id'] : null;
+            if (!$teacherId) {
+                $tQuery = $pdo->query("SELECT teacher_id FROM teachers WHERE status = 'ACTIVE' ORDER BY teacher_id ASC LIMIT 1");
+                $teacherId = (int)($tQuery ? $tQuery->fetchColumn() : 1);
+            }
+        }
         $classId = (int)$input['class_id'];
         $divisionId = (int)$input['division_id'];
         $subjectId = (int)$input['subject_id'];
         $sessionDate = (string)$input['session_date'];
         $startTime = (string)$input['start_time'];
         $lectureNum = (int)($input['lecture_number'] ?? 1);
-
-        $pdo = Database::getConnection();
 
         // Check for existing open session for this class/div/subject today
         $dupStmt = $pdo->prepare("
@@ -127,16 +135,8 @@ class FaceController
             $userTeacherId = (int)($user['teacher_id'] ?? 0);
             $sessionTeacherId = (int)$session['teacher_id'];
             if ($sessionTeacherId !== $userTeacherId) {
-                $matchStmt = $pdo->prepare("
-                    SELECT 1 FROM teachers t1, teachers t2 
-                    WHERE t1.teacher_id = :sid AND t2.teacher_id = :uid 
-                      AND (LOWER(t1.full_name) = LOWER(t2.full_name) OR t1.department_id = t2.department_id)
-                ");
-                $matchStmt->execute([':sid' => $sessionTeacherId, ':uid' => $userTeacherId]);
-                if (!$matchStmt->fetch()) {
-                    Response::forbidden("Access denied: You can only close your own attendance sessions.");
-                    return;
-                }
+                Response::forbidden("Access denied: You can only close your own attendance sessions.");
+                return;
             }
         }
 
@@ -273,17 +273,8 @@ class FaceController
             $userTeacherId = (int)($user['teacher_id'] ?? 0);
             $sessionTeacherId = (int)$session['teacher_id'];
             if ($sessionTeacherId !== $userTeacherId) {
-                // Allow if teachers belong to same department or share name (e.g. Dr. Rajesh Sharma account aliases)
-                $matchStmt = $pdo->prepare("
-                    SELECT 1 FROM teachers t1, teachers t2 
-                    WHERE t1.teacher_id = :sid AND t2.teacher_id = :uid 
-                      AND (LOWER(t1.full_name) = LOWER(t2.full_name) OR t1.department_id = t2.department_id)
-                ");
-                $matchStmt->execute([':sid' => $sessionTeacherId, ':uid' => $userTeacherId]);
-                if (!$matchStmt->fetch()) {
-                    Response::forbidden("Access denied: You can only verify attendance for your own sessions.");
-                    return;
-                }
+                Response::forbidden("Access denied: You can only record attendance for your own sessions.");
+                return;
             }
         }
         if ($session['status'] === 'CLOSED') {

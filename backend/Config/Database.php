@@ -141,17 +141,62 @@ class Database
                 }
             }
 
-            // Ensure teacher demo account exists and is active with role TEACHER
+            // Ensure single active teacher (Prof. Kalpesh Sir) and admin (Madhura Mam)
             try {
                 $pdo->exec("
-                    UPDATE attendance_sessions SET teacher_id = 6 WHERE teacher_id = 1 AND session_id = 25;
-                    UPDATE users SET email = 'teacher@sams.edu', status = 'ACTIVE' WHERE user_id = 2 OR email = 'teacher.sharma@sams.edu';
-                    INSERT INTO users (user_id, role_id, email, password_hash, status)
-                    VALUES (2, 2, 'teacher@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'ACTIVE')
-                    ON CONFLICT (user_id) DO UPDATE SET email = 'teacher@sams.edu', status = 'ACTIVE', role_id = 2;
+                    DO \$do\$
+                    DECLARE
+                        target_teacher_id INT;
+                        target_user_id INT;
+                    BEGIN
+                        SELECT t.teacher_id, u.user_id INTO target_teacher_id, target_user_id
+                        FROM users u
+                        JOIN teachers t ON u.user_id = t.user_id
+                        WHERE LOWER(u.email) = 'teacher@sams.edu'
+                        LIMIT 1;
+
+                        IF target_teacher_id IS NULL THEN
+                            SELECT teacher_id, user_id INTO target_teacher_id, target_user_id
+                            FROM teachers ORDER BY teacher_id ASC LIMIT 1;
+                        END IF;
+
+                        IF target_teacher_id IS NOT NULL THEN
+                            UPDATE teachers
+                            SET full_name = 'Prof. Kalpesh Sir',
+                                designation = 'Senior Faculty - Computer Engineering',
+                                status = 'ACTIVE'
+                            WHERE teacher_id = target_teacher_id;
+
+                            UPDATE users
+                            SET status = 'ACTIVE', role_id = 2
+                            WHERE user_id = target_user_id;
+
+                            UPDATE attendance_sessions
+                            SET teacher_id = target_teacher_id;
+
+                            UPDATE teacher_subjects
+                            SET teacher_id = target_teacher_id
+                            WHERE teacher_id != target_teacher_id
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM teacher_subjects ts2
+                                  WHERE ts2.teacher_id = target_teacher_id
+                                    AND ts2.subject_id = teacher_subjects.subject_id
+                                    AND ts2.class_id = teacher_subjects.class_id
+                                    AND ts2.division_id = teacher_subjects.division_id
+                                    AND ts2.academic_year_id = teacher_subjects.academic_year_id
+                              );
+
+                            UPDATE timetables SET teacher_id = target_teacher_id;
+
+                            UPDATE teachers SET status = 'INACTIVE' WHERE teacher_id != target_teacher_id;
+                            UPDATE users SET status = 'INACTIVE' WHERE role_id = 2 AND user_id != target_user_id;
+                        END IF;
+
+                        UPDATE admins SET full_name = 'Madhura Mam' WHERE admin_id = 1 OR user_id = 1;
+                    END \$do\$;
                 ");
             } catch (\Throwable $tErr) {
-                error_log("[SAMS Teacher Ensure Error] " . $tErr->getMessage());
+                error_log("[SAMS Single Teacher Migration Error] " . $tErr->getMessage());
             }
 
             // Always synchronize all PostgreSQL sequences to MAX(column_value)
@@ -324,6 +369,13 @@ class Database
                 CREATE INDEX IF NOT EXISTS idx_face_templates_student ON student_face_templates(student_id);
                 CREATE INDEX IF NOT EXISTS idx_face_templates_status ON student_face_templates(status);
                 UPDATE users SET email = 'teacher@sams.edu', status = 'ACTIVE' WHERE user_id = 2 OR email = 'teacher.sharma@sams.edu';
+                UPDATE admins SET full_name = 'Madhura Mam' WHERE admin_id = 1 OR user_id = 1;
+                UPDATE teachers SET full_name = 'Prof. Kalpesh Sir', designation = 'Senior Faculty - Computer Engineering', status = 'ACTIVE' WHERE teacher_id = 1;
+                UPDATE teachers SET status = 'INACTIVE' WHERE teacher_id != 1;
+                UPDATE users SET status = 'INACTIVE' WHERE role_id = 2 AND user_id != 2;
+                UPDATE attendance_sessions SET teacher_id = 1;
+                UPDATE teacher_subjects SET teacher_id = 1;
+                UPDATE timetables SET teacher_id = 1;
             ");
             return;
         }

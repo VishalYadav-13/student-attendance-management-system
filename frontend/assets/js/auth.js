@@ -77,12 +77,18 @@ const Auth = {
     const roleEl = document.getElementById('sidebar-user-role');
     const avatarEl = document.getElementById('sidebar-avatar');
 
-    const displayName = user.full_name || user.email.split('@')[0];
+    let displayName = user.full_name;
+    if (!displayName) {
+      if (user.role === 'ADMIN') displayName = 'Madhura Mam';
+      else if (user.role === 'TEACHER') displayName = 'Prof. Kalpesh Sir';
+      else displayName = user.email ? user.email.split('@')[0] : 'User';
+    }
     if (nameEl) nameEl.textContent = displayName;
     if (roleEl) roleEl.textContent = user.role || 'User';
     if (avatarEl) {
-      const initials = displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-      avatarEl.textContent = initials || 'U';
+      const parts = displayName.split(' ').filter(Boolean);
+      const initials = parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]) : (parts[0] ? parts[0][0] : 'U');
+      avatarEl.textContent = initials.toUpperCase();
     }
   }
 };

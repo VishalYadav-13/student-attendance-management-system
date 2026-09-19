@@ -116,17 +116,17 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- 9. Admin Profile
 INSERT INTO admins (admin_id, user_id, full_name, phone, designation) VALUES
-(1, 1, 'Prof. Arvind Kulkarni', '+91 98230 11223', 'Dean & Chief Administrator')
-ON CONFLICT (admin_id) DO NOTHING;
+(1, 1, 'Madhura Mam', '+91 98230 11223', 'Dean & Chief Administrator')
+ON CONFLICT (admin_id) DO UPDATE SET full_name = 'Madhura Mam';
 
--- 10. Teacher Profiles
-INSERT INTO teachers (teacher_id, user_id, employee_id, full_name, phone, department_id, designation) VALUES
-(1, 2, 'EMP-CO-01', 'Dr. Rajesh Sharma', '+91 98221 44551', 1, 'HOD & Associate Professor'),
-(2, 3, 'EMP-CO-02', 'Prof. Priya Patel', '+91 98221 44552', 1, 'Assistant Professor (Computer)'),
-(3, 4, 'EMP-IT-01', 'Prof. Amit Verma', '+91 98221 44553', 2, 'Senior Lecturer (IT)'),
-(4, 5, 'EMP-IT-02', 'Prof. Sneha Iyer', '+91 98221 44554', 2, 'Assistant Professor (IT)'),
-(5, 6, 'EMP-EJ-01', 'Prof. Vikram Deshmukh', '+91 98221 44555', 3, 'Lecturer (Electronics)')
-ON CONFLICT (teacher_id) DO NOTHING;
+-- 10. Teacher Profiles (Single active teacher: Prof. Kalpesh Sir)
+INSERT INTO teachers (teacher_id, user_id, employee_id, full_name, phone, department_id, designation, status) VALUES
+(1, 2, 'EMP-CO-01', 'Prof. Kalpesh Sir', '+91 98221 44551', 1, 'Senior Faculty - Computer Engineering', 'ACTIVE'),
+(2, 3, 'EMP-CO-02', 'Prof. Priya Patel', '+91 98221 44552', 1, 'Assistant Professor (Computer)', 'INACTIVE'),
+(3, 4, 'EMP-IT-01', 'Prof. Amit Verma', '+91 98221 44553', 2, 'Senior Lecturer (IT)', 'INACTIVE'),
+(4, 5, 'EMP-IT-02', 'Prof. Sneha Iyer', '+91 98221 44554', 2, 'Assistant Professor (IT)', 'INACTIVE'),
+(5, 6, 'EMP-EJ-01', 'Prof. Vikram Deshmukh', '+91 98221 44555', 3, 'Lecturer (Electronics)', 'INACTIVE')
+ON CONFLICT (teacher_id) DO UPDATE SET full_name = EXCLUDED.full_name, status = EXCLUDED.status;
 
 -- 11. Student Profiles (20 students in SY CO Division A)
 INSERT INTO students (student_id, user_id, roll_number, student_uid, full_name, email, phone, date_of_birth, gender, department_id, course_id, class_id, division_id, batch, admission_year, face_verification_status) VALUES
@@ -161,29 +161,29 @@ INSERT INTO face_profiles (student_id, status, biometric_hash, feature_vector, s
 (6, 'ENROLLED', 'sha256_hash_student_06_feature_vec', '{"landmarks":128,"embedding_version":"sams-v1","clarity":0.89}', 3, true)
 ON CONFLICT (student_id) DO NOTHING;
 
--- 13. Subject Allocations to Teachers
+-- 13. Subject Allocations to Teachers (Allocated to Prof. Kalpesh Sir)
 INSERT INTO teacher_subjects (id, teacher_id, subject_id, class_id, division_id, academic_year_id) VALUES
-(1, 1, 1, 1, 1, 1), -- Dr. Rajesh Sharma -> Data Structures (SY CO A)
-(2, 2, 2, 1, 1, 1), -- Prof. Priya Patel -> DBMS (SY CO A)
-(3, 1, 4, 1, 1, 1), -- Dr. Rajesh Sharma -> OOP C++ (SY CO A)
-(4, 2, 3, 1, 1, 1), -- Prof. Priya Patel -> Computer Graphics (SY CO A)
-(5, 5, 5, 1, 1, 1)  -- Prof. Vikram Deshmukh -> Digital Techniques (SY CO A)
-ON CONFLICT (id) DO NOTHING;
+(1, 1, 1, 1, 1, 1), -- Prof. Kalpesh Sir -> Data Structures (SY CO A)
+(2, 1, 2, 1, 1, 1), -- Prof. Kalpesh Sir -> DBMS (SY CO A)
+(3, 1, 4, 1, 1, 1), -- Prof. Kalpesh Sir -> OOP C++ (SY CO A)
+(4, 1, 3, 1, 1, 1), -- Prof. Kalpesh Sir -> Computer Graphics (SY CO A)
+(5, 1, 5, 1, 1, 1)  -- Prof. Kalpesh Sir -> Digital Techniques (SY CO A)
+ON CONFLICT (id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id;
 
 -- 14. Timetable (Teacher Schedule)
 INSERT INTO timetables (timetable_id, class_id, division_id, subject_id, teacher_id, day_of_week, start_time, end_time, room_number, academic_year_id) VALUES
 (1, 1, 1, 1, 1, 'Monday', '08:00:00', '09:00:00', 'Room 204', 1),
-(2, 1, 1, 2, 2, 'Monday', '09:00:00', '10:00:00', 'Lab 1', 1),
+(2, 1, 1, 2, 1, 'Monday', '09:00:00', '10:00:00', 'Lab 1', 1),
 (3, 1, 1, 4, 1, 'Monday', '10:15:00', '11:15:00', 'Room 204', 1),
 (4, 1, 1, 1, 1, 'Tuesday', '08:00:00', '09:00:00', 'Room 204', 1),
-(5, 1, 1, 3, 2, 'Tuesday', '09:00:00', '10:00:00', 'CAD Lab', 1),
-(6, 1, 1, 5, 5, 'Wednesday', '08:00:00', '09:00:00', 'Digital Lab', 1),
+(5, 1, 1, 3, 1, 'Tuesday', '09:00:00', '10:00:00', 'CAD Lab', 1),
+(6, 1, 1, 5, 1, 'Wednesday', '08:00:00', '09:00:00', 'Digital Lab', 1),
 (7, 1, 1, 1, 1, 'Wednesday', '09:00:00', '10:00:00', 'Room 204', 1),
-(8, 1, 1, 2, 2, 'Thursday', '08:00:00', '09:00:00', 'Room 204', 1),
+(8, 1, 1, 2, 1, 'Thursday', '08:00:00', '09:00:00', 'Room 204', 1),
 (9, 1, 1, 4, 1, 'Thursday', '09:00:00', '10:00:00', 'Lab 2', 1),
 (10, 1, 1, 1, 1, 'Friday', '08:00:00', '09:00:00', 'Room 204', 1),
-(11, 1, 1, 3, 2, 'Friday', '09:00:00', '10:00:00', 'CAD Lab', 1)
-ON CONFLICT (timetable_id) DO NOTHING;
+(11, 1, 1, 3, 1, 'Friday', '09:00:00', '10:00:00', 'CAD Lab', 1)
+ON CONFLICT (timetable_id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id;
 
 -- 15. Historical Attendance Sessions (Over 25 lectures covering August-September 2026)
 -- Data Structures sessions conducted by Dr. Rajesh Sharma
