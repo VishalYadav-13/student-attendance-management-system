@@ -3,75 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attendance Studio — SAMS Faculty</title>
+  <title>Manual Attendance Roster — SAMS Faculty</title>
   <!-- Vintage Academic Typography: Newsreader & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/frontend/assets/css/academic-theme.css?v=2.2.0">
-  <link rel="stylesheet" href="/frontend/assets/css/main.css?v=2.2.0">
-  <!-- Facial Recognition Engine Dependency -->
-  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+  <link rel="stylesheet" href="/frontend/assets/css/academic-theme.css?v=2.3.3">
+  <link rel="stylesheet" href="/frontend/assets/css/main.css?v=2.3.3">
   <style>
-    .studio-tabs {
+    /* Manual Attendance Layout Styling */
+    .session-control-bar {
       display: flex;
-      gap: 12px;
-      border-bottom: 2px solid var(--border-subtle);
-      margin-bottom: 24px;
-    }
-    .studio-tab-btn {
-      padding: 12px 20px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      cursor: pointer;
-      display: inline-flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 8px;
-      transition: all var(--transition-fast);
-    }
-    .studio-tab-btn.active {
-      color: var(--primary-accent);
-      border-bottom-color: var(--primary-accent);
-    }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
-    .camera-layout-grid {
-      display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 24px;
-      align-items: start;
-    }
-    @media (max-width: 900px) {
-      .camera-layout-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .last-verified-card {
+      flex-wrap: wrap;
+      gap: 16px;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
-      padding: 24px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
       box-shadow: var(--shadow-sm);
     }
+    .metrics-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .metric-card-label {
+      font-size: 0.76rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .metric-card-val {
+      font-family: var(--font-serif);
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1;
+    }
+    .metric-card-sub {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Status Selection Buttons */
     .status-btn-group {
       display: inline-flex;
       background: var(--bg-surface-subtle);
       padding: 3px;
       border-radius: var(--radius-md);
       gap: 2px;
+      border: 1px solid var(--border-subtle);
     }
     .status-opt-btn {
-      padding: 5px 12px;
-      font-size: 0.78rem;
+      padding: 6px 14px;
+      font-size: 0.80rem;
       font-weight: 600;
       border: none;
       background: none;
@@ -80,97 +79,27 @@
       cursor: pointer;
       transition: all var(--transition-fast);
     }
-    .status-opt-btn.active-prs { background: var(--success); color: #fff; }
-    .status-opt-btn.active-abs { background: var(--danger); color: #fff; }
-    .status-opt-btn.active-lte { background: var(--warning); color: #fff; }
-    .status-opt-btn.active-exc { background: var(--secondary); color: #fff; }
+    .status-opt-btn:hover {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-main);
+    }
+    .status-opt-btn.active-prs { background: var(--success); color: #fff; box-shadow: var(--shadow-sm); }
+    .status-opt-btn.active-abs { background: var(--danger); color: #fff; box-shadow: var(--shadow-sm); }
+    .status-opt-btn.active-lte { background: var(--warning); color: #fff; box-shadow: var(--shadow-sm); }
+    .status-opt-btn.active-exc { background: var(--secondary); color: #fff; box-shadow: var(--shadow-sm); }
 
-    /* Success Confirmation Popup */
-    .attendance-success-popup {
-      position: fixed;
-      top: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10000;
-      animation: popupSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes popupSlideDown {
-      0% { opacity: 0; transform: translate(-50%, -24px) scale(0.95); }
-      100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-    }
-    .popup-card {
-      background: var(--bg-surface, #FDFCFA);
-      border: 2px solid var(--primary-accent, #526B54);
-      border-radius: var(--radius-lg, 12px);
-      padding: 20px 32px;
-      box-shadow: 0 16px 36px rgba(45, 74, 62, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
-      min-width: 340px;
-      max-width: 440px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .popup-icon-badge {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: #526B54;
-      color: #ffffff;
-      font-size: 1.6rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 10px;
-      box-shadow: 0 4px 10px rgba(82, 107, 84, 0.35);
-    }
-    .popup-header-title {
-      font-family: 'Newsreader', serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #526B54;
-      margin-bottom: 4px;
-    }
-    .popup-student-name {
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: var(--text-main, #24292E);
-      margin-bottom: 2px;
-      letter-spacing: -0.01em;
-    }
-    .popup-roll-number {
-      font-size: 0.88rem;
-      color: var(--text-muted, #6E7F8D);
-      margin-bottom: 12px;
-      font-weight: 600;
-    }
-    .popup-meta-row {
+    .session-badge-pill {
       display: inline-flex;
       align-items: center;
-      gap: 12px;
-      padding: 6px 14px;
-      background: var(--bg-surface-subtle, #F4F1EA);
-      border-radius: 20px;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: var(--radius-full);
       font-size: 0.82rem;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
-
-  <!-- Floating Attendance Success Confirmation Popup -->
-  <div id="attendance-success-popup" class="attendance-success-popup" style="display: none;">
-    <div class="popup-card">
-      <div class="popup-icon-badge">✓</div>
-      <div class="popup-header-title" id="popup-title">Attendance Marked</div>
-      <div class="popup-student-name" id="popup-student-name">—</div>
-      <div class="popup-roll-number" id="popup-student-roll">—</div>
-      <div class="popup-meta-row">
-        <span class="badge badge-present" id="popup-status-badge">PRESENT</span>
-        <span class="popup-timestamp" id="popup-timestamp">—</span>
-      </div>
-    </div>
-  </div>
 
   <div class="app-layout">
     <!-- Sidebar -->
@@ -189,18 +118,21 @@
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
           Dashboard
         </a>
+
+        <!-- Attendance Group -->
         <div class="nav-link active" style="font-weight: 700; cursor: default;">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
           Attendance
         </div>
-        <div style="margin: 2px 0 8px 12px; border-left: 2px solid var(--border-subtle); padding-left: 8px; display: flex; flex-direction: column; gap: 2px;">
-          <a href="/frontend/teacher/attendance.html" class="nav-link active" style="padding: 6px 12px; font-size: 0.82rem;">
+        <div class="nested-nav-group">
+          <a href="/frontend/teacher/attendance.html" class="nested-nav-link active">
             <span>&bull;</span> Manual Attendance
           </a>
-          <a href="/frontend/teacher/face-attendance.html" class="nav-link" style="padding: 6px 12px; font-size: 0.82rem;">
+          <a href="/frontend/teacher/face-attendance.html" class="nested-nav-link">
             <span>&bull;</span> Face Verification
           </a>
         </div>
+
         <a href="/frontend/teacher/reports.html" class="nav-link">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Class Reports
@@ -228,206 +160,227 @@
           <button class="mobile-menu-btn" aria-label="Toggle Navigation">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
-          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Classroom Attendance Studio</div>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Manual Attendance Roster</div>
         </div>
         <div class="topbar-right">
           <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
-          <span class="badge badge-present" id="session-status-badge">Session #25 • OPEN</span>
+          <span class="session-badge-pill badge-present" id="session-status-badge">Session #— • ACTIVE</span>
         </div>
       </header>
 
       <main class="page-container">
-        <!-- Session Info Bar -->
-        <div class="page-header" style="margin-bottom: 16px;">
+
+        <!-- Attendance Session Information Banner -->
+        <div class="session-control-bar">
           <div>
-            <h1 class="page-title" id="active-subject-heading">Data Structures (SY CO - Div A)</h1>
-            <p class="page-subtitle" id="active-session-meta">Room 204 • Today, 08:00 AM - 09:00 AM • Active Live Session #25</p>
-          </div>
-          <div class="page-actions">
-            <button class="btn btn-secondary btn-sm" onclick="location.reload()">Reset Session View</button>
-          </div>
-        </div>
-
-        <!-- Mode Switcher Tabs -->
-        <div class="studio-tabs">
-          <button id="tab-btn-ai" class="studio-tab-btn active" onclick="switchTab('ai')">
-            📷 AI Face Verification
-          </button>
-          <button id="tab-btn-manual" class="studio-tab-btn" onclick="switchTab('manual')">
-            📝 Manual Attendance Grid
-          </button>
-        </div>
-
-        <!-- TAB 1: AI FACE VERIFICATION STUDIO -->
-        <div id="tab-content-ai" class="tab-content active">
-          <div class="camera-layout-grid">
-            <!-- Left: Webcam Viewport -->
-            <div>
-              <div class="camera-container">
-                <video id="webcam-video" class="camera-video" playsinline muted autoplay></video>
-                <div class="face-guide-overlay">
-                  <div class="scan-laser"></div>
-                </div>
-                <div id="camera-status-pill" class="camera-status-pill">
-                  <span class="status-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#6E7F8D;"></span>
-                  <span>Camera offline. Click "Start AI Camera" to begin scanning.</span>
-                </div>
-              </div>
-
-              <!-- Camera Controls -->
-              <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
-                <button id="cam-start-btn" class="btn btn-primary" onclick="startCameraSession()">
-                  ▶ Start AI Camera
-                </button>
-                <button id="cam-stop-btn" class="btn btn-danger" onclick="stopCameraSession()" style="display: none;">
-                  ⏹ Stop AI Camera
-                </button>
-                <button id="cam-capture-btn" class="btn btn-secondary" onclick="triggerManualSnapshot()" disabled>
-                  📸 Verify Current Frame
-                </button>
-                <button id="cam-switch-btn" class="btn btn-secondary" onclick="Camera.switchCamera()" disabled>
-                  🔄 Flip Camera
-                </button>
-              </div>
-
-              <!-- Camera Privacy Notice -->
-              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
-                🛡️ <strong>Camera Privacy Notice:</strong> Your camera is used strictly for on-device live verification and server-side quality checks. Captured video frames are not permanently stored in accordance with institutional policy.
-              </p>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+              <span class="badge" style="background: var(--bg-surface-subtle); color: var(--text-secondary);" id="badge-session-id">Session #—</span>
+              <span class="badge badge-present" id="badge-session-status">OPEN</span>
             </div>
+            <h1 class="page-title" id="active-subject-heading" style="margin-bottom: 4px;">Loading Session Details...</h1>
+            <p class="page-subtitle" id="active-session-meta">Fetching course, classroom, and scheduled period information...</p>
+          </div>
 
-            <!-- Right: Verification Intelligence Feed -->
-            <div>
-              <div class="last-verified-card">
-                <h3 class="card-title" style="margin-bottom: 16px;">Latest Verified Student</h3>
-                
-                <div id="last-student-box" style="text-align: center; padding: 24px 16px;">
-                  <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--primary-accent); color: #fff; font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;" id="last-stu-avatar">
-                    —
-                  </div>
-                  <h3 id="last-stu-name" style="font-size: 1.25rem; font-weight: 700;">Awaiting Face Capture</h3>
-                  <div id="last-stu-roll" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 2px;">Position face inside frame</div>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <div style="min-width: 220px;">
+              <label class="form-label" style="font-size: 0.74rem; margin-bottom: 4px;" for="active-session-select">Switch Session</label>
+              <select id="active-session-select" class="form-control" style="padding: 7px 10px; font-size: 0.85rem;" onchange="changeSession(this.value)">
+                <option value="">Select Session...</option>
+              </select>
+            </div>
+            <a id="face-studio-link" href="/frontend/teacher/face-attendance.html" class="btn btn-secondary btn-sm" style="margin-top: 18px; display: inline-flex; align-items: center; gap: 6px;">
+              📷 Switch to Face Attendance
+            </a>
+          </div>
+        </div>
 
-                  <div id="last-stu-details" style="display: none; margin-top: 20px; padding: 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-md); text-align: left;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px;">
-                      <span>Verification Method:</span>
-                      <strong id="last-stu-method">FACE_AI (Gemini Assisted)</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px;">
-                      <span>Biometric Confidence:</span>
-                      <strong id="last-stu-conf" style="color: var(--success);">96.2%</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-                      <span>Attendance Status:</span>
-                      <span class="badge badge-present">PRESENT</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Live Class Attendance Counter -->
-              <div class="card" style="margin-top: 20px;">
-                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 12px;">Class Session Progress</h4>
-                <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 6px;">
-                  <span>Present Count:</span>
-                  <strong id="live-present-count">0 / 20</strong>
-                </div>
-                <div class="progress-bar-wrap">
-                  <div id="live-progress-fill" class="progress-bar-fill fill-success" style="width: 0%;"></div>
-                </div>
-              </div>
+        <!-- Attendance Count & Progress Metrics -->
+        <div class="metrics-summary-grid">
+          <div class="metric-card">
+            <div class="metric-card-label">Total Roster</div>
+            <div class="metric-card-val" id="count-total">0</div>
+            <div class="metric-card-sub">Enrolled Students</div>
+          </div>
+          <div class="metric-card" style="border-left: 3px solid var(--success);">
+            <div class="metric-card-label">Present</div>
+            <div class="metric-card-val" id="count-present" style="color: var(--success);">0</div>
+            <div class="metric-card-sub" id="sub-present">0% of class</div>
+          </div>
+          <div class="metric-card" style="border-left: 3px solid var(--warning);">
+            <div class="metric-card-label">Late Arrival</div>
+            <div class="metric-card-val" id="count-late" style="color: var(--warning);">0</div>
+            <div class="metric-card-sub" id="sub-late">Partial credit</div>
+          </div>
+          <div class="metric-card" style="border-left: 3px solid var(--danger);">
+            <div class="metric-card-label">Absent</div>
+            <div class="metric-card-val" id="count-absent" style="color: var(--danger);">0</div>
+            <div class="metric-card-sub" id="sub-absent">Unexcused</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">Attendance Rate</div>
+            <div class="metric-card-val" id="count-rate" style="color: var(--primary-accent);">0%</div>
+            <div class="progress-bar-wrap" style="margin-top: 8px;">
+              <div id="rate-progress-fill" class="progress-bar-fill fill-success" style="width: 0%;"></div>
             </div>
           </div>
         </div>
 
-        <!-- TAB 2: MANUAL ATTENDANCE GRID -->
-        <div id="tab-content-manual" class="tab-content">
-          <div class="table-container">
-            <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('PRESENT')">
-                  <span class="status-dot dot-present"></span> Mark All Present
-                </button>
-                <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('ABSENT')">
-                  <span class="status-dot dot-absent"></span> Mark All Absent
-                </button>
-                <div style="display: flex; align-items: center; gap: 8px; margin-left: 8px; font-size: 0.8rem;">
-                  <span id="manual-prs-pill" class="badge badge-present">0 Present</span>
-                  <span id="manual-lte-pill" class="badge badge-late">0 Late</span>
-                  <span id="manual-abs-pill" class="badge badge-absent">0 Absent</span>
-                </div>
-              </div>
-              <button id="save-attendance-btn" class="btn btn-primary" onclick="confirmSaveAttendance()">
-                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-                Save Attendance
+        <!-- Student Attendance Grid -->
+        <div class="table-container">
+          <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('PRESENT')">
+                <span class="status-dot dot-present"></span> Mark All Present
               </button>
+              <button class="btn btn-secondary btn-sm" onclick="bulkMarkStatus('ABSENT')">
+                <span class="status-dot dot-absent"></span> Mark All Absent
+              </button>
+              <div style="display: flex; align-items: center; gap: 8px; margin-left: 8px; font-size: 0.8rem;">
+                <span id="manual-prs-pill" class="badge badge-present">0 Present</span>
+                <span id="manual-lte-pill" class="badge badge-late">0 Late</span>
+                <span id="manual-abs-pill" class="badge badge-absent">0 Absent</span>
+              </div>
             </div>
 
-            <table class="sams-table">
-              <thead>
-                <tr>
-                  <th>Roll No</th>
-                  <th>Student Name</th>
-                  <th>Biometric Status</th>
-                  <th style="min-width: 240px;">Attendance Status</th>
-                </tr>
-              </thead>
-              <tbody id="manual-roster-tbody">
-                <tr>
-                  <td colspan="4" style="text-align: center; padding: 28px; color: var(--text-muted);">Loading student roster...</td>
-                </tr>
-              </tbody>
-            </table>
+            <button id="save-attendance-btn" class="btn btn-primary" onclick="confirmSaveAttendance()">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+              Save Attendance
+            </button>
           </div>
+
+          <table class="sams-table">
+            <thead>
+              <tr>
+                <th style="width: 100px;">Roll No</th>
+                <th>Student Details</th>
+                <th style="width: 160px;">Current Status</th>
+                <th style="min-width: 280px;">Mark Status</th>
+              </tr>
+            </thead>
+            <tbody id="manual-roster-tbody">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 36px; color: var(--text-muted);">
+                  Loading student attendance roster...
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
       </main>
     </div>
   </div>
 
-  <script src="/frontend/assets/js/config.js?v=2.3.2"></script>
-  <script src="/frontend/assets/js/api.js?v=2.3.2"></script>
-  <script src="/frontend/assets/js/auth.js?v=2.3.2"></script>
-  <script src="/frontend/assets/js/ui.js?v=2.3.2"></script>
-  <script src="/frontend/assets/js/camera.js?v=2.3.2"></script>
-  <script src="/frontend/assets/js/face-engine.js?v=2.3.2"></script>
-  <script src="/frontend/assets/js/face-verification.js?v=2.3.2"></script>
+  <script src="/frontend/assets/js/config.js?v=2.3.3"></script>
+  <script src="/frontend/assets/js/api.js?v=2.3.3"></script>
+  <script src="/frontend/assets/js/auth.js?v=2.3.3"></script>
+  <script src="/frontend/assets/js/ui.js?v=2.3.3"></script>
+
   <script>
+    // Enforce TEACHER role
     const currentUser = Auth.requireRole('TEACHER');
     Auth.renderUserProfile(currentUser);
 
     const urlParams = new URLSearchParams(window.location.search);
-    const activeSessionId = parseInt(urlParams.get('session_id') || urlParams.get('id') || '25');
+    let activeSessionId = parseInt(urlParams.get('session_id') || urlParams.get('id') || '0');
+    let activeSession = null;
     let rosterStudents = [];
 
-    function switchTab(tab) {
-      document.getElementById('tab-btn-ai').classList.toggle('active', tab === 'ai');
-      document.getElementById('tab-btn-manual').classList.toggle('active', tab === 'manual');
-      document.getElementById('tab-content-ai').classList.toggle('active', tab === 'ai');
-      document.getElementById('tab-content-manual').classList.toggle('active', tab === 'manual');
-
-      if (tab !== 'ai') {
-        stopCameraSession();
+    // Initialize Manual Attendance page
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadTeacherSessions();
+      if (activeSessionId > 0) {
+        await loadSessionRoster(activeSessionId);
       }
-    }
+    });
 
-    async function loadRoster() {
+    // Load available open sessions for this teacher
+    async function loadTeacherSessions() {
       try {
-        const res = await API.get(`/api/attendance/session/${activeSessionId}/students`);
-        if (!res || !res.data) return;
+        const res = await API.get('/api/attendance/sessions?limit=25');
+        const sessionSelect = document.getElementById('active-session-select');
+        sessionSelect.innerHTML = '';
 
-        rosterStudents = res.data.students || [];
-        renderManualRoster();
-        updateLiveProgress();
+        const sessions = (res && res.data && res.data.sessions) ? res.data.sessions : [];
+
+        if (sessions.length === 0) {
+          sessionSelect.innerHTML = '<option value="">No Active Sessions</option>';
+          return;
+        }
+
+        sessions.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.session_id;
+          opt.textContent = `#${s.session_id} • ${s.subject_name || 'Subject'} (${s.class_name || ''} ${s.division_name || ''}) — ${s.status}`;
+          if (s.session_id === activeSessionId) {
+            opt.selected = true;
+          }
+          sessionSelect.appendChild(opt);
+        });
+
+        // If no active session was specified in query params, default to first available
+        if (activeSessionId === 0 && sessions.length > 0) {
+          activeSessionId = sessions[0].session_id;
+          sessionSelect.value = activeSessionId;
+        }
       } catch (err) {
-        UI.toast("Failed to load roster: " + err.message, "error");
+        console.warn('[SAMS Session List Notice]', err);
       }
     }
 
+    // Switch between sessions
+    function changeSession(newId) {
+      if (!newId) return;
+      activeSessionId = parseInt(newId);
+      const url = new URL(window.location.href);
+      url.searchParams.set('session_id', activeSessionId);
+      window.history.replaceState({}, '', url);
+      loadSessionRoster(activeSessionId);
+    }
+
+    // Load session students and information
+    async function loadSessionRoster(sessionId) {
+      const tbody = document.getElementById('manual-roster-tbody');
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 36px; color: var(--text-muted);">Loading student attendance roster...</td></tr>`;
+
+      try {
+        const res = await API.get(`/api/attendance/session/${sessionId}/students`);
+        if (!res || !res.data) throw new Error("Could not retrieve session roster.");
+
+        activeSession = res.data.session || {};
+        rosterStudents = res.data.students || [];
+
+        // Update Session Information Header
+        document.getElementById('badge-session-id').textContent = `Session #${sessionId}`;
+        document.getElementById('badge-session-status').textContent = activeSession.status || 'OPEN';
+        document.getElementById('session-status-badge').textContent = `Session #${sessionId} • ${activeSession.status || 'OPEN'}`;
+
+        const subjectTitle = `${activeSession.subject_name || 'Subject'} (${activeSession.class_name || 'Class'} - Div ${activeSession.division_name || 'A'})`;
+        document.getElementById('active-subject-heading').textContent = subjectTitle;
+
+        const sessionDate = activeSession.session_date || 'Today';
+        const teacherName = activeSession.teacher_name || currentUser.full_name || 'Faculty';
+        document.getElementById('active-session-meta').textContent = `Lecture Session #${sessionId} • Date: ${sessionDate} • Faculty: ${teacherName}`;
+
+        // Update link to Face Studio
+        const faceLink = document.getElementById('face-studio-link');
+        if (faceLink) {
+          faceLink.href = `/frontend/teacher/face-attendance.html?session_id=${sessionId}`;
+        }
+
+        renderManualRoster();
+        updateAttendanceMetrics();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 36px; color: var(--danger);">Failed to load roster: ${err.message}</td></tr>`;
+        UI.toast("Failed to load session roster: " + err.message, "error");
+      }
+    }
+
+    // Render Student Table Rows
     function renderManualRoster() {
       const tbody = document.getElementById('manual-roster-tbody');
-      if (rosterStudents.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:28px; color:var(--text-muted);">No students enrolled in this session.</td></tr>`;
+      if (!rosterStudents || rosterStudents.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:36px; color:var(--text-muted);">No students registered for this class division.</td></tr>`;
         return;
       }
 
@@ -436,22 +389,29 @@
         const avatarBg = ['#6F7F6A', '#6E7F8D', '#A56B52', '#7D8C7A', '#8C7A6E'][idx % 5];
         const initial = (s.full_name || 'S').charAt(0).toUpperCase();
 
+        let badgeClass = 'badge badge-present';
+        if (currStatus === 'ABSENT') badgeClass = 'badge badge-absent';
+        else if (currStatus === 'LATE') badgeClass = 'badge badge-late';
+        else if (currStatus === 'EXCUSED') badgeClass = 'badge';
+
         return `
           <tr>
-            <td><span class="badge" style="background:var(--bg-surface-subtle); font-family:monospace; font-weight:700; color:var(--text-main);">${s.roll_number}</span></td>
+            <td>
+              <span class="badge" style="background:var(--bg-surface-subtle); font-family:monospace; font-weight:700; color:var(--text-main); font-size:0.88rem;">
+                ${s.roll_number || '—'}
+              </span>
+            </td>
             <td>
               <div class="table-user-cell">
                 <div class="table-avatar" style="background: ${avatarBg};">${initial}</div>
                 <div>
-                  <div style="font-weight: 700; color: var(--text-main);">${s.full_name}</div>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">${s.email}</div>
+                  <div style="font-weight: 700; color: var(--text-main);">${s.full_name || 'Student'}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">${s.email || ''} ${s.student_uid ? '• UID: ' + s.student_uid : ''}</div>
                 </div>
               </div>
             </td>
             <td>
-              ${s.face_verification_status === 'ENROLLED' 
-                ? '<span class="badge badge-enrolled"><span class="status-dot dot-present"></span> Enrolled</span>' 
-                : '<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-muted); border:1px solid var(--border-subtle);">Not Enrolled</span>'}
+              <span class="${badgeClass}">${currStatus}</span>
             </td>
             <td>
               <div class="status-btn-group" data-student-id="${s.student_id}">
@@ -466,6 +426,7 @@
       }).join('');
     }
 
+    // Set individual student status
     function setStudentStatus(studentId, newStatus) {
       const s = rosterStudents.find(x => x.student_id === studentId);
       if (s) {
@@ -473,34 +434,46 @@
         s.verification_method = 'MANUAL';
       }
       renderManualRoster();
-      updateLiveProgress();
+      updateAttendanceMetrics();
     }
 
+    // Bulk set all students status
     function bulkMarkStatus(status) {
       rosterStudents.forEach(s => {
         s.attendance_status = status;
         s.verification_method = 'MANUAL';
       });
       renderManualRoster();
-      updateLiveProgress();
-      UI.toast(`Marked all students as ${status}.`, 'info', 2000);
+      updateAttendanceMetrics();
+      UI.toast(`Marked all students as ${status}.`, 'info', 1800);
     }
 
-    function updateLiveProgress() {
+    // Update Attendance Metrics Summary
+    function updateAttendanceMetrics() {
+      const total = rosterStudents.length;
       const presentCount = rosterStudents.filter(s => s.attendance_status === 'PRESENT').length;
       const lateCount = rosterStudents.filter(s => s.attendance_status === 'LATE').length;
       const absentCount = rosterStudents.filter(s => s.attendance_status === 'ABSENT').length;
-      const total = rosterStudents.length || 1;
+      const excusedCount = rosterStudents.filter(s => s.attendance_status === 'EXCUSED').length;
+
       const attendedCount = presentCount + lateCount;
-      const pct = Math.round((attendedCount / total) * 100);
+      const pct = total > 0 ? Math.round((attendedCount / total) * 100) : 0;
 
-      // AI Tab counters
-      const el = document.getElementById('live-present-count');
-      const fill = document.getElementById('live-progress-fill');
-      if (el) el.textContent = `${attendedCount} / ${total} (${pct}%)`;
-      if (fill) fill.style.width = `${pct}%`;
+      document.getElementById('count-total').textContent = total;
+      document.getElementById('count-present').textContent = presentCount;
+      document.getElementById('count-late').textContent = lateCount;
+      document.getElementById('count-absent').textContent = absentCount;
+      document.getElementById('count-rate').textContent = `${pct}%`;
 
-      // Manual Tab counter pills
+      document.getElementById('sub-present').textContent = `${total > 0 ? Math.round((presentCount / total) * 100) : 0}% of class`;
+      document.getElementById('sub-late').textContent = `${total > 0 ? Math.round((lateCount / total) * 100) : 0}% delayed`;
+      document.getElementById('sub-absent').textContent = `${total > 0 ? Math.round((absentCount / total) * 100) : 0}% missing`;
+
+      const progressFill = document.getElementById('rate-progress-fill');
+      if (progressFill) {
+        progressFill.style.width = `${pct}%`;
+      }
+
       const prsPill = document.getElementById('manual-prs-pill');
       const ltePill = document.getElementById('manual-lte-pill');
       const absPill = document.getElementById('manual-abs-pill');
@@ -509,12 +482,18 @@
       if (absPill) absPill.textContent = `${absentCount} Absent`;
     }
 
+    // Save Attendance to Backend Registry
     function confirmSaveAttendance() {
+      if (!rosterStudents || rosterStudents.length === 0) {
+        UI.toast('No student records available to save.', 'warning');
+        return;
+      }
+
       const saveBtn = document.getElementById('save-attendance-btn');
       UI.confirm({
-        title: 'Save Session Attendance',
-        message: `Are you ready to commit attendance records for ${rosterStudents.length} students to the institutional registry?`,
-        confirmText: 'Save Attendance',
+        title: 'Save Attendance Records',
+        message: `Commit attendance records for ${rosterStudents.length} students to the institutional registry?`,
+        confirmText: 'Save Records',
         danger: false,
         onConfirm: async () => {
           if (saveBtn) UI.setButtonLoading(saveBtn, true, 'Saving Records...');
@@ -530,158 +509,16 @@
               records: records
             });
 
-            UI.toast("Attendance saved successfully", "success");
-            loadRoster();
+            UI.toast("✓ Attendance records committed successfully.", "success");
+            await loadSessionRoster(activeSessionId);
           } catch (err) {
-            UI.toast(err.message, "error");
+            UI.toast(err.message || 'Failed to save attendance records.', "error");
           } finally {
             if (saveBtn) UI.setButtonLoading(saveBtn, false, 'Save Attendance');
           }
         }
       });
     }
-
-    // Camera & AI Face Verification Lifecycle
-    async function startCameraSession() {
-      const video = document.getElementById('webcam-video');
-      const startBtn = document.getElementById('cam-start-btn');
-      const stopBtn = document.getElementById('cam-stop-btn');
-      const capBtn = document.getElementById('cam-capture-btn');
-      const flipBtn = document.getElementById('cam-switch-btn');
-      const statusPill = document.getElementById('camera-status-pill');
-
-      try {
-        startBtn.textContent = '⏳ Loading AI Models...';
-        startBtn.disabled = true;
-        FaceVerification.setStatus('Loading face recognition model...', 'scanning');
-
-        // Step 1: Preload FaceEngine neural network models FIRST
-        if (typeof FaceEngine !== 'undefined') {
-          await FaceEngine.init();
-        }
-
-        // Step 2: Request and start webcam feed
-        FaceVerification.setStatus('Starting camera...', 'scanning');
-        await Camera.start(video, 'user');
-
-        // Step 3: Switch UI controls
-        startBtn.style.display = 'none';
-        stopBtn.style.display = 'inline-flex';
-        stopBtn.disabled = false;
-        capBtn.disabled = false;
-        flipBtn.disabled = false;
-
-        // Step 4: Init Face Verification Pipeline
-        FaceVerification.init({
-          sessionId: activeSessionId,
-          onStudentVerified: (data) => {
-            const stu = data.student || {};
-            const studentName = stu.full_name || stu.name || 'Student';
-
-            // Show real-time Attendance Success Popup with actual student name
-            showAttendancePopup(data);
-
-            document.getElementById('last-stu-name').textContent = studentName;
-            document.getElementById('last-stu-roll').textContent = `Roll: ${stu.roll_number || 'CO-2101'}`;
-            document.getElementById('last-stu-avatar').textContent = studentName.charAt(0).toUpperCase();
-            document.getElementById('last-stu-conf').textContent = `${Math.round((data.confidence || 0.95) * 100)}%`;
-            document.getElementById('last-stu-details').style.display = 'block';
-
-            // Update roster array in memory
-            const match = rosterStudents.find(x => x.student_id === stu.student_id);
-            if (match) {
-              match.attendance_status = 'PRESENT';
-              match.verification_method = 'FACE_AI';
-            }
-            renderManualRoster();
-            updateLiveProgress();
-          }
-        });
-
-        // Step 5: Camera ready — start responsive continuous scanning
-        FaceVerification.setStatus('Camera ready — looking for face...', 'scanning');
-        FaceVerification.startContinuousScan(200);
-      } catch (err) {
-        console.error('[SAMS Camera Start Error]', err);
-        UI.toast(err.message, 'error', 5000);
-
-        startBtn.style.display = 'inline-flex';
-        startBtn.textContent = '▶ Start AI Camera';
-        startBtn.disabled = false;
-        stopBtn.style.display = 'none';
-        capBtn.disabled = true;
-        flipBtn.disabled = true;
-
-        if (statusPill) {
-          statusPill.innerHTML = `<span class="status-dot" style="background:var(--danger)"></span><span>Camera error: ${err.message}</span>`;
-        }
-      }
-    }
-
-    function triggerManualSnapshot() {
-      // Force instantaneous evaluation of the current camera frame
-      FaceVerification.runVerificationCycle(true);
-    }
-
-    function stopCameraSession() {
-      FaceVerification.stopContinuousScan();
-      Camera.stop();
-
-      const startBtn = document.getElementById('cam-start-btn');
-      const stopBtn = document.getElementById('cam-stop-btn');
-      const capBtn = document.getElementById('cam-capture-btn');
-      const flipBtn = document.getElementById('cam-switch-btn');
-      const statusPill = document.getElementById('camera-status-pill');
-
-      startBtn.style.display = 'inline-flex';
-      startBtn.textContent = '▶ Start AI Camera';
-      startBtn.disabled = false;
-
-      stopBtn.style.display = 'none';
-      capBtn.disabled = true;
-      flipBtn.disabled = true;
-
-      if (statusPill) {
-        statusPill.innerHTML = '<span class="status-dot" style="background:#6E7F8D"></span><span>Camera stopped. Click "Start AI Camera" to resume.</span>';
-      }
-    }
-
-    function showAttendancePopup(data) {
-      const popup = document.getElementById('attendance-success-popup');
-      const titleEl = document.getElementById('popup-title');
-      const nameEl = document.getElementById('popup-student-name');
-      const rollEl = document.getElementById('popup-student-roll');
-      const badgeEl = document.getElementById('popup-status-badge');
-      const timeEl = document.getElementById('popup-timestamp');
-
-      if (!popup || !data || !data.student) return;
-
-      const stu = data.student || {};
-      const studentName = stu.full_name || stu.name || 'Student';
-      titleEl.textContent = data.already_marked ? 'Already Present' : '✓ Attendance Marked';
-      nameEl.textContent = studentName;
-      rollEl.textContent = `Roll No: ${stu.roll_number || ''} | UID: ${stu.student_uid || ''}`;
-      badgeEl.textContent = 'Status: PRESENT';
-      badgeEl.className = data.already_marked ? 'badge' : 'badge badge-present';
-
-      const now = new Date();
-      timeEl.textContent = `Time: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
-      popup.style.display = 'block';
-
-      if (window._popupTimeout) clearTimeout(window._popupTimeout);
-      window._popupTimeout = setTimeout(() => {
-        popup.style.display = 'none';
-      }, 3500);
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      loadRoster();
-      // Preload FaceEngine neural network models in background so camera start is instantaneous
-      if (typeof FaceEngine !== 'undefined') {
-        FaceEngine.init().catch(err => console.warn('[SAMS Preload Notice]', err.message));
-      }
-    });
   </script>
 </body>
 </html>

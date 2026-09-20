@@ -833,6 +833,25 @@
         }
       });
     }
+
+    // Ensure all camera resources, streams, and loops are completely released when leaving Face Verification
+    window.addEventListener('beforeunload', () => {
+      if (typeof FaceVerification !== 'undefined' && FaceVerification.stopContinuousScan) {
+        FaceVerification.stopContinuousScan();
+      }
+      if (typeof Camera !== 'undefined' && Camera.stop) {
+        Camera.stop();
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      if (typeof FaceVerification !== 'undefined' && FaceVerification.stopContinuousScan) {
+        FaceVerification.stopContinuousScan();
+      }
+      if (typeof Camera !== 'undefined' && Camera.stop) {
+        Camera.stop();
+      }
+    });
   </script>
 </body>
 </html>
