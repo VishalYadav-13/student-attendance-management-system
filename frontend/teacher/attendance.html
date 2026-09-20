@@ -303,11 +303,24 @@
       }
     });
 
-    // Handle opening or resuming a session when launched from Class Attendance
+    function formatSubjectDisplay(name) {
+      if (!name) return 'Subject';
+      const upper = name.toUpperCase();
+      if (upper.includes('OPERATING') || upper === 'OS') return 'Operating Systems (OS)';
+      if (upper.includes('ADVANCED COMPUTER NETWORKS') || upper === 'ACN') return 'Advanced Computer Networks (ACN)';
+      if (upper.includes('SOFTWARE ENGINEERING')) return 'Software Engineering';
+      return name;
+    }
+
+    // Handle opening or resuming a session when launched from Subject or Class Attendance
     async function handleClassAttendanceNavigation(classId, subjectId) {
       try {
-        // 1. Check if an open session already exists for this class
-        const sessRes = await API.get(`/api/attendance/sessions?class_id=${classId}&status=OPEN&limit=1`);
+        // 1. Check if an open session already exists for this class and subject
+        let queryUrl = `/api/attendance/sessions?class_id=${classId}&status=OPEN&limit=1`;
+        if (subjectId > 0) {
+          queryUrl += `&subject_id=${subjectId}`;
+        }
+        const sessRes = await API.get(queryUrl);
         const openSessions = (sessRes && sessRes.data && sessRes.data.sessions) ? sessRes.data.sessions : [];
 
         if (openSessions.length > 0) {
@@ -327,7 +340,7 @@
 
         const createPayload = {
           class_id: classId,
-          subject_id: subjectId > 0 ? subjectId : 1,
+          subject_id: subjectId > 0 ? subjectId : 10,
           session_date: `${yyyy}-${mm}-${dd}`,
           start_time: `${hh}:${min}`,
           verification_mode: 'MANUAL',
@@ -371,7 +384,8 @@
           const opt = document.createElement('option');
           opt.value = s.session_id;
           const divPart = s.division_name ? ` Div ${s.division_name}` : '';
-          opt.textContent = `#${s.session_id} • ${s.subject_name || 'Subject'} (${s.class_name || ''}${divPart}) — ${s.status}`;
+          const dispSubj = formatSubjectDisplay(s.subject_name);
+          opt.textContent = `#${s.session_id} • ${dispSubj} (${s.class_name || ''}${divPart}) — ${s.status}`;
           if (s.session_id === activeSessionId) {
             opt.selected = true;
           }
@@ -416,8 +430,9 @@
         document.getElementById('session-status-badge').textContent = `Session #${sessionId} • ${activeSession.status || 'OPEN'}`;
 
         const divText = activeSession.division_name ? ` - Div ${activeSession.division_name}` : '';
-        const subjectTitle = `${activeSession.subject_name || 'Subject'} (${activeSession.class_name || 'Class'}${divText})`;
-        document.getElementById('active-subject-heading').textContent = subjectTitle;
+        const formattedSubj = formatSubjectDisplay(activeSession.subject_name);
+        const classPart = activeSession.class_name ? ` (${activeSession.class_name}${divText})` : '';
+        document.getElementById('active-subject-heading').textContent = `Subject: ${formattedSubj}${classPart}`;
 
         const sessionDate = activeSession.session_date || 'Today';
         const teacherName = activeSession.teacher_name || currentUser.full_name || 'Faculty';

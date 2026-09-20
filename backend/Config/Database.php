@@ -922,14 +922,18 @@ class Database
                 (7, '22103', 'Basic Mathematics', 1, 1, 4, 45),
                 (8, '22226', 'Programming in C', 1, 1, 4, 45),
                 (9, '22517', 'Advanced Java Programming', 1, 5, 4, 45),
-                (10, '22413', 'Software Engineering', 1, 5, 3, 36)
+                (10, '22413', 'Software Engineering', 1, 5, 3, 36),
+                (11, '22516', 'Operating Systems', 1, 5, 4, 45),
+                (12, '22520', 'Advanced Computer Networks', 1, 5, 4, 45)
                 ON CONFLICT (subject_id) DO NOTHING
             " : "
                 INSERT OR IGNORE INTO subjects (subject_id, subject_code, subject_name, department_id, semester_number, credits, total_lectures) VALUES
                 (7, '22103', 'Basic Mathematics', 1, 1, 4, 45),
                 (8, '22226', 'Programming in C', 1, 1, 4, 45),
                 (9, '22517', 'Advanced Java Programming', 1, 5, 4, 45),
-                (10, '22413', 'Software Engineering', 1, 5, 3, 36)
+                (10, '22413', 'Software Engineering', 1, 5, 3, 36),
+                (11, '22516', 'Operating Systems', 1, 5, 4, 45),
+                (12, '22520', 'Advanced Computer Networks', 1, 5, 4, 45)
             ";
             $pdo->exec($subSql);
 
@@ -937,12 +941,30 @@ class Database
             $tsSql = ($driver === 'pgsql') ? "
                 INSERT INTO teacher_subjects (id, teacher_id, subject_id, class_id, division_id, academic_year_id) VALUES
                 (6, 1, 8, 4, 5, 1),
-                (7, 1, 9, 5, 6, 1)
+                (7, 1, 9, 5, 6, 1),
+                (101, 1, 10, 4, 5, 1),
+                (102, 1, 10, 1, 1, 1),
+                (103, 1, 10, 5, 6, 1),
+                (104, 1, 11, 4, 5, 1),
+                (105, 1, 11, 1, 1, 1),
+                (106, 1, 11, 5, 6, 1),
+                (107, 1, 12, 4, 5, 1),
+                (108, 1, 12, 1, 1, 1),
+                (109, 1, 12, 5, 6, 1)
                 ON CONFLICT (id) DO NOTHING
             " : "
                 INSERT OR IGNORE INTO teacher_subjects (id, teacher_id, subject_id, class_id, division_id, academic_year_id) VALUES
                 (6, 1, 8, 4, 5, 1),
-                (7, 1, 9, 5, 6, 1)
+                (7, 1, 9, 5, 6, 1),
+                (101, 1, 10, 4, 5, 1),
+                (102, 1, 10, 1, 1, 1),
+                (103, 1, 10, 5, 6, 1),
+                (104, 1, 11, 4, 5, 1),
+                (105, 1, 11, 1, 1, 1),
+                (106, 1, 11, 5, 6, 1),
+                (107, 1, 12, 4, 5, 1),
+                (108, 1, 12, 1, 1, 1),
+                (109, 1, 12, 5, 6, 1)
             ";
             $pdo->exec($tsSql);
 

@@ -92,7 +92,9 @@ INSERT INTO subjects (subject_id, subject_code, subject_name, department_id, sem
 (7, '22103', 'Basic Mathematics', 1, 1, 4, 45),
 (8, '22226', 'Programming in C', 1, 1, 4, 45),
 (9, '22517', 'Advanced Java Programming', 1, 5, 4, 45),
-(10, '22413', 'Software Engineering', 1, 5, 3, 36)
+(10, '22413', 'Software Engineering', 1, 5, 3, 36),
+(11, '22516', 'Operating Systems', 1, 5, 4, 45),
+(12, '22520', 'Advanced Computer Networks', 1, 5, 4, 45)
 ON CONFLICT (subject_id) DO NOTHING;
 
 -- 8. Users & Accounts
@@ -235,7 +237,16 @@ INSERT INTO teacher_subjects (id, teacher_id, subject_id, class_id, division_id,
 (4, 1, 3, 1, 1, 1), -- Prof. Kalpesh Sir -> Computer Graphics (SY CO A)
 (5, 1, 5, 1, 1, 1), -- Prof. Kalpesh Sir -> Digital Techniques (SY CO A)
 (6, 1, 8, 4, 5, 1), -- Prof. Kalpesh Sir -> Programming in C (FY CO A)
-(7, 1, 9, 5, 6, 1)  -- Prof. Kalpesh Sir -> Advanced Java (TY CO A)
+(7, 1, 9, 5, 6, 1),  -- Prof. Kalpesh Sir -> Advanced Java (TY CO A)
+(101, 1, 10, 4, 5, 1), -- Prof. Kalpesh Sir -> Software Engineering (FY CO)
+(102, 1, 10, 1, 1, 1), -- Prof. Kalpesh Sir -> Software Engineering (SY CO)
+(103, 1, 10, 5, 6, 1), -- Prof. Kalpesh Sir -> Software Engineering (TY CO)
+(104, 1, 11, 4, 5, 1), -- Prof. Kalpesh Sir -> Operating Systems (FY CO)
+(105, 1, 11, 1, 1, 1), -- Prof. Kalpesh Sir -> Operating Systems (SY CO)
+(106, 1, 11, 5, 6, 1), -- Prof. Kalpesh Sir -> Operating Systems (TY CO)
+(107, 1, 12, 4, 5, 1), -- Prof. Kalpesh Sir -> Advanced Computer Networks (FY CO)
+(108, 1, 12, 1, 1, 1), -- Prof. Kalpesh Sir -> Advanced Computer Networks (SY CO)
+(109, 1, 12, 5, 6, 1)  -- Prof. Kalpesh Sir -> Advanced Computer Networks (TY CO)
 ON CONFLICT (id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id;
 
 -- 14. Timetable (Teacher Schedule)

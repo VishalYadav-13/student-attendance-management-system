@@ -295,7 +295,12 @@ class DashboardController
             FROM teacher_subjects ts
             JOIN subjects sub ON ts.subject_id = sub.subject_id
             WHERE ts.teacher_id = :tid
-            ORDER BY sub.subject_name ASC
+            ORDER BY CASE 
+                WHEN sub.subject_name = 'Software Engineering' THEN 1
+                WHEN sub.subject_name = 'Operating Systems' THEN 2
+                WHEN sub.subject_name = 'Advanced Computer Networks' THEN 3
+                ELSE 10
+            END ASC, sub.subject_name ASC
         ");
         $classSubjectsStmt->execute([':tid' => $teacherId]);
         $classSubjectsRows = $classSubjectsStmt->fetchAll();
@@ -347,6 +352,38 @@ class DashboardController
             }
         }
 
+        // Dedicated Subject Attendance list: Software Engineering, Operating Systems, Advanced Computer Networks
+        $subAttStmt = $pdo->prepare("
+            SELECT subject_id, subject_code, subject_name
+            FROM subjects
+            WHERE subject_name IN ('Software Engineering', 'Operating Systems', 'Advanced Computer Networks')
+            ORDER BY CASE 
+                WHEN subject_name = 'Software Engineering' THEN 1
+                WHEN subject_name = 'Operating Systems' THEN 2
+                WHEN subject_name = 'Advanced Computer Networks' THEN 3
+                ELSE 4
+            END ASC
+        ");
+        $subAttStmt->execute();
+        $subAttRows = $subAttStmt->fetchAll();
+
+        $subjectAttendance = [];
+        foreach ($subAttRows as $sRow) {
+            $sName = $sRow['subject_name'];
+            $code = $sRow['subject_code'];
+            $badge = ($sName === 'Software Engineering') ? 'SE' : (($sName === 'Operating Systems') ? 'OS' : 'ACN');
+            $subtext = ($sName === 'Operating Systems') ? 'OS' : (($sName === 'Advanced Computer Networks') ? 'ACN' : '');
+
+            $subjectAttendance[] = [
+                'subject_id' => (int)$sRow['subject_id'],
+                'subject_name' => $sName,
+                'display_name' => $sName,
+                'subtext' => $subtext,
+                'subject_code' => $code,
+                'badge' => $badge
+            ];
+        }
+
         Response::success([
             'teacher' => [
                 'teacher_id' => $teacherId,
@@ -364,6 +401,7 @@ class DashboardController
             'today_day' => $todayName,
             'timetable' => $timetable,
             'assigned_classes' => $classes,
+            'subject_attendance' => $subjectAttendance,
             'class_attendance' => $classAttendance,
             'active_session' => $activeSession
         ], 'Teacher dashboard metrics retrieved.');

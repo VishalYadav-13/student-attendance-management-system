@@ -440,10 +440,9 @@
                 <div class="form-group">
                   <label class="form-label" for="setup-subject">Select Subject *</label>
                   <select id="setup-subject" class="form-control" required>
-                    <option value="1">Data Structures & Algorithms (CO301)</option>
-                    <option value="2" selected>Operating Systems (CO302)</option>
-                    <option value="3">Database Management Systems (CO303)</option>
-                    <option value="4">Computer Networks (CO304)</option>
+                    <option value="10">Software Engineering</option>
+                    <option value="11" selected>Operating Systems (OS)</option>
+                    <option value="12">Advanced Computer Networks (ACN)</option>
                   </select>
                 </div>
               </div>
@@ -702,6 +701,15 @@
     let activeSession = null;
     let sessionStats = { total: 0, verified: 0, remaining: 0 };
 
+    function formatSubjectDisplay(name) {
+      if (!name) return 'Subject';
+      const upper = name.toUpperCase();
+      if (upper.includes('OPERATING') || upper === 'OS') return 'Operating Systems (OS)';
+      if (upper.includes('ADVANCED COMPUTER NETWORKS') || upper === 'ACN') return 'Advanced Computer Networks (ACN)';
+      if (upper.includes('SOFTWARE ENGINEERING')) return 'Software Engineering';
+      return name;
+    }
+
     // Set default date to today and time to current hour
     document.addEventListener('DOMContentLoaded', async () => {
       const today = new Date();
@@ -743,7 +751,7 @@
         try {
           const payload = {
             class_id: urlClassId,
-            subject_id: urlSubjectId > 0 ? urlSubjectId : 1,
+            subject_id: urlSubjectId > 0 ? urlSubjectId : 10,
             session_date: `${yyyy}-${mm}-${dd}`,
             start_time: `${hh}:${min}`,
             lecture_number: 1
@@ -786,13 +794,24 @@
 
               const updateSubjectOptions = (selectedClassId) => {
                 const matched = allClasses.find(c => c.class_id == selectedClassId);
+                subjectSelect.innerHTML = '';
                 if (matched && matched.subjects && matched.subjects.length > 0) {
-                  subjectSelect.innerHTML = '';
                   matched.subjects.forEach((sub, idx) => {
                     const subOpt = document.createElement('option');
                     subOpt.value = sub.subject_id;
-                    subOpt.textContent = `${sub.subject_name} (${sub.subject_code})`;
+                    subOpt.textContent = formatSubjectDisplay(sub.subject_name);
                     if (idx === 0) subOpt.selected = true;
+                    subjectSelect.appendChild(subOpt);
+                  });
+                } else {
+                  [
+                    { id: 10, name: 'Software Engineering' },
+                    { id: 11, name: 'Operating Systems (OS)' },
+                    { id: 12, name: 'Advanced Computer Networks (ACN)' }
+                  ].forEach(s => {
+                    const subOpt = document.createElement('option');
+                    subOpt.value = s.id;
+                    subOpt.textContent = s.name;
                     subjectSelect.appendChild(subOpt);
                   });
                 }
@@ -851,13 +870,14 @@
       const s = activeSession;
       const divPart = s.division_name ? ` Div ${s.division_name}` : '';
       const divLongPart = s.division_name ? ` - Division ${s.division_name}` : '';
+      const formattedSubject = formatSubjectDisplay(s.subject_name);
 
       document.getElementById('active-session-id-pill').textContent = `Session #${s.session_id}`;
-      document.getElementById('active-session-heading').textContent = `${s.subject_name} — ${s.class_code}${divPart}`;
+      document.getElementById('active-session-heading').textContent = `Subject: ${formattedSubject} — ${s.class_code || s.class_name || ''}${divPart}`;
       document.getElementById('active-session-subheading').textContent = `${s.session_date} • ${s.start_time} • ${s.teacher_name || 'Faculty Member'}`;
 
-      document.getElementById('card-class-text').textContent = `${s.class_name}${divLongPart}`;
-      document.getElementById('card-subject-text').textContent = s.subject_name;
+      document.getElementById('card-class-text').textContent = `${s.class_name || s.class_code}${divLongPart}`;
+      document.getElementById('card-subject-text').textContent = formattedSubject;
       document.getElementById('card-date-text').textContent = s.session_date;
       document.getElementById('card-time-text').textContent = s.start_time;
 
