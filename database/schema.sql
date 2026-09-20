@@ -209,7 +209,7 @@ CREATE TABLE timetables (
 CREATE TABLE attendance_sessions (
     session_id SERIAL PRIMARY KEY,
     class_id INT NOT NULL REFERENCES classes(class_id) ON DELETE RESTRICT,
-    division_id INT NOT NULL REFERENCES divisions(division_id) ON DELETE RESTRICT,
+    division_id INT REFERENCES divisions(division_id) ON DELETE SET NULL,
     subject_id INT NOT NULL REFERENCES subjects(subject_id) ON DELETE RESTRICT,
     teacher_id INT NOT NULL REFERENCES teachers(teacher_id) ON DELETE RESTRICT,
     session_date DATE NOT NULL,

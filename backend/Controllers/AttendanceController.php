@@ -28,10 +28,13 @@ class AttendanceController
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
 
         $validator = Validator::make($input)
-            ->required('class_id', 'division_id', 'subject_id', 'session_date', 'start_time')
+            ->required('class_id', 'subject_id', 'session_date', 'start_time')
             ->numeric('class_id')
-            ->numeric('division_id')
             ->numeric('subject_id');
+
+        if (!empty($input['division_id'])) {
+            $validator->numeric('division_id');
+        }
 
         if ($validator->fails()) {
             Response::validationError($validator->errors());
@@ -49,7 +52,7 @@ class AttendanceController
             }
         }
         $classId = (int)$input['class_id'];
-        $divisionId = (int)$input['division_id'];
+        $divisionId = !empty($input['division_id']) ? (int)$input['division_id'] : null;
         $subjectId = (int)$input['subject_id'];
         $sessionDate = $input['session_date'];
         $startTime = $input['start_time'];
@@ -58,21 +61,47 @@ class AttendanceController
         $lectureNum = (int)($input['lecture_number'] ?? 1);
 
         // Check if an identical open session already exists
-        $dupStmt = $pdo->prepare("
-            SELECT session_id FROM attendance_sessions
-            WHERE class_id = :cid AND division_id = :did AND subject_id = :sid 
-              AND session_date = :sdate AND status = 'OPEN'
-        ");
-        $dupStmt->execute([
-            ':cid' => $classId,
-            ':did' => $divisionId,
-            ':sid' => $subjectId,
-            ':sdate' => $sessionDate
-        ]);
+        if ($divisionId !== null) {
+            $dupStmt = $pdo->prepare("
+                SELECT session_id FROM attendance_sessions
+                WHERE class_id = :cid AND division_id = :did AND subject_id = :sid 
+                  AND session_date = :sdate AND status = 'OPEN'
+            ");
+            $dupStmt->execute([
+                ':cid' => $classId,
+                ':did' => $divisionId,
+                ':sid' => $subjectId,
+                ':sdate' => $sessionDate
+            ]);
+        } else {
+            $dupStmt = $pdo->prepare("
+                SELECT session_id FROM attendance_sessions
+                WHERE class_id = :cid AND (division_id IS NULL OR division_id = 0) AND subject_id = :sid 
+                  AND session_date = :sdate AND status = 'OPEN'
+            ");
+            $dupStmt->execute([
+                ':cid' => $classId,
+                ':sid' => $subjectId,
+                ':sdate' => $sessionDate
+            ]);
+        }
         $existing = $dupStmt->fetch();
 
         if ($existing) {
-            Response::conflict("An open attendance session (#{$existing['session_id']}) already exists for this class, division, and subject today.");
+            if (!empty($input['reuse_open_session'])) {
+                Response::success([
+                    'session_id' => (int)$existing['session_id'],
+                    'status' => 'OPEN',
+                    'session_date' => $sessionDate,
+                    'start_time' => $startTime,
+                    'is_existing' => true
+                ], 'Existing open attendance session retrieved.', 200);
+                return;
+            }
+            Response::conflict("An open attendance session (#{$existing['session_id']}) already exists for this class and subject today.", [
+                'session_id' => (int)$existing['session_id']
+            ]);
+            return;
         }
 
         $stmt = $pdo->prepare("
@@ -115,10 +144,10 @@ class AttendanceController
 
         $sessStmt = $pdo->prepare("
             SELECT s.session_id, s.class_id, s.division_id, s.subject_id, s.teacher_id, s.session_date, s.status,
-                   c.class_name, d.division_name, sub.subject_name, sub.subject_code, t.full_name AS teacher_name
+                   c.class_name, c.class_code, d.division_name, sub.subject_name, sub.subject_code, t.full_name AS teacher_name
             FROM attendance_sessions s
             JOIN classes c ON s.class_id = c.class_id
-            JOIN divisions d ON s.division_id = d.division_id
+            LEFT JOIN divisions d ON s.division_id = d.division_id
             JOIN subjects sub ON s.subject_id = sub.subject_id
             JOIN teachers t ON s.teacher_id = t.teacher_id
             WHERE s.session_id = :sid
@@ -135,6 +164,7 @@ class AttendanceController
             SELECT 
                 stu.student_id,
                 stu.roll_number,
+                stu.student_uid,
                 stu.full_name,
                 stu.email,
                 stu.face_verification_status,
@@ -145,13 +175,15 @@ class AttendanceController
                 r.confidence_score
             FROM students stu
             LEFT JOIN attendance_records r ON stu.student_id = r.student_id AND r.session_id = :sid
-            WHERE stu.class_id = :cid AND stu.division_id = :did AND stu.status = 'ACTIVE'
+            WHERE stu.class_id = :cid
+              AND (:did IS NULL OR stu.division_id = :did)
+              AND stu.status = 'ACTIVE'
             ORDER BY stu.roll_number ASC
         ");
         $studentsStmt->execute([
             ':sid' => $sessionId,
             ':cid' => $session['class_id'],
-            ':did' => $session['division_id']
+            ':did' => $session['division_id'] ?: null
         ]);
         $roster = $studentsStmt->fetchAll();
 
@@ -433,7 +465,7 @@ class AttendanceController
      */
     public static function listSessions(): void
     {
-        RoleMiddleware::authorize(['ADMIN', 'TEACHER']);
+        $user = RoleMiddleware::authorize(['ADMIN', 'TEACHER']);
         $pdo = Database::getConnection();
 
         $classId   = !empty($_GET['class_id'])   ? (int)$_GET['class_id']   : null;
@@ -490,7 +522,7 @@ class AttendanceController
                 (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = s.session_id) AS marked_count
             FROM attendance_sessions s
             JOIN classes c    ON s.class_id    = c.class_id
-            JOIN divisions d  ON s.division_id = d.division_id
+            LEFT JOIN divisions d  ON s.division_id = d.division_id
             JOIN subjects sub ON s.subject_id  = sub.subject_id
             JOIN teachers t   ON s.teacher_id  = t.teacher_id
             JOIN departments dept ON t.department_id = dept.department_id

@@ -29,10 +29,13 @@ class FaceController
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
 
         $validator = Validator::make($input)
-            ->required('class_id', 'division_id', 'subject_id', 'session_date', 'start_time')
+            ->required('class_id', 'subject_id', 'session_date', 'start_time')
             ->numeric('class_id')
-            ->numeric('division_id')
             ->numeric('subject_id');
+
+        if (!empty($input['division_id'])) {
+            $validator->numeric('division_id');
+        }
 
         if ($validator->fails()) {
             Response::validationError($validator->errors());
@@ -50,24 +53,37 @@ class FaceController
             }
         }
         $classId = (int)$input['class_id'];
-        $divisionId = (int)$input['division_id'];
+        $divisionId = !empty($input['division_id']) ? (int)$input['division_id'] : null;
         $subjectId = (int)$input['subject_id'];
         $sessionDate = (string)$input['session_date'];
         $startTime = (string)$input['start_time'];
         $lectureNum = (int)($input['lecture_number'] ?? 1);
 
         // Check for existing open session for this class/div/subject today
-        $dupStmt = $pdo->prepare("
-            SELECT session_id FROM attendance_sessions
-            WHERE class_id = :cid AND division_id = :did AND subject_id = :sid 
-              AND session_date = :sdate AND status = 'OPEN'
-        ");
-        $dupStmt->execute([
-            ':cid' => $classId,
-            ':did' => $divisionId,
-            ':sid' => $subjectId,
-            ':sdate' => $sessionDate
-        ]);
+        if ($divisionId !== null) {
+            $dupStmt = $pdo->prepare("
+                SELECT session_id FROM attendance_sessions
+                WHERE class_id = :cid AND division_id = :did AND subject_id = :sid 
+                  AND session_date = :sdate AND status = 'OPEN'
+            ");
+            $dupStmt->execute([
+                ':cid' => $classId,
+                ':did' => $divisionId,
+                ':sid' => $subjectId,
+                ':sdate' => $sessionDate
+            ]);
+        } else {
+            $dupStmt = $pdo->prepare("
+                SELECT session_id FROM attendance_sessions
+                WHERE class_id = :cid AND (division_id IS NULL OR division_id = 0) AND subject_id = :sid 
+                  AND session_date = :sdate AND status = 'OPEN'
+            ");
+            $dupStmt->execute([
+                ':cid' => $classId,
+                ':sid' => $subjectId,
+                ':sdate' => $sessionDate
+            ]);
+        }
         $existing = $dupStmt->fetch();
 
         if ($existing) {
@@ -187,7 +203,7 @@ class FaceController
                    c.class_name, c.class_code, d.division_name, sub.subject_name
             FROM attendance_sessions s
             JOIN classes c ON s.class_id = c.class_id
-            JOIN divisions d ON s.division_id = d.division_id
+            LEFT JOIN divisions d ON s.division_id = d.division_id
             JOIN subjects sub ON s.subject_id = sub.subject_id
             WHERE s.session_id = :sid
         ");
@@ -486,7 +502,7 @@ class FaceController
                    c.class_name, c.class_code, d.division_name, sub.subject_name, sub.subject_code, t.full_name AS teacher_name
             FROM attendance_sessions s
             JOIN classes c ON s.class_id = c.class_id
-            JOIN divisions d ON s.division_id = d.division_id
+            LEFT JOIN divisions d ON s.division_id = d.division_id
             JOIN subjects sub ON s.subject_id = sub.subject_id
             JOIN teachers t ON s.teacher_id = t.teacher_id
             WHERE s.session_id = :sid
@@ -498,9 +514,9 @@ class FaceController
             Response::notFound("Attendance session #{$sessionId} not found.");
         }
 
-        // Count total active students in division
-        $totStmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :cid AND division_id = :did AND status = 'ACTIVE'");
-        $totStmt->execute([':cid' => $session['class_id'], ':did' => $session['division_id']]);
+        // Count total active students in class/division
+        $totStmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :cid AND (:did IS NULL OR division_id = :did) AND status = 'ACTIVE'");
+        $totStmt->execute([':cid' => $session['class_id'], ':did' => $session['division_id'] ?: null]);
         $totalStudents = (int)$totStmt->fetchColumn();
 
         // Count marked present in session
@@ -513,9 +529,9 @@ class FaceController
             SELECT COUNT(*) 
             FROM students s 
             JOIN student_face_templates sft ON s.student_id = sft.student_id 
-            WHERE s.class_id = :cid AND s.division_id = :did AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+            WHERE s.class_id = :cid AND (:did IS NULL OR s.division_id = :did) AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
         ");
-        $enrStmt->execute([':cid' => $session['class_id'], ':did' => $session['division_id']]);
+        $enrStmt->execute([':cid' => $session['class_id'], ':did' => $session['division_id'] ?: null]);
         $biometricEnrolledCount = (int)$enrStmt->fetchColumn();
 
         Response::success([

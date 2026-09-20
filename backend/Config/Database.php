@@ -148,6 +148,8 @@ class Database
                 error_log("[SAMS Single Teacher Migration Error] " . $tErr->getMessage());
             }
 
+            self::ensureAcademicStructure($pdo);
+
             // Always synchronize all PostgreSQL sequences to MAX(column_value)
             // Safe to run repeatedly; only synchronizes when a sequence is behind MAX(id)
             self::syncPgsqlSequences($pdo);
@@ -326,6 +328,7 @@ class Database
                 UPDATE teacher_subjects SET teacher_id = 1;
                 UPDATE timetables SET teacher_id = 1;
             ");
+            self::ensureAcademicStructure($pdo);
             return;
         }
 
@@ -487,7 +490,7 @@ class Database
         CREATE TABLE attendance_sessions (
             session_id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_id INTEGER NOT NULL REFERENCES classes(class_id),
-            division_id INTEGER NOT NULL REFERENCES divisions(division_id),
+            division_id INTEGER REFERENCES divisions(division_id),
             subject_id INTEGER NOT NULL REFERENCES subjects(subject_id),
             teacher_id INTEGER NOT NULL REFERENCES teachers(teacher_id),
             session_date DATE NOT NULL,
@@ -796,4 +799,254 @@ class Database
             'sessions_owned_by_others' => $sessionsOwnedByOthers
         ];
     }
+
+    /**
+     * Ensure FY and TY academic classes, subjects, teacher allocations, and division-free session support
+     */
+    public static function ensureAcademicStructure(PDO $pdo): void
+    {
+        $driver = self::getActiveDriver();
+        try {
+            if ($driver === 'pgsql') {
+                try {
+                    $pdo->exec("ALTER TABLE attendance_sessions ALTER COLUMN division_id DROP NOT NULL");
+                } catch (\Throwable $t) {}
+            } else {
+                // Check SQLite attendance_sessions column notnull
+                $pragmaStmt = $pdo->query("PRAGMA table_info(attendance_sessions)");
+                $cols = $pragmaStmt ? $pragmaStmt->fetchAll() : [];
+                if ($pragmaStmt) {
+                    $pragmaStmt->closeCursor();
+                    unset($pragmaStmt);
+                }
+                $divCol = null;
+                foreach ($cols as $c) {
+                    if ($c['name'] === 'division_id') {
+                        $divCol = $c;
+                        break;
+                    }
+                }
+                if ($divCol && !empty($divCol['notnull'])) {
+                    $pdo->exec("PRAGMA foreign_keys = OFF;");
+                    $pdo->exec("
+                        CREATE TABLE IF NOT EXISTS attendance_sessions_temp (
+                            session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            class_id INTEGER NOT NULL REFERENCES classes(class_id),
+                            division_id INTEGER REFERENCES divisions(division_id),
+                            subject_id INTEGER NOT NULL REFERENCES subjects(subject_id),
+                            teacher_id INTEGER NOT NULL REFERENCES teachers(teacher_id),
+                            session_date DATE NOT NULL,
+                            start_time TEXT NOT NULL,
+                            end_time TEXT,
+                            lecture_number INTEGER DEFAULT 1,
+                            status TEXT DEFAULT 'OPEN',
+                            verification_mode TEXT DEFAULT 'HYBRID',
+                            notes TEXT,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            closed_at DATETIME
+                        );
+                        INSERT OR IGNORE INTO attendance_sessions_temp SELECT session_id, class_id, division_id, subject_id, teacher_id, session_date, start_time, end_time, lecture_number, status, verification_mode, notes, created_at, closed_at FROM attendance_sessions;
+                        DROP TABLE attendance_sessions;
+                        ALTER TABLE attendance_sessions_temp RENAME TO attendance_sessions;
+                        PRAGMA foreign_keys = ON;
+                    ");
+                }
+            }
+
+            // Insert Semesters
+            $semSql = ($driver === 'pgsql') ? "
+                INSERT INTO semesters (semester_id, course_id, semester_number, academic_year_id, is_active) VALUES
+                (5, 1, 1, 1, true),
+                (6, 1, 5, 1, true),
+                (7, 2, 1, 1, true),
+                (8, 2, 5, 1, true),
+                (9, 3, 1, 1, true),
+                (10, 3, 5, 1, true)
+                ON CONFLICT (semester_id) DO NOTHING
+            " : "
+                INSERT OR IGNORE INTO semesters (semester_id, course_id, semester_number, academic_year_id, is_active) VALUES
+                (5, 1, 1, 1, 1),
+                (6, 1, 5, 1, 1),
+                (7, 2, 1, 1, 1),
+                (8, 2, 5, 1, 1),
+                (9, 3, 1, 1, 1),
+                (10, 3, 5, 1, 1)
+            ";
+            $pdo->exec($semSql);
+
+            // Insert Classes
+            $clsSql = ($driver === 'pgsql') ? "
+                INSERT INTO classes (class_id, department_id, course_id, semester_id, class_name, class_code, academic_year_id) VALUES
+                (4, 1, 1, 5, 'First Year Computer Engineering', 'FYCO', 1),
+                (5, 1, 1, 6, 'Third Year Computer Engineering', 'TYCO', 1),
+                (6, 2, 2, 7, 'First Year Information Technology', 'FYIT', 1),
+                (7, 2, 2, 8, 'Third Year Information Technology', 'TYIT', 1),
+                (8, 3, 3, 9, 'First Year Electronics', 'FYEJ', 1),
+                (9, 3, 3, 10, 'Third Year Electronics', 'TYEJ', 1)
+                ON CONFLICT (class_id) DO NOTHING
+            " : "
+                INSERT OR IGNORE INTO classes (class_id, department_id, course_id, semester_id, class_name, class_code, academic_year_id) VALUES
+                (4, 1, 1, 5, 'First Year Computer Engineering', 'FYCO', 1),
+                (5, 1, 1, 6, 'Third Year Computer Engineering', 'TYCO', 1),
+                (6, 2, 2, 7, 'First Year Information Technology', 'FYIT', 1),
+                (7, 2, 2, 8, 'Third Year Information Technology', 'TYIT', 1),
+                (8, 3, 3, 9, 'First Year Electronics', 'FYEJ', 1),
+                (9, 3, 3, 10, 'Third Year Electronics', 'TYEJ', 1)
+            ";
+            $pdo->exec($clsSql);
+
+            // Insert Divisions
+            $divSql = ($driver === 'pgsql') ? "
+                INSERT INTO divisions (division_id, class_id, division_name, max_capacity) VALUES
+                (5, 4, 'A', 60),
+                (6, 5, 'A', 60),
+                (7, 6, 'A', 60),
+                (8, 7, 'A', 60),
+                (9, 8, 'A', 60),
+                (10, 9, 'A', 60)
+                ON CONFLICT (division_id) DO NOTHING
+            " : "
+                INSERT OR IGNORE INTO divisions (division_id, class_id, division_name, max_capacity) VALUES
+                (5, 4, 'A', 60),
+                (6, 5, 'A', 60),
+                (7, 6, 'A', 60),
+                (8, 7, 'A', 60),
+                (9, 8, 'A', 60),
+                (10, 9, 'A', 60)
+            ";
+            $pdo->exec($divSql);
+
+            // Insert Subjects
+            $subSql = ($driver === 'pgsql') ? "
+                INSERT INTO subjects (subject_id, subject_code, subject_name, department_id, semester_number, credits, total_lectures) VALUES
+                (7, '22103', 'Basic Mathematics', 1, 1, 4, 45),
+                (8, '22226', 'Programming in C', 1, 1, 4, 45),
+                (9, '22517', 'Advanced Java Programming', 1, 5, 4, 45),
+                (10, '22413', 'Software Engineering', 1, 5, 3, 36)
+                ON CONFLICT (subject_id) DO NOTHING
+            " : "
+                INSERT OR IGNORE INTO subjects (subject_id, subject_code, subject_name, department_id, semester_number, credits, total_lectures) VALUES
+                (7, '22103', 'Basic Mathematics', 1, 1, 4, 45),
+                (8, '22226', 'Programming in C', 1, 1, 4, 45),
+                (9, '22517', 'Advanced Java Programming', 1, 5, 4, 45),
+                (10, '22413', 'Software Engineering', 1, 5, 3, 36)
+            ";
+            $pdo->exec($subSql);
+
+            // Insert Teacher Subjects
+            $tsSql = ($driver === 'pgsql') ? "
+                INSERT INTO teacher_subjects (id, teacher_id, subject_id, class_id, division_id, academic_year_id) VALUES
+                (6, 1, 8, 4, 5, 1),
+                (7, 1, 9, 5, 6, 1)
+                ON CONFLICT (id) DO NOTHING
+            " : "
+                INSERT OR IGNORE INTO teacher_subjects (id, teacher_id, subject_id, class_id, division_id, academic_year_id) VALUES
+                (6, 1, 8, 4, 5, 1),
+                (7, 1, 9, 5, 6, 1)
+            ";
+            $pdo->exec($tsSql);
+
+            // Insert Users & Students for FY CO and TY CO
+            $uSql = ($driver === 'pgsql') ? "
+                INSERT INTO users (user_id, role_id, email, password_hash, status) VALUES
+                (27, 3, 'aryan.patil@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (28, 3, 'ishaan.deshmukh@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (29, 3, 'riya.sharma@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (30, 3, 'vedant.joshi@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (31, 3, 'tanmay.kulkarni@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (32, 3, 'ananya.more@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (33, 3, 'saurabh.chavan@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (34, 3, 'shreya.jadhav@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (35, 3, 'rohit.sawant@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (36, 3, 'prachi.nair@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (37, 3, 'chinmay.bapat@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (38, 3, 'gaurav.kale@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (39, 3, 'mansi.rane@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (40, 3, 'nikhil.shinde@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (41, 3, 'pallavi.vaidya@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (42, 3, 'ruturaj.thorat@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (43, 3, 'sayali.ghatke@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (44, 3, 'swapnil.mane@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (45, 3, 'tejas.wagh@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (46, 3, 'vaishnavi.shete@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE')
+                ON CONFLICT (user_id) DO NOTHING
+            " : "
+                INSERT OR IGNORE INTO users (user_id, role_id, email, password_hash, status) VALUES
+                (201, 3, 'aryan.patil@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (202, 3, 'ishaan.deshmukh@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (203, 3, 'riya.sharma@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (204, 3, 'vedant.joshi@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (205, 3, 'tanmay.kulkarni@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (206, 3, 'ananya.more@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (207, 3, 'saurabh.chavan@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (208, 3, 'shreya.jadhav@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (209, 3, 'rohit.sawant@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (210, 3, 'prachi.nair@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (211, 3, 'chinmay.bapat@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (212, 3, 'gaurav.kale@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (213, 3, 'mansi.rane@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (214, 3, 'nikhil.shinde@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (215, 3, 'pallavi.vaidya@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (216, 3, 'ruturaj.thorat@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (217, 3, 'sayali.ghatke@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (218, 3, 'swapnil.mane@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (219, 3, 'tejas.wagh@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+                (220, 3, 'vaishnavi.shete@sams.edu', '\$2y\$10\$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE')
+            ";
+            $pdo->exec($uSql);
+
+            // Students for FY CO (Class 4) and TY CO (Class 5)
+            $stuSql = ($driver === 'pgsql') ? "
+                INSERT INTO students (student_id, user_id, roll_number, student_uid, full_name, email, phone, date_of_birth, gender, department_id, course_id, class_id, division_id, batch, admission_year, face_verification_status) VALUES
+                (201, 201, 'CO-1101', 'UID2026101', 'Aryan Patil', 'aryan.patil@sams.edu', '+91 98111 10001', '2006-04-12', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (202, 202, 'CO-1102', 'UID2026102', 'Ishaan Deshmukh', 'ishaan.deshmukh@sams.edu', '+91 98111 10002', '2006-06-18', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (203, 203, 'CO-1103', 'UID2026103', 'Riya Sharma', 'riya.sharma@sams.edu', '+91 98111 10003', '2006-08-22', 'Female', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (204, 204, 'CO-1104', 'UID2026104', 'Vedant Joshi', 'vedant.joshi@sams.edu', '+91 98111 10004', '2006-02-10', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (205, 205, 'CO-1105', 'UID2026105', 'Tanmay Kulkarni', 'tanmay.kulkarni@sams.edu', '+91 98111 10005', '2006-11-05', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (206, 206, 'CO-1106', 'UID2026106', 'Ananya More', 'ananya.more@sams.edu', '+91 98111 10006', '2006-09-14', 'Female', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (207, 207, 'CO-1107', 'UID2026107', 'Saurabh Chavan', 'saurabh.chavan@sams.edu', '+91 98111 10007', '2006-07-29', 'Male', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (208, 208, 'CO-1108', 'UID2026108', 'Shreya Jadhav', 'shreya.jadhav@sams.edu', '+91 98111 10008', '2006-01-19', 'Female', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (209, 209, 'CO-1109', 'UID2026109', 'Rohit Sawant', 'rohit.sawant@sams.edu', '+91 98111 10009', '2006-12-01', 'Male', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (210, 210, 'CO-1110', 'UID2026110', 'Prachi Nair', 'prachi.nair@sams.edu', '+91 98111 10010', '2006-03-25', 'Female', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (211, 211, 'CO-3101', 'UID2026301', 'Chinmay Bapat', 'chinmay.bapat@sams.edu', '+91 98111 30001', '2004-04-12', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (212, 212, 'CO-3102', 'UID2026302', 'Gaurav Kale', 'gaurav.kale@sams.edu', '+91 98111 30002', '2004-06-18', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (213, 213, 'CO-3103', 'UID2026303', 'Mansi Rane', 'mansi.rane@sams.edu', '+91 98111 30003', '2004-08-22', 'Female', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (214, 214, 'CO-3104', 'UID2026304', 'Nikhil Shinde', 'nikhil.shinde@sams.edu', '+91 98111 30004', '2004-02-10', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (215, 215, 'CO-3105', 'UID2026305', 'Pallavi Vaidya', 'pallavi.vaidya@sams.edu', '+91 98111 30005', '2004-11-05', 'Female', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (216, 216, 'CO-3106', 'UID2026306', 'Ruturaj Thorat', 'ruturaj.thorat@sams.edu', '+91 98111 30006', '2004-09-14', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (217, 217, 'CO-3107', 'UID2026307', 'Sayali Ghatke', 'sayali.ghatke@sams.edu', '+91 98111 30007', '2004-07-29', 'Female', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
+                (218, 218, 'CO-3108', 'UID2026308', 'Swapnil Mane', 'swapnil.mane@sams.edu', '+91 98111 30008', '2004-01-19', 'Male', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
+                (219, 219, 'CO-3109', 'UID2026309', 'Tejas Wagh', 'tejas.wagh@sams.edu', '+91 98111 30009', '2004-12-01', 'Male', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
+                (220, 220, 'CO-3110', 'UID2026310', 'Vaishnavi Shete', 'vaishnavi.shete@sams.edu', '+91 98111 30010', '2004-03-25', 'Female', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED')
+                ON CONFLICT (student_id) DO NOTHING
+            " : "
+                INSERT OR IGNORE INTO students (student_id, user_id, roll_number, student_uid, full_name, email, phone, date_of_birth, gender, department_id, course_id, class_id, division_id, batch, admission_year, face_verification_status) VALUES
+                (201, 201, 'CO-1101', 'UID2026101', 'Aryan Patil', 'aryan.patil@sams.edu', '+91 98111 10001', '2006-04-12', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (202, 202, 'CO-1102', 'UID2026102', 'Ishaan Deshmukh', 'ishaan.deshmukh@sams.edu', '+91 98111 10002', '2006-06-18', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (203, 203, 'CO-1103', 'UID2026103', 'Riya Sharma', 'riya.sharma@sams.edu', '+91 98111 10003', '2006-08-22', 'Female', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (204, 204, 'CO-1104', 'UID2026104', 'Vedant Joshi', 'vedant.joshi@sams.edu', '+91 98111 10004', '2006-02-10', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (205, 205, 'CO-1105', 'UID2026105', 'Tanmay Kulkarni', 'tanmay.kulkarni@sams.edu', '+91 98111 10005', '2006-11-05', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (206, 206, 'CO-1106', 'UID2026106', 'Ananya More', 'ananya.more@sams.edu', '+91 98111 10006', '2006-09-14', 'Female', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
+                (207, 207, 'CO-1107', 'UID2026107', 'Saurabh Chavan', 'saurabh.chavan@sams.edu', '+91 98111 10007', '2006-07-29', 'Male', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (208, 208, 'CO-1108', 'UID2026108', 'Shreya Jadhav', 'shreya.jadhav@sams.edu', '+91 98111 10008', '2006-01-19', 'Female', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (209, 209, 'CO-1109', 'UID2026109', 'Rohit Sawant', 'rohit.sawant@sams.edu', '+91 98111 10009', '2006-12-01', 'Male', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (210, 210, 'CO-1110', 'UID2026110', 'Prachi Nair', 'prachi.nair@sams.edu', '+91 98111 10010', '2006-03-25', 'Female', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
+                (211, 211, 'CO-3101', 'UID2026301', 'Chinmay Bapat', 'chinmay.bapat@sams.edu', '+91 98111 30001', '2004-04-12', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (212, 212, 'CO-3102', 'UID2026302', 'Gaurav Kale', 'gaurav.kale@sams.edu', '+91 98111 30002', '2004-06-18', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (213, 213, 'CO-3103', 'UID2026303', 'Mansi Rane', 'mansi.rane@sams.edu', '+91 98111 30003', '2004-08-22', 'Female', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (214, 214, 'CO-3104', 'UID2026304', 'Nikhil Shinde', 'nikhil.shinde@sams.edu', '+91 98111 30004', '2004-02-10', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (215, 215, 'CO-3105', 'UID2026305', 'Pallavi Vaidya', 'pallavi.vaidya@sams.edu', '+91 98111 30005', '2004-11-05', 'Female', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (216, 216, 'CO-3106', 'UID2026306', 'Ruturaj Thorat', 'ruturaj.thorat@sams.edu', '+91 98111 30006', '2004-09-14', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
+                (217, 217, 'CO-3107', 'UID2026307', 'Sayali Ghatke', 'sayali.ghatke@sams.edu', '+91 98111 30007', '2004-07-29', 'Female', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
+                (218, 218, 'CO-3108', 'UID2026308', 'Swapnil Mane', 'swapnil.mane@sams.edu', '+91 98111 30008', '2004-01-19', 'Male', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
+                (219, 219, 'CO-3109', 'UID2026309', 'Tejas Wagh', 'tejas.wagh@sams.edu', '+91 98111 30009', '2004-12-01', 'Male', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
+                (220, 220, 'CO-3110', 'UID2026310', 'Vaishnavi Shete', 'vaishnavi.shete@sams.edu', '+91 98111 30010', '2004-03-25', 'Female', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED')
+            ";
+            $pdo->exec($stuSql);
+
+        } catch (\Throwable $ex) {
+            error_log("[SAMS Academic Structure Notice] " . $ex->getMessage());
+        }
+    }
 }
+

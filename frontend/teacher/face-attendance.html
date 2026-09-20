@@ -610,7 +610,7 @@
     let sessionStats = { total: 0, verified: 0, remaining: 0 };
 
     // Set default date to today and time to current hour
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -624,6 +624,49 @@
       // Preload FaceEngine neural network models in background so camera start is instantaneous
       if (typeof FaceEngine !== 'undefined') {
         FaceEngine.init().catch(err => console.warn('[SAMS Preload Notice]', err.message));
+      }
+
+      // Check URL parameters for direct session or class navigation
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlSessionId = parseInt(urlParams.get('session_id') || urlParams.get('id') || '0');
+      const urlClassId = parseInt(urlParams.get('class_id') || '0');
+      const urlSubjectId = parseInt(urlParams.get('subject_id') || '0');
+
+      if (urlSessionId > 0) {
+        try {
+          const res = await API.get(`/api/face/session/${urlSessionId}`);
+          if (res && res.data && res.data.session) {
+            activeSession = res.data.session;
+            sessionStats = res.data.stats || { total: 0, verified: 0, remaining: 0 };
+            document.getElementById('face-setup-view').style.display = 'none';
+            document.getElementById('face-active-view').style.display = 'block';
+            renderActiveSessionInfo();
+            await startCameraVerification();
+          }
+        } catch (err) {
+          console.warn('[Face Session Resume Notice]', err);
+        }
+      } else if (urlClassId > 0) {
+        try {
+          const payload = {
+            class_id: urlClassId,
+            subject_id: urlSubjectId > 0 ? urlSubjectId : 1,
+            session_date: `${yyyy}-${mm}-${dd}`,
+            start_time: `${hh}:${min}`,
+            lecture_number: 1
+          };
+          const res = await API.post('/api/face/session/start', payload);
+          if (res && res.data && res.data.session) {
+            activeSession = res.data.session;
+            sessionStats = res.data.stats || { total: 0, verified: 0, remaining: 0 };
+            document.getElementById('face-setup-view').style.display = 'none';
+            document.getElementById('face-active-view').style.display = 'block';
+            renderActiveSessionInfo();
+            await startCameraVerification();
+          }
+        } catch (err) {
+          console.warn('[Auto Face Start Notice]', err);
+        }
       }
     });
 
@@ -665,11 +708,14 @@
     function renderActiveSessionInfo() {
       if (!activeSession) return;
       const s = activeSession;
+      const divPart = s.division_name ? ` Div ${s.division_name}` : '';
+      const divLongPart = s.division_name ? ` - Division ${s.division_name}` : '';
+
       document.getElementById('active-session-id-pill').textContent = `Session #${s.session_id}`;
-      document.getElementById('active-session-heading').textContent = `${s.subject_name} — ${s.class_code} Div ${s.division_name}`;
+      document.getElementById('active-session-heading').textContent = `${s.subject_name} — ${s.class_code}${divPart}`;
       document.getElementById('active-session-subheading').textContent = `${s.session_date} • ${s.start_time} • ${s.teacher_name || 'Faculty Member'}`;
 
-      document.getElementById('card-class-text').textContent = `${s.class_name} - Division ${s.division_name}`;
+      document.getElementById('card-class-text').textContent = `${s.class_name}${divLongPart}`;
       document.getElementById('card-subject-text').textContent = s.subject_name;
       document.getElementById('card-date-text').textContent = s.session_date;
       document.getElementById('card-time-text').textContent = s.start_time;

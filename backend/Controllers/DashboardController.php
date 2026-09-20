@@ -265,6 +265,88 @@ class DashboardController
             (int)($tData['total'] ?? 0)
         );
 
+        // Authorized Year & Branch Class Attendance structure (FY, SY, TY)
+        $classAttendanceStmt = $pdo->prepare("
+            SELECT DISTINCT
+                c.class_id,
+                c.class_name,
+                c.class_code,
+                dept.department_id,
+                dept.department_code,
+                dept.department_name,
+                (SELECT COUNT(*) FROM students stu WHERE stu.class_id = c.class_id AND stu.status = 'ACTIVE') AS student_count
+            FROM classes c
+            JOIN departments dept ON c.department_id = dept.department_id
+            WHERE c.class_id IN (
+                SELECT class_id FROM teacher_subjects WHERE teacher_id = :tid
+            )
+            ORDER BY c.class_code ASC
+        ");
+        $classAttendanceStmt->execute([':tid' => $teacherId]);
+        $authorizedClasses = $classAttendanceStmt->fetchAll();
+
+        // Also fetch the subjects taught by this teacher for each class
+        $classSubjectsStmt = $pdo->prepare("
+            SELECT DISTINCT
+                ts.class_id,
+                sub.subject_id,
+                sub.subject_name,
+                sub.subject_code
+            FROM teacher_subjects ts
+            JOIN subjects sub ON ts.subject_id = sub.subject_id
+            WHERE ts.teacher_id = :tid
+            ORDER BY sub.subject_name ASC
+        ");
+        $classSubjectsStmt->execute([':tid' => $teacherId]);
+        $classSubjectsRows = $classSubjectsStmt->fetchAll();
+
+        $classSubjectsMap = [];
+        foreach ($classSubjectsRows as $csRow) {
+            $cid = (int)$csRow['class_id'];
+            if (!isset($classSubjectsMap[$cid])) {
+                $classSubjectsMap[$cid] = [];
+            }
+            $classSubjectsMap[$cid][] = [
+                'subject_id' => (int)$csRow['subject_id'],
+                'subject_name' => $csRow['subject_name'],
+                'subject_code' => $csRow['subject_code']
+            ];
+        }
+
+        // Group into FY, SY, TY categories
+        $classAttendance = [
+            'FY' => [],
+            'SY' => [],
+            'TY' => []
+        ];
+
+        foreach ($authorizedClasses as $ac) {
+            $code = strtoupper($ac['class_code'] ?? '');
+            $yearKey = null;
+            if (str_starts_with($code, 'FY') || stripos($ac['class_name'], 'First Year') !== false) {
+                $yearKey = 'FY';
+            } elseif (str_starts_with($code, 'SY') || stripos($ac['class_name'], 'Second Year') !== false) {
+                $yearKey = 'SY';
+            } elseif (str_starts_with($code, 'TY') || stripos($ac['class_name'], 'Third Year') !== false) {
+                $yearKey = 'TY';
+            }
+
+            if ($yearKey && isset($classAttendance[$yearKey])) {
+                $cid = (int)$ac['class_id'];
+                $classAttendance[$yearKey][] = [
+                    'class_id' => $cid,
+                    'class_name' => $ac['class_name'],
+                    'class_code' => $ac['class_code'],
+                    'year_category' => $yearKey,
+                    'department_id' => (int)$ac['department_id'],
+                    'branch_code' => $ac['department_code'],
+                    'branch_name' => $ac['department_name'],
+                    'student_count' => (int)$ac['student_count'],
+                    'subjects' => $classSubjectsMap[$cid] ?? []
+                ];
+            }
+        }
+
         Response::success([
             'teacher' => [
                 'teacher_id' => $teacherId,
@@ -282,6 +364,7 @@ class DashboardController
             'today_day' => $todayName,
             'timetable' => $timetable,
             'assigned_classes' => $classes,
+            'class_attendance' => $classAttendance,
             'active_session' => $activeSession
         ], 'Teacher dashboard metrics retrieved.');
     }

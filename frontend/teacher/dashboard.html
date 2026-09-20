@@ -11,6 +11,89 @@
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/frontend/assets/css/academic-theme.css?v=2.2.0">
   <link rel="stylesheet" href="/frontend/assets/css/main.css?v=2.2.0">
+  <style>
+    /* Class Attendance Specific Styles */
+    .class-attendance-card {
+      background: var(--bg-surface-elevated, #F9F6F0);
+      border: 1px solid var(--border-subtle, #D5CCBD);
+      border-radius: var(--radius-lg, 12px);
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform var(--transition-normal, 250ms), box-shadow var(--transition-normal, 250ms), border-color var(--transition-normal, 250ms);
+      position: relative;
+      overflow: hidden;
+      min-height: 200px;
+    }
+    .class-attendance-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-card-hover, 0 6px 16px -2px rgba(47, 53, 50, 0.1));
+      border-color: var(--primary-accent, #6F7F6A);
+    }
+    .class-attendance-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--primary-accent, #6F7F6A);
+      opacity: 0.9;
+    }
+    .year-nav-tabs {
+      display: inline-flex;
+      background: var(--bg-surface-subtle, #DFD7C9);
+      padding: 4px;
+      border-radius: var(--radius-full, 9999px);
+      border: 1px solid var(--border-subtle, #D5CCBD);
+      gap: 4px;
+    }
+    .year-nav-btn {
+      border: none;
+      background: transparent;
+      padding: 8px 24px;
+      border-radius: var(--radius-full, 9999px);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-secondary, #6F706A);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all var(--transition-fast, 150ms);
+    }
+    .year-nav-btn:hover {
+      color: var(--text-main, #2F3532);
+      background: rgba(255, 255, 255, 0.4);
+    }
+    .year-nav-btn.active {
+      background: var(--primary-accent, #6F7F6A);
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(111, 127, 106, 0.35);
+    }
+    .year-tag-pill {
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm, 4px);
+      background: var(--bg-surface-subtle, #DFD7C9);
+      color: var(--primary-accent, #6F7F6A);
+    }
+    @media (max-width: 640px) {
+      .year-nav-tabs {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .year-nav-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 12px;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -209,6 +292,47 @@
           </div>
         </div>
 
+        <!-- ========================================================= -->
+        <!-- NEW SECTION: CLASS ATTENDANCE (YEAR & BRANCH WORKFLOW)   -->
+        <!-- ========================================================= -->
+        <div class="card" id="class-attendance-section" style="margin-top: 28px;">
+          <div class="card-header" style="flex-wrap: wrap; gap: 14px; align-items: center;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span class="badge" style="background: var(--bg-surface-subtle); color: var(--primary-accent); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em;">ACADEMIC WORKFLOW</span>
+              </div>
+              <h3 class="card-title" style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin: 0;">
+                CLASS ATTENDANCE
+              </h3>
+              <p style="font-size: 0.83rem; color: var(--text-muted); margin-top: 3px;">
+                Select an academic year and branch to open attendance directly for that class.
+              </p>
+            </div>
+
+            <!-- Year Selection Tabs: FY, SY, TY -->
+            <div class="year-nav-tabs" role="tablist" aria-label="Academic Year Categories">
+              <button type="button" class="year-nav-btn active" id="btn-year-fy" data-year="FY" onclick="selectYearCategory('FY')" role="tab" aria-selected="true">
+                <span style="font-family: var(--font-serif); font-size: 1.05rem;">FY</span>
+                <span style="font-size: 0.78rem; opacity: 0.85;">First Year</span>
+              </button>
+              <button type="button" class="year-nav-btn" id="btn-year-sy" data-year="SY" onclick="selectYearCategory('SY')" role="tab" aria-selected="false">
+                <span style="font-family: var(--font-serif); font-size: 1.05rem;">SY</span>
+                <span style="font-size: 0.78rem; opacity: 0.85;">Second Year</span>
+              </button>
+              <button type="button" class="year-nav-btn" id="btn-year-ty" data-year="TY" onclick="selectYearCategory('TY')" role="tab" aria-selected="false">
+                <span style="font-family: var(--font-serif); font-size: 1.05rem;">TY</span>
+                <span style="font-size: 0.78rem; opacity: 0.85;">Third Year</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Branch Class Cards Grid -->
+          <div id="class-attendance-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; padding-top: 14px;">
+            <div class="class-card skeleton" style="height: 180px;"></div>
+            <div class="class-card skeleton" style="height: 180px;"></div>
+          </div>
+        </div>
+
       </main>
     </div>
   </div>
@@ -329,6 +453,10 @@
           coursesGrid.innerHTML = `<div class="empty-state" style="padding: 24px;"><div class="empty-state-desc">No assigned courses found. Contact administrator.</div></div>`;
         }
 
+        // Populate Class Attendance Data
+        classAttendanceData = class_attendance || { FY: [], SY: [], TY: [] };
+        renderClassAttendanceCards();
+
       } catch (err) {
         console.error('[Teacher Dashboard Error]', err);
         UI.toast('Failed to load dashboard: ' + err.message, 'error');
@@ -343,7 +471,199 @@
       }
     }
 
+    let classAttendanceData = { FY: [], SY: [], TY: [] };
+    let selectedYearTab = 'FY';
+    let activeModalClass = null;
+
+    function selectYearCategory(year) {
+      selectedYearTab = year;
+      document.querySelectorAll('.year-nav-btn').forEach(btn => {
+        const isCurrent = btn.dataset.year === year;
+        btn.classList.toggle('active', isCurrent);
+        btn.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+      });
+      renderClassAttendanceCards();
+    }
+
+    function renderClassAttendanceCards() {
+      const container = document.getElementById('class-attendance-cards-grid');
+      if (!container) return;
+
+      const classes = classAttendanceData[selectedYearTab] || [];
+      const yearFullNames = {
+        'FY': 'First Year',
+        'SY': 'Second Year',
+        'TY': 'Third Year'
+      };
+      const yearLabel = yearFullNames[selectedYearTab] || selectedYearTab;
+
+      if (classes.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1/-1;">
+            <div class="empty-state" style="padding: 36px 20px;">
+              <div class="empty-state-icon">🏛️</div>
+              <div class="empty-state-title">No ${yearLabel} (${selectedYearTab}) Classes Available</div>
+              <div class="empty-state-desc">No classes for ${yearLabel} are currently assigned to your teaching profile.</div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = classes.map(c => {
+        const studentCountHtml = (c.student_count !== undefined && c.student_count !== null)
+          ? `<div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
+               <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+               <span style="font-weight: 600;">Students: ${c.student_count}</span>
+             </div>`
+          : '';
+
+        const subjectCount = (c.subjects && c.subjects.length) ? c.subjects.length : 0;
+        const subjectMetaHtml = subjectCount > 0
+          ? `<div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
+               ${subjectCount} course${subjectCount > 1 ? 's' : ''}: ${c.subjects.map(s => s.subject_name).join(', ')}
+             </div>`
+          : `<div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px;">Department of ${c.branch_name}</div>`;
+
+        return `
+          <div class="class-attendance-card" id="card-${c.class_code}">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                  <span class="year-tag-pill">${selectedYearTab}</span>
+                  <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-left: 6px;">${yearLabel}</span>
+                </div>
+                <span class="badge" style="background: var(--bg-surface-subtle); color: var(--primary-accent); font-weight: 800; font-family: var(--font-mono); font-size: 0.85rem;">
+                  ${c.branch_code}
+                </span>
+              </div>
+
+              <h4 style="font-family: var(--font-serif); font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">
+                ${c.branch_name}
+              </h4>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 14px;">
+                ${c.branch_code}
+              </div>
+
+              ${studentCountHtml}
+              ${subjectMetaHtml}
+            </div>
+
+            <div style="margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+              <button type="button" class="btn btn-primary" style="width: 100%; justify-content: center; box-shadow: var(--shadow-sm);" onclick="openAttendanceModal(${c.class_id})">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Take Attendance
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openAttendanceModal(classId) {
+      let foundClass = null;
+      for (const y of ['FY', 'SY', 'TY']) {
+        const match = (classAttendanceData[y] || []).find(c => c.class_id === classId);
+        if (match) {
+          foundClass = match;
+          break;
+        }
+      }
+      if (!foundClass) return;
+
+      activeModalClass = foundClass;
+
+      const yearFullNames = { 'FY': 'First Year', 'SY': 'Second Year', 'TY': 'Third Year' };
+      const yLabel = yearFullNames[foundClass.year_category] || foundClass.year_category;
+
+      document.getElementById('modal-year-badge').textContent = foundClass.year_category;
+      document.getElementById('modal-branch-badge').textContent = foundClass.branch_code;
+      document.getElementById('modal-class-title').textContent = `${yLabel} — ${foundClass.branch_name}`;
+      document.getElementById('modal-class-subtext').textContent = `${foundClass.class_code} • ${foundClass.branch_name} (${foundClass.branch_code})`;
+      document.getElementById('modal-student-count').textContent = `Students: ${foundClass.student_count || 0}`;
+
+      const subjectSelect = document.getElementById('modal-subject-select');
+      subjectSelect.innerHTML = '';
+
+      if (foundClass.subjects && foundClass.subjects.length > 0) {
+        foundClass.subjects.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.subject_id;
+          opt.textContent = `${s.subject_name} (${s.subject_code || ''})`;
+          subjectSelect.appendChild(opt);
+        });
+      } else {
+        const opt = document.createElement('option');
+        opt.value = '1';
+        opt.textContent = 'General Attendance';
+        subjectSelect.appendChild(opt);
+      }
+
+      document.getElementById('attendance-mode-modal').style.display = 'flex';
+    }
+
+    function closeAttendanceModal() {
+      document.getElementById('attendance-mode-modal').style.display = 'none';
+      activeModalClass = null;
+    }
+
+    function launchAttendanceWorkflow(mode) {
+      if (!activeModalClass) return;
+      const classId = activeModalClass.class_id;
+      const subjectId = document.getElementById('modal-subject-select').value || '1';
+
+      if (mode === 'manual') {
+        window.location.href = `/frontend/teacher/attendance.html?class_id=${classId}&subject_id=${subjectId}`;
+      } else {
+        window.location.href = `/frontend/teacher/face-attendance.html?class_id=${classId}&subject_id=${subjectId}`;
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', loadTeacherDashboard);
   </script>
+
+  <!-- Attendance Mode & Subject Selection Modal -->
+  <div id="attendance-mode-modal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(36, 42, 39, 0.65); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-box" style="background: var(--bg-app); border: 1px solid var(--border-medium); border-radius: var(--radius-lg); width: 92%; max-width: 500px; padding: 26px; box-shadow: var(--shadow-xl); position: relative;">
+      <button type="button" onclick="closeAttendanceModal()" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer; line-height: 1;" aria-label="Close Modal">&times;</button>
+      
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <span id="modal-year-badge" class="badge badge-enrolled" style="font-weight: 700;">FY</span>
+        <span id="modal-branch-badge" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-main); font-weight: 700;">CO</span>
+      </div>
+      <h3 id="modal-class-title" style="font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">
+        First Year — Computer Engineering
+      </h3>
+      <p id="modal-class-subtext" style="font-size: 0.83rem; color: var(--text-muted); margin-bottom: 18px;">
+        Select course and choose your attendance recording method.
+      </p>
+
+      <div style="background: var(--bg-surface); padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 600;">Enrolled Strength:</span>
+          <strong id="modal-student-count" style="font-size: 0.92rem; color: var(--text-main); font-weight: 700;">Students: —</strong>
+        </div>
+        <div id="modal-subject-picker-box">
+          <label for="modal-subject-select" style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">
+            Subject / Course *
+          </label>
+          <select id="modal-subject-select" class="form-control" style="width: 100%; font-size: 0.88rem; padding: 8px 12px;">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button type="button" id="modal-manual-btn" class="btn btn-primary" style="padding: 12px 18px; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;" onclick="launchAttendanceWorkflow('manual')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          Open Manual Attendance Roster
+        </button>
+        <button type="button" id="modal-face-btn" class="btn btn-secondary" style="padding: 12px 18px; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;" onclick="launchAttendanceWorkflow('face')">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Launch Face Verification Studio
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

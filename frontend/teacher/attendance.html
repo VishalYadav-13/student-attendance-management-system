@@ -283,16 +283,75 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     let activeSessionId = parseInt(urlParams.get('session_id') || urlParams.get('id') || '0');
+    const activeClassId = parseInt(urlParams.get('class_id') || '0');
+    const activeSubjectId = parseInt(urlParams.get('subject_id') || '0');
     let activeSession = null;
     let rosterStudents = [];
 
     // Initialize Manual Attendance page
     document.addEventListener('DOMContentLoaded', async () => {
-      await loadTeacherSessions();
       if (activeSessionId > 0) {
+        await loadTeacherSessions();
         await loadSessionRoster(activeSessionId);
+      } else if (activeClassId > 0) {
+        await handleClassAttendanceNavigation(activeClassId, activeSubjectId);
+      } else {
+        await loadTeacherSessions();
+        if (activeSessionId > 0) {
+          await loadSessionRoster(activeSessionId);
+        }
       }
     });
+
+    // Handle opening or resuming a session when launched from Class Attendance
+    async function handleClassAttendanceNavigation(classId, subjectId) {
+      try {
+        // 1. Check if an open session already exists for this class
+        const sessRes = await API.get(`/api/attendance/sessions?class_id=${classId}&status=OPEN&limit=1`);
+        const openSessions = (sessRes && sessRes.data && sessRes.data.sessions) ? sessRes.data.sessions : [];
+
+        if (openSessions.length > 0) {
+          activeSessionId = openSessions[0].session_id;
+          await loadTeacherSessions();
+          await loadSessionRoster(activeSessionId);
+          return;
+        }
+
+        // 2. If no open session, create one for this class without division
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const hh = String(today.getHours()).padStart(2, '0');
+        const min = String(today.getMinutes()).padStart(2, '0');
+
+        const createPayload = {
+          class_id: classId,
+          subject_id: subjectId > 0 ? subjectId : 1,
+          session_date: `${yyyy}-${mm}-${dd}`,
+          start_time: `${hh}:${min}`,
+          verification_mode: 'MANUAL',
+          reuse_open_session: true
+        };
+
+        const createRes = await API.post('/api/attendance/session', createPayload);
+        if (createRes && createRes.data && createRes.data.session_id) {
+          activeSessionId = createRes.data.session_id;
+          await loadTeacherSessions();
+          await loadSessionRoster(activeSessionId);
+          UI.toast('Attendance session opened for class.', 'success');
+        } else {
+          await loadTeacherSessions();
+          if (activeSessionId > 0) await loadSessionRoster(activeSessionId);
+        }
+      } catch (err) {
+        console.warn('[Class Attendance Workflow Init]', err);
+        await loadTeacherSessions();
+        if (activeSessionId > 0) {
+          await loadSessionRoster(activeSessionId);
+        }
+      }
+    }
 
     // Load available open sessions for this teacher
     async function loadTeacherSessions() {
@@ -311,7 +370,8 @@
         sessions.forEach(s => {
           const opt = document.createElement('option');
           opt.value = s.session_id;
-          opt.textContent = `#${s.session_id} • ${s.subject_name || 'Subject'} (${s.class_name || ''} ${s.division_name || ''}) — ${s.status}`;
+          const divPart = s.division_name ? ` Div ${s.division_name}` : '';
+          opt.textContent = `#${s.session_id} • ${s.subject_name || 'Subject'} (${s.class_name || ''}${divPart}) — ${s.status}`;
           if (s.session_id === activeSessionId) {
             opt.selected = true;
           }
@@ -355,7 +415,8 @@
         document.getElementById('badge-session-status').textContent = activeSession.status || 'OPEN';
         document.getElementById('session-status-badge').textContent = `Session #${sessionId} • ${activeSession.status || 'OPEN'}`;
 
-        const subjectTitle = `${activeSession.subject_name || 'Subject'} (${activeSession.class_name || 'Class'} - Div ${activeSession.division_name || 'A'})`;
+        const divText = activeSession.division_name ? ` - Div ${activeSession.division_name}` : '';
+        const subjectTitle = `${activeSession.subject_name || 'Subject'} (${activeSession.class_name || 'Class'}${divText})`;
         document.getElementById('active-subject-heading').textContent = subjectTitle;
 
         const sessionDate = activeSession.session_date || 'Today';
