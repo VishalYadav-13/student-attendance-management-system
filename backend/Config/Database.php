@@ -247,6 +247,7 @@ class Database
             'attendance_overrides' => 'override_id',
             'face_profiles' => 'profile_id',
             'student_face_templates' => 'id',
+            'student_face_enrollments' => 'id',
             'face_verification_logs' => 'log_id',
             'notifications' => 'notification_id',
             'audit_logs' => 'log_id',
@@ -317,6 +318,18 @@ class Database
                 );
                 CREATE INDEX IF NOT EXISTS idx_face_templates_student ON student_face_templates(student_id);
                 CREATE INDEX IF NOT EXISTS idx_face_templates_status ON student_face_templates(status);
+                CREATE TABLE IF NOT EXISTS student_face_enrollments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER UNIQUE NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+                    compreface_subject TEXT UNIQUE NOT NULL,
+                    enrollment_status TEXT DEFAULT 'ENROLLED',
+                    sample_count INTEGER DEFAULT 1,
+                    enrolled_by INTEGER REFERENCES users(user_id),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_face_enroll_student ON student_face_enrollments(student_id);
+                CREATE INDEX IF NOT EXISTS idx_face_enroll_subject ON student_face_enrollments(compreface_subject);
                 UPDATE users SET email = 'teacher@sams.edu', status = 'ACTIVE' WHERE user_id = 2 OR email = 'teacher.sharma@sams.edu';
                 UPDATE admins SET full_name = 'Madhura Mam' WHERE admin_id = 1 OR user_id = 1;
                 UPDATE teachers SET full_name = 'Prof. Kalpesh Sir', designation = 'Senior Faculty - Computer Engineering', status = 'ACTIVE' WHERE teacher_id = 1;
@@ -547,6 +560,17 @@ class Database
             quality_score REAL DEFAULT 1.0,
             enrolled_by INTEGER REFERENCES users(user_id),
             status TEXT DEFAULT 'ACTIVE',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE student_face_enrollments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER UNIQUE NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+            compreface_subject TEXT UNIQUE NOT NULL,
+            enrollment_status TEXT DEFAULT 'ENROLLED',
+            sample_count INTEGER DEFAULT 1,
+            enrolled_by INTEGER REFERENCES users(user_id),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );

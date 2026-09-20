@@ -11,6 +11,7 @@ use SAMS\Config\Database;
 use SAMS\Middleware\AuthMiddleware;
 use SAMS\Middleware\RoleMiddleware;
 use SAMS\Services\FaceVerificationService;
+use SAMS\Services\CompreFaceService;
 use SAMS\Services\AuditService;
 use SAMS\Services\GeminiService;
 use SAMS\Utils\Response;
@@ -226,6 +227,87 @@ class FaceController
     }
 
     /**
+     * Real-time Face Recognition Attendance Endpoint (CompreFace)
+     * POST /api/face/recognize
+     */
+    public static function recognize(): void
+    {
+        $user = RoleMiddleware::authorize(['ADMIN', 'TEACHER']);
+        if (empty($user)) {
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
+        $validator = Validator::make($input)
+            ->required('session_id')
+            ->numeric('session_id');
+
+        if ($validator->fails()) {
+            Response::validationError($validator->errors());
+            return;
+        }
+
+        $sessionId = (int)$input['session_id'];
+        $image = $input['image'] ?? null;
+
+        if (empty($image) || !is_string($image)) {
+            Response::error('Camera frame image is required for face recognition.', 'INVALID_IMAGE', 422);
+            return;
+        }
+
+        $livenessPassed = !isset($input['liveness_passed']) || (bool)$input['liveness_passed'];
+        $livenessAction = (string)($input['liveness_action'] ?? 'none');
+        $autoMark = !isset($input['auto_mark']) || (bool)$input['auto_mark'];
+
+        $pdo = Database::getConnection();
+
+        // Verify session exists and teacher authorization
+        $sessStmt = $pdo->prepare("SELECT session_id, teacher_id, status FROM attendance_sessions WHERE session_id = :sid");
+        $sessStmt->execute([':sid' => $sessionId]);
+        $session = $sessStmt->fetch();
+
+        if (!$session) {
+            Response::notFound("Attendance session #{$sessionId} not found.");
+            return;
+        }
+
+        $teacherId = null;
+        if ($user['role_name'] === 'TEACHER') {
+            $userTeacherId = (int)($user['teacher_id'] ?? 0);
+            $sessionTeacherId = (int)$session['teacher_id'];
+            if ($sessionTeacherId !== $userTeacherId) {
+                Response::forbidden("Access denied: You can only record attendance for your own sessions.");
+                return;
+            }
+            $teacherId = $userTeacherId;
+        }
+
+        if ($session['status'] === 'CLOSED') {
+            Response::forbidden("This attendance session has been closed. Modifications require administrator override.");
+            return;
+        }
+
+        $result = FaceVerificationService::recognizeCompreFace(
+            $sessionId,
+            $image,
+            $livenessPassed,
+            $livenessAction,
+            (int)$user['user_id'],
+            $autoMark,
+            $teacherId
+        );
+
+        if (empty($result['verified'])) {
+            $httpStatus = ($result['result_code'] === 'SERVICE_UNAVAILABLE') ? 503 : 422;
+            Response::error($result['message'], $result['result_code'] ?? 'FACE_NOT_RECOGNIZED', $httpStatus, $result);
+            return;
+        }
+
+        Response::success($result, $result['message']);
+    }
+
+    /**
      * Real-time Face Verification Endpoint
      * POST /api/face/verify
      */
@@ -237,6 +319,12 @@ class FaceController
         }
 
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
+        // If image is provided without embedding, route directly to CompreFace recognize()
+        if (!empty($input['image']) && empty($input['embedding'])) {
+            self::recognize();
+            return;
+        }
 
         $validator = Validator::make($input)
             ->required('session_id', 'embedding')
@@ -325,8 +413,10 @@ class FaceController
 
         $rawEmbedding = $input['embedding'] ?? null;
         $rawImage = $input['image'] ?? null;
+        $rawImages = $input['images'] ?? null;
+        $action = (string)($input['action'] ?? 'enroll');
 
-        if (empty($rawEmbedding) && empty($rawImage)) {
+        if (empty($rawEmbedding) && empty($rawImage) && empty($rawImages)) {
             Response::validationError(['embedding' => 'Biometric face descriptor or camera capture is required.'], 'Enrollment request is missing required face template data.');
             return;
         }
@@ -340,7 +430,17 @@ class FaceController
         $qualityScore = isset($input['quality_score']) ? (float)$input['quality_score'] : 1.0;
         $modelVersion = (string)($input['model_version'] ?? FaceVerificationService::DEFAULT_MODEL_VERSION);
 
-        if (!empty($rawEmbedding)) {
+        // Extract image(s) if provided
+        $imagesList = null;
+        if (!empty($rawImages) && is_array($rawImages)) {
+            $imagesList = $rawImages;
+        } elseif (!empty($rawImage)) {
+            $imagesList = [(string)$rawImage];
+        }
+
+        // If client passed 128-d descriptor embedding and CompreFace is NOT available,
+        // or client explicitly provided an embedding without CompreFace availability:
+        if (!empty($rawEmbedding) && (!CompreFaceService::isAvailable() || empty($imagesList))) {
             $embedding = is_array($rawEmbedding) ? $rawEmbedding : json_decode((string)$rawEmbedding, true);
             if (!is_array($embedding) || count($embedding) !== 128) {
                 Response::error('Face embedding is invalid: Must provide a 128-dimensional facial landmark descriptor.', 'INVALID_EMBEDDING', 422);
@@ -362,15 +462,53 @@ class FaceController
                 $qualityScore,
                 $modelVersion
             );
-        } else {
-            // Fallback for camera frame image
-            $result = FaceVerificationService::enrollWithImage(
+
+            // If CompreFace IS available and images were also passed, sync to CompreFace
+            if (!empty($result['success']) && $imagesList !== null && CompreFaceService::isAvailable()) {
+                try {
+                    FaceVerificationService::enrollCompreFace(
+                        $studentId,
+                        $imagesList,
+                        (int)$user['user_id'],
+                        $action,
+                        true
+                    );
+                } catch (\Throwable $t) {}
+            }
+        } elseif ($imagesList !== null && CompreFaceService::isAvailable()) {
+            $result = FaceVerificationService::enrollCompreFace(
                 $studentId,
-                (string)$rawImage,
+                $imagesList,
                 (int)$user['user_id'],
-                true,
-                $modelVersion
+                $action,
+                true
             );
+
+            // Also synchronize embedding if provided in dual mode
+            if (!empty($rawEmbedding) && is_array($rawEmbedding) && count($rawEmbedding) === 128) {
+                try {
+                    FaceVerificationService::enroll(
+                        $studentId,
+                        $rawEmbedding,
+                        (int)$user['user_id'],
+                        true,
+                        $qualityScore,
+                        $modelVersion
+                    );
+                } catch (\Throwable $t) {}
+            }
+        } elseif ($imagesList !== null) {
+            // CompreFace requested via image upload, but CompreFace is not configured
+            $result = FaceVerificationService::enrollCompreFace(
+                $studentId,
+                $imagesList,
+                (int)$user['user_id'],
+                $action,
+                true
+            );
+        } else {
+            Response::error('Biometric face descriptor or camera capture is required.', 'INVALID_DATA', 422);
+            return;
         }
 
         if (!$result['success']) {

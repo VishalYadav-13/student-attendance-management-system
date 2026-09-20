@@ -10,6 +10,7 @@ namespace SAMS\Services;
 
 use SAMS\Config\Database;
 use SAMS\Config\Env;
+use SAMS\Services\CompreFaceService;
 use PDO;
 use Exception;
 
@@ -237,64 +238,318 @@ class FaceVerificationService
     }
 
     /**
+     * Ensure student_face_enrollments table exists in active database
+     */
+    public static function ensureEnrollmentsTableExists(PDO $pdo): void
+    {
+        try {
+            $driver = Database::getActiveDriver();
+            if ($driver === 'pgsql') {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS student_face_enrollments (
+                        id SERIAL PRIMARY KEY,
+                        student_id INT UNIQUE NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+                        compreface_subject VARCHAR(100) UNIQUE NOT NULL,
+                        enrollment_status VARCHAR(30) DEFAULT 'ENROLLED' CHECK (enrollment_status IN ('NOT_ENROLLED', 'PENDING', 'ENROLLED', 'NEEDS_REENROLLMENT', 'REVOKED')),
+                        sample_count INT DEFAULT 1,
+                        enrolled_by INT REFERENCES users(user_id) ON DELETE SET NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_face_enroll_student ON student_face_enrollments(student_id);
+                    CREATE INDEX IF NOT EXISTS idx_face_enroll_subject ON student_face_enrollments(compreface_subject);
+                ");
+            } else {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS student_face_enrollments (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        student_id INT UNIQUE NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+                        compreface_subject TEXT UNIQUE NOT NULL,
+                        enrollment_status TEXT DEFAULT 'ENROLLED',
+                        sample_count INTEGER DEFAULT 1,
+                        enrolled_by INTEGER REFERENCES users(user_id),
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_face_enroll_student ON student_face_enrollments(student_id);
+                    CREATE INDEX IF NOT EXISTS idx_face_enroll_subject ON student_face_enrollments(compreface_subject);
+                ");
+            }
+        } catch (\Throwable $e) {
+            error_log('[SAMS Face Enrollments Table Ensure Error] ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enroll multiple face samples for a student using CompreFace
+     * Subject format: SAMS_STUDENT_<student_id>
+     */
+    public static function enrollCompreFace(
+        int $studentId,
+        array $images,
+        int $enrolledByUserId,
+        string $action = 'enroll',
+        bool $consent = true
+    ): array {
+        if (!$consent) {
+            return [
+                'success' => false,
+                'message' => 'Explicit student biometric consent is required prior to enrollment.',
+                'result_code' => 'CONSENT_REQUIRED'
+            ];
+        }
+
+        if (empty($images)) {
+            return [
+                'success' => false,
+                'message' => 'At least one face sample frame must be provided for enrollment.',
+                'result_code' => 'MISSING_SAMPLES'
+            ];
+        }
+
+        $pdo = Database::getConnection();
+
+        // 1. Validate student exists
+        $stuStmt = $pdo->prepare("
+            SELECT s.student_id, s.full_name, s.roll_number, s.student_uid, s.status,
+                   c.class_name, c.class_code, d.division_name
+            FROM students s
+            JOIN classes c ON s.class_id = c.class_id
+            JOIN divisions d ON s.division_id = d.division_id
+            WHERE s.student_id = :sid
+        ");
+        $stuStmt->execute([':sid' => $studentId]);
+        $student = $stuStmt->fetch();
+
+        if (!$student) {
+            return [
+                'success' => false,
+                'message' => "Student #{$studentId} does not exist in institution registry.",
+                'result_code' => 'STUDENT_NOT_FOUND'
+            ];
+        }
+
+        if ($student['status'] !== 'ACTIVE') {
+            return [
+                'success' => false,
+                'message' => "Student {$student['full_name']} is currently {$student['status']} and cannot be enrolled.",
+                'result_code' => 'STUDENT_INACTIVE'
+            ];
+        }
+
+        self::ensureEnrollmentsTableExists($pdo);
+        self::ensureTemplatesTableExists($pdo);
+
+        $subject = CompreFaceService::formatSubject($studentId);
+
+        // Check if student already has an enrollment
+        $checkStmt = $pdo->prepare("SELECT id, sample_count FROM student_face_enrollments WHERE student_id = :sid");
+        $checkStmt->execute([':sid' => $studentId]);
+        $existingEnrollment = $checkStmt->fetch();
+
+        // If replacing, clear previous subject examples in CompreFace
+        if ($action === 'replace' && $existingEnrollment) {
+            CompreFaceService::deleteSubject($subject);
+        }
+
+        $uploadedCount = 0;
+        $errors = [];
+
+        foreach ($images as $idx => $img) {
+            if (empty($img) || !is_string($img)) {
+                continue;
+            }
+            $cfRes = CompreFaceService::addSubjectExample($subject, $img);
+            if (!empty($cfRes['success'])) {
+                $uploadedCount++;
+            } else {
+                $errors[] = "Sample " . ($idx + 1) . ": " . ($cfRes['message'] ?? 'Quality rejection');
+            }
+        }
+
+        if ($uploadedCount === 0) {
+            $firstError = $errors[0] ?? 'Could not detect a valid face in the provided camera samples.';
+            return [
+                'success' => false,
+                'message' => "Face enrollment rejected: {$firstError}",
+                'result_code' => 'ENROLLMENT_REJECTED',
+                'errors' => $errors
+            ];
+        }
+
+        $totalSamples = ($action === 'add_sample' && $existingEnrollment)
+            ? ((int)$existingEnrollment['sample_count'] + $uploadedCount)
+            : $uploadedCount;
+
+        $driver = Database::getActiveDriver();
+        if ($driver === 'pgsql') {
+            $saveStmt = $pdo->prepare("
+                INSERT INTO student_face_enrollments (student_id, compreface_subject, enrollment_status, sample_count, enrolled_by, created_at, updated_at)
+                VALUES (:sid, :subj, 'ENROLLED', :cnt, :by, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON CONFLICT (student_id) DO UPDATE SET
+                    compreface_subject = EXCLUDED.compreface_subject,
+                    enrollment_status = 'ENROLLED',
+                    sample_count = :cnt,
+                    enrolled_by = EXCLUDED.enrolled_by,
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+        } else {
+            $saveStmt = $pdo->prepare("
+                INSERT INTO student_face_enrollments (student_id, compreface_subject, enrollment_status, sample_count, enrolled_by, created_at, updated_at)
+                VALUES (:sid, :subj, 'ENROLLED', :cnt, :by, datetime('now'), datetime('now'))
+                ON CONFLICT(student_id) DO UPDATE SET
+                    compreface_subject = excluded.compreface_subject,
+                    enrollment_status = 'ENROLLED',
+                    sample_count = :cnt,
+                    enrolled_by = excluded.enrolled_by,
+                    updated_at = datetime('now')
+            ");
+        }
+
+        $saveStmt->execute([
+            ':sid' => $studentId,
+            ':subj' => $subject,
+            ':cnt' => $totalSamples,
+            ':by' => $enrolledByUserId
+        ]);
+
+        // Update student face_verification_status
+        $upd = $pdo->prepare("UPDATE students SET face_verification_status = 'ENROLLED' WHERE student_id = :sid");
+        $upd->execute([':sid' => $studentId]);
+
+        AuditService::log($enrolledByUserId, ($action === 'replace' ? 'FACE_ENROLLMENT_REPLACED' : 'FACE_ENROLLED'), 'student_face_enrollments', (string)$studentId, [
+            'student_name' => $student['full_name'],
+            'roll_number' => $student['roll_number'],
+            'subject' => $subject,
+            'samples_uploaded' => $uploadedCount,
+            'total_samples' => $totalSamples
+        ]);
+
+        return [
+            'success' => true,
+            'message' => "Face verification enrolled successfully ({$uploadedCount} sample" . ($uploadedCount > 1 ? 's' : '') . " uploaded).",
+            'status' => 'ENROLLED',
+            'enrollment_status' => 'ENROLLED',
+            'student_id' => $studentId,
+            'subject' => $subject,
+            'compreface_subject' => $subject,
+            'sample_count' => $totalSamples,
+            'student' => [
+                'student_id' => $studentId,
+                'name' => $student['full_name'],
+                'full_name' => $student['full_name'],
+                'roll_number' => $student['roll_number'],
+                'class' => $student['class_code'],
+                'division' => $student['division_name']
+            ]
+        ];
+    }
+
+    /**
      * Delete student's biometric template (Right to Erasure / Privacy Policy)
      */
     public static function deleteBiometricData(int $studentId, int $actorUserId): bool
     {
         $pdo = Database::getConnection();
+        self::ensureEnrollmentsTableExists($pdo);
+        self::ensureTemplatesTableExists($pdo);
 
         // Verify student exists
         $stuCheck = $pdo->prepare("SELECT student_id, full_name, roll_number FROM students WHERE student_id = :sid");
         $stuCheck->execute([':sid' => $studentId]);
         $student = $stuCheck->fetch();
 
-        $stmt = $pdo->prepare("DELETE FROM student_face_templates WHERE student_id = :sid");
-        $stmt->execute([':sid' => $studentId]);
+        // 1. CompreFace Subject Removal
+        $subject = CompreFaceService::formatSubject($studentId);
+        try {
+            CompreFaceService::deleteSubject($subject);
+        } catch (\Throwable $t) {}
+
+        // 2. Remove from student_face_enrollments
+        $delEnroll = $pdo->prepare("DELETE FROM student_face_enrollments WHERE student_id = :sid");
+        $delEnroll->execute([':sid' => $studentId]);
+
+        // 3. Remove legacy templates if present
+        try {
+            $stmt = $pdo->prepare("DELETE FROM student_face_templates WHERE student_id = :sid");
+            $stmt->execute([':sid' => $studentId]);
+        } catch (\Throwable $t) {}
 
         try {
             $stmtLegacy = $pdo->prepare("DELETE FROM face_profiles WHERE student_id = :sid");
             $stmtLegacy->execute([':sid' => $studentId]);
         } catch (\Throwable $t) {}
 
+        // 4. Update student status
         $upd = $pdo->prepare("UPDATE students SET face_verification_status = 'NOT_ENROLLED' WHERE student_id = :sid");
         $upd->execute([':sid' => $studentId]);
 
-        AuditService::log($actorUserId, 'FACE_ENROLLMENT_REMOVED', 'student_face_templates', (string)$studentId, [
+        AuditService::log($actorUserId, 'FACE_ENROLLMENT_REMOVED', 'student_face_enrollments', (string)$studentId, [
             'student_name' => $student['full_name'] ?? 'Unknown',
-            'roll_number' => $student['roll_number'] ?? 'Unknown'
+            'roll_number' => $student['roll_number'] ?? 'Unknown',
+            'subject' => $subject
         ]);
 
         return true;
     }
 
     /**
-     * Retrieve face enrollment status for a student without exposing raw embedding
+     * Retrieve face enrollment status for a student without exposing raw biometric data
      */
     public static function getEnrollmentStatus(int $studentId): array
     {
         $pdo = Database::getConnection();
+        self::ensureEnrollmentsTableExists($pdo);
+
+        // 1. Check CompreFace enrollments
         $stmt = $pdo->prepare("
-            SELECT id, student_id, model_version, quality_score, status, created_at, updated_at
-            FROM student_face_templates
-            WHERE student_id = :sid AND status = 'ACTIVE'
+            SELECT id, student_id, compreface_subject, enrollment_status, sample_count, created_at, updated_at
+            FROM student_face_enrollments
+            WHERE student_id = :sid AND enrollment_status = 'ENROLLED'
         ");
         $stmt->execute([':sid' => $studentId]);
-        $template = $stmt->fetch();
+        $enrollment = $stmt->fetch();
 
-        if ($template) {
+        if ($enrollment) {
             return [
                 'enrolled' => true,
                 'status' => 'ENROLLED',
-                'model_version' => $template['model_version'],
-                'quality_score' => (float)$template['quality_score'],
-                'enrolled_at' => $template['created_at'],
-                'updated_at' => $template['updated_at']
+                'service' => 'CompreFace',
+                'subject' => $enrollment['compreface_subject'],
+                'sample_count' => (int)$enrollment['sample_count'],
+                'enrolled_at' => $enrollment['created_at'],
+                'updated_at' => $enrollment['updated_at']
             ];
         }
+
+        // 2. Check legacy templates table
+        try {
+            $stmt2 = $pdo->prepare("
+                SELECT id, student_id, model_version, quality_score, status, created_at, updated_at
+                FROM student_face_templates
+                WHERE student_id = :sid AND status = 'ACTIVE'
+            ");
+            $stmt2->execute([':sid' => $studentId]);
+            $template = $stmt2->fetch();
+
+            if ($template) {
+                return [
+                    'enrolled' => true,
+                    'status' => 'ENROLLED',
+                    'service' => 'FaceEngine',
+                    'model_version' => $template['model_version'],
+                    'quality_score' => (float)$template['quality_score'],
+                    'sample_count' => 3,
+                    'enrolled_at' => $template['created_at'],
+                    'updated_at' => $template['updated_at']
+                ];
+            }
+        } catch (\Throwable $t) {}
 
         return [
             'enrolled' => false,
             'status' => 'NOT_ENROLLED',
+            'sample_count' => 0,
             'model_version' => null,
             'enrolled_at' => null
         ];
@@ -544,6 +799,263 @@ class FaceVerificationService
     }
 
     /**
+     * Real-time Face Recognition Attendance via CompreFace
+     * Implements strict server-side validation rules:
+     * 1. Session exists and is active (OPEN)
+     * 2. Teacher owns session (if user is teacher)
+     * 3. Liveness check confirmation
+     * 4. CompreFace recognition matching subject SAMS_STUDENT_<id>
+     * 5. Configurable similarity threshold check
+     * 6. Student exists and is active
+     * 7. Class & division matching session
+     * 8. Duplicate attendance prevention (returns already_present)
+     * 9. Inserts attendance record into existing attendance_records table
+     * 10. Audit logging
+     */
+    public static function recognizeCompreFace(
+        int $sessionId,
+        string $base64Image,
+        bool $livenessPassed = true,
+        string $livenessAction = 'none',
+        ?int $actorUserId = null,
+        bool $autoMark = true,
+        ?int $teacherId = null
+    ): array {
+        $pdo = Database::getConnection();
+
+        // 1. Validate Attendance Session
+        $sessStmt = $pdo->prepare("
+            SELECT s.session_id, s.class_id, s.division_id, s.subject_id, s.teacher_id, s.status, s.session_date,
+                   c.class_name, c.class_code, d.division_name, sub.subject_name
+            FROM attendance_sessions s
+            JOIN classes c ON s.class_id = c.class_id
+            JOIN divisions d ON s.division_id = d.division_id
+            JOIN subjects sub ON s.subject_id = sub.subject_id
+            WHERE s.session_id = :sid
+        ");
+        $sessStmt->execute([':sid' => $sessionId]);
+        $session = $sessStmt->fetch();
+
+        if (!$session) {
+            return [
+                'verified' => false,
+                'result_code' => 'SESSION_NOT_FOUND',
+                'message' => "Attendance session #{$sessionId} not found."
+            ];
+        }
+
+        // 2. Validate Teacher Session Ownership
+        if ($teacherId !== null && (int)$session['teacher_id'] !== $teacherId) {
+            return [
+                'verified' => false,
+                'result_code' => 'UNAUTHORIZED_TEACHER',
+                'message' => 'Access denied: You can only record attendance for your own sessions.'
+            ];
+        }
+
+        // 3. Validate Session Status
+        if ($session['status'] === 'CLOSED') {
+            return [
+                'verified' => false,
+                'result_code' => 'SESSION_CLOSED',
+                'message' => 'This attendance session has been closed. Modifications require administrator override.'
+            ];
+        }
+
+        // 4. Validate Liveness / Anti-Spoofing Challenge
+        if (!$livenessPassed) {
+            self::logVerificationAttempt(null, $sessionId, 'LIVENESS_FAILED', 0.0, 0.0, 'Anti-spoofing challenge failed or unconfirmed', 'COMPREFACE');
+            AuditService::log($actorUserId, 'FACE_LIVENESS_FAILED', 'attendance_sessions', (string)$sessionId, [
+                'action_attempted' => $livenessAction
+            ]);
+
+            return [
+                'verified' => false,
+                'result_code' => 'LIVENESS_FAILED',
+                'message' => 'Liveness verification failed. Please look at the camera and blink or turn your head slightly.'
+            ];
+        }
+
+        // 5. Query CompreFace Recognition Service
+        $cfResult = CompreFaceService::recognize($base64Image);
+
+        if (empty($cfResult['success'])) {
+            $errCode = $cfResult['error_code'] ?? 'RECOGNITION_FAILED';
+            $errMsg = $cfResult['message'] ?? 'Face not recognized.';
+
+            self::logVerificationAttempt(
+                null,
+                $sessionId,
+                $errCode,
+                $cfResult['similarity'] ?? 0.0,
+                0.0,
+                $errMsg,
+                'COMPREFACE'
+            );
+
+            return [
+                'verified' => false,
+                'result_code' => $errCode,
+                'code' => $errCode,
+                'similarity' => $cfResult['similarity'] ?? 0.0,
+                'message' => $errMsg
+            ];
+        }
+
+        // 6. Extract student_id from subject
+        $recognizedStudentId = (int)$cfResult['student_id'];
+        $similarity = (float)$cfResult['similarity'];
+
+        // 7. Retrieve student record from institutional database
+        $stuStmt = $pdo->prepare("
+            SELECT s.student_id, s.full_name, s.roll_number, s.student_uid, s.class_id, s.division_id, s.status,
+                   c.class_name, c.class_code, d.division_name
+            FROM students s
+            JOIN classes c ON s.class_id = c.class_id
+            JOIN divisions d ON s.division_id = d.division_id
+            WHERE s.student_id = :sid
+        ");
+        $stuStmt->execute([':sid' => $recognizedStudentId]);
+        $student = $stuStmt->fetch();
+
+        if (!$student) {
+            self::logVerificationAttempt($recognizedStudentId, $sessionId, 'STUDENT_NOT_FOUND', $similarity, 0.9, 'Student not in institution registry', 'COMPREFACE');
+            return [
+                'verified' => false,
+                'result_code' => 'STUDENT_NOT_FOUND',
+                'code' => 'STUDENT_NOT_FOUND',
+                'message' => 'Recognized face does not correspond to an active student record.'
+            ];
+        }
+
+        // 8. Check Student Status
+        if ($student['status'] !== 'ACTIVE') {
+            self::logVerificationAttempt($recognizedStudentId, $sessionId, 'INACTIVE_STUDENT', $similarity, 0.9, "Student status: {$student['status']}", 'COMPREFACE');
+            return [
+                'verified' => false,
+                'result_code' => 'INACTIVE_STUDENT',
+                'code' => 'INACTIVE_STUDENT',
+                'message' => "Student {$student['full_name']} is {$student['status']} and cannot be marked present."
+            ];
+        }
+
+        // 9. Class & Division Match Verification
+        $classId = (int)$session['class_id'];
+        $divisionId = (int)$session['division_id'];
+
+        if ((int)$student['class_id'] !== $classId || (int)$student['division_id'] !== $divisionId) {
+            self::logVerificationAttempt($recognizedStudentId, $sessionId, 'WRONG_CLASS', $similarity, 0.9, 'Student belongs to different division', 'COMPREFACE');
+            AuditService::log($actorUserId, 'FACE_WRONG_CLASS_ATTEMPT', 'students', (string)$recognizedStudentId, [
+                'session_id' => $sessionId,
+                'student_name' => $student['full_name'],
+                'student_class' => "{$student['class_code']} Div {$student['division_name']}",
+                'required_class' => "{$session['class_code']} Div {$session['division_name']}"
+            ]);
+
+            return [
+                'verified' => false,
+                'result_code' => 'WRONG_CLASS',
+                'code' => 'WRONG_CLASS',
+                'message' => 'Student belongs to another class/division.'
+            ];
+        }
+
+        // 10. Duplicate Attendance Protection
+        $dupStmt = $pdo->prepare("SELECT record_id, status, marked_at FROM attendance_records WHERE session_id = :sess AND student_id = :sid");
+        $dupStmt->execute([':sess' => $sessionId, ':sid' => $recognizedStudentId]);
+        $existing = $dupStmt->fetch();
+
+        if ($existing) {
+            AuditService::log($actorUserId, 'FACE_DUPLICATE_ATTEMPT', 'attendance_records', (string)$existing['record_id'], [
+                'student_id' => $recognizedStudentId,
+                'session_id' => $sessionId
+            ]);
+
+            return [
+                'verified' => true,
+                'success' => true,
+                'result_code' => 'ALREADY_MARKED',
+                'code' => 'ALREADY_MARKED',
+                'status' => 'already_present',
+                'already_marked' => true,
+                'attendance_status' => $existing['status'],
+                'confidence' => $similarity,
+                'confidence_score' => $similarity,
+                'similarity' => $similarity,
+                'student_id' => $recognizedStudentId,
+                'student_name' => $student['full_name'],
+                'student' => [
+                    'student_id' => $recognizedStudentId,
+                    'name' => $student['full_name'],
+                    'full_name' => $student['full_name'],
+                    'roll_number' => $student['roll_number'],
+                    'student_uid' => $student['student_uid'],
+                    'class' => $student['class_code'],
+                    'class_name' => $student['class_name'],
+                    'division' => $student['division_name']
+                ],
+                'attendance' => [
+                    'status' => $existing['status']
+                ],
+                'message' => 'Already Present'
+            ];
+        }
+
+        // 11. Record Attendance as Present
+        if ($autoMark) {
+            $ins = $pdo->prepare("
+                INSERT INTO attendance_records (session_id, student_id, status, marked_at, verification_method, confidence_score, ip_address)
+                VALUES (:sess, :sid, 'PRESENT', CURRENT_TIMESTAMP, 'FACE_AI', :conf, :ip)
+            ");
+            $ins->execute([
+                ':sess' => $sessionId,
+                ':sid' => $recognizedStudentId,
+                ':conf' => $similarity,
+                ':ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
+            ]);
+        }
+
+        self::logVerificationAttempt($recognizedStudentId, $sessionId, 'SUCCESS', $similarity, 0.95, "Verified via CompreFace subject {$cfResult['subject']}", 'COMPREFACE');
+        AuditService::log($actorUserId, 'FACE_VERIFY_SUCCESS', 'attendance_records', (string)$recognizedStudentId, [
+            'session_id' => $sessionId,
+            'student_name' => $student['full_name'],
+            'roll_number' => $student['roll_number'],
+            'confidence' => $similarity,
+            'liveness_action' => $livenessAction,
+            'method' => 'COMPREFACE'
+        ]);
+
+        return [
+            'verified' => true,
+            'success' => true,
+            'result_code' => 'FACE_RECOGNIZED',
+            'code' => 'FACE_RECOGNIZED',
+            'status' => 'marked',
+            'already_marked' => false,
+            'attendance_status' => 'PRESENT',
+            'confidence' => $similarity,
+            'confidence_score' => $similarity,
+            'similarity' => $similarity,
+            'student_id' => $recognizedStudentId,
+            'student_name' => $student['full_name'],
+            'student' => [
+                'student_id' => $recognizedStudentId,
+                'name' => $student['full_name'],
+                'full_name' => $student['full_name'],
+                'roll_number' => $student['roll_number'],
+                'student_uid' => $student['student_uid'],
+                'class' => $student['class_code'],
+                'class_name' => $student['class_name'],
+                'division' => $student['division_name']
+            ],
+            'attendance' => [
+                'status' => 'PRESENT'
+            ],
+            'message' => "✓ Attendance Marked: {$student['full_name']}"
+        ];
+    }
+
+    /**
      * Compute standard Euclidean distance between two 128-dimensional vectors
      */
     public static function euclideanDistance(array $v1, array $v2): float
@@ -646,13 +1158,13 @@ class FaceVerificationService
     /**
      * Log face verification attempt in audit log and face_verification_logs table
      */
-    private static function logVerificationAttempt(?int $studentId, ?int $sessionId, string $result, float $conf, float $quality, string $notes): void
+    private static function logVerificationAttempt(?int $studentId, ?int $sessionId, string $result, float $conf, float $quality, string $notes, string $method = 'FACE_API_LOCAL'): void
     {
         try {
             $pdo = Database::getConnection();
             $stmt = $pdo->prepare("
                 INSERT INTO face_verification_logs (student_id, session_id, verification_result, confidence_score, quality_score, method, notes, ip_address)
-                VALUES (:sid, :sess, :res, :conf, :qual, 'FACE_API_LOCAL', :notes, :ip)
+                VALUES (:sid, :sess, :res, :conf, :qual, :method, :notes, :ip)
             ");
             $stmt->execute([
                 ':sid' => $studentId,
@@ -660,6 +1172,7 @@ class FaceVerificationService
                 ':res' => $result,
                 ':conf' => $conf,
                 ':qual' => $quality,
+                ':method' => $method,
                 ':notes' => $notes,
                 ':ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
             ]);

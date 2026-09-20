@@ -277,6 +277,9 @@ if ($requestMethod === 'POST' && $requestUri === '/api/attendance/override') {
 if ($requestMethod === 'POST' && $requestUri === '/api/face/quality-check') {
     FaceController::checkQuality();
 }
+if ($requestMethod === 'POST' && $requestUri === '/api/face/recognize') {
+    FaceController::recognize();
+}
 if ($requestMethod === 'POST' && $requestUri === '/api/face/verify') {
     FaceController::verify();
 }

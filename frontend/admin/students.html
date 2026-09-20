@@ -260,11 +260,14 @@
             Biometric face verification status for automated classroom attendance.
           </p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button id="view-student-enroll-btn" class="btn btn-primary btn-sm" onclick="openEnrollmentModalForCurrentStudent()">
+            <button id="view-student-enroll-btn" class="btn btn-primary btn-sm" onclick="openEnrollmentModalForCurrentStudent('enroll')">
               📸 Enroll Face
             </button>
+            <button id="view-student-replace-bio-btn" class="btn btn-secondary btn-sm" style="display: none;" onclick="openEnrollmentModalForCurrentStudent('replace')">
+              🔄 Replace Enrollment
+            </button>
             <button id="view-student-delete-bio-btn" class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239,68,68,0.3); display: none;" onclick="deleteCurrentStudentBio()">
-              Remove Biometrics
+              🗑️ Delete Enrollment
             </button>
           </div>
         </div>
@@ -329,14 +332,15 @@
           </div>
 
           <!-- Sample Progress Indicators -->
-          <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);" id="enroll-sample-text">
-              Samples captured: 0 of 3
+              Samples captured: 0 of 4
             </span>
-            <div style="display: flex; gap: 6px;">
-              <span id="sample-dot-1" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">Sample 1</span>
-              <span id="sample-dot-2" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">Sample 2</span>
-              <span id="sample-dot-3" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">Sample 3</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span id="sample-dot-1" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">1. Straight</span>
+              <span id="sample-dot-2" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">2. Left Angle</span>
+              <span id="sample-dot-3" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">3. Right Angle</span>
+              <span id="sample-dot-4" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">4. Natural</span>
             </div>
           </div>
 
@@ -490,20 +494,45 @@
         const isEnrolled = s.face_verification_status === 'ENROLLED';
         const bioBadgeEl = document.getElementById('view-student-bio-badge');
         const enrollBtn = document.getElementById('view-student-enroll-btn');
+        const replaceBioBtn = document.getElementById('view-student-replace-bio-btn');
         const deleteBioBtn = document.getElementById('view-student-delete-bio-btn');
         const bioDesc = document.getElementById('view-student-bio-desc');
 
         if (isEnrolled) {
-          bioBadgeEl.innerHTML = '<span class="badge badge-enrolled"><span class="status-dot dot-present"></span> Enrolled (face-api-v1-128d)</span>';
-          enrollBtn.textContent = '🔄 Re-enroll Face';
+          bioBadgeEl.innerHTML = '<span class="badge badge-enrolled"><span class="status-dot dot-present"></span> Enrolled (CompreFace)</span>';
+          enrollBtn.textContent = '➕ Add Face Samples';
+          enrollBtn.onclick = () => openFaceEnrollment(s.student_id, s.full_name, s.roll_number, 'add_sample');
+          if (replaceBioBtn) {
+            replaceBioBtn.style.display = 'inline-flex';
+            replaceBioBtn.onclick = () => openFaceEnrollment(s.student_id, s.full_name, s.roll_number, 'replace');
+          }
           deleteBioBtn.style.display = 'inline-flex';
-          bioDesc.textContent = 'Facial biometric template is active and ready for automated attendance verification.';
+          bioDesc.innerHTML = `CompreFace Subject: <code style="font-family:monospace;font-weight:700;">SAMS_STUDENT_${s.student_id}</code> &bull; Status: ACTIVE`;
         } else {
           bioBadgeEl.innerHTML = '<span class="badge" style="background:var(--bg-surface-subtle); color:var(--text-muted); border:1px solid var(--border-subtle);">Not Enrolled</span>';
           enrollBtn.textContent = '📸 Enroll Face';
+          enrollBtn.onclick = () => openFaceEnrollment(s.student_id, s.full_name, s.roll_number, 'enroll');
+          if (replaceBioBtn) replaceBioBtn.style.display = 'none';
           deleteBioBtn.style.display = 'none';
           bioDesc.textContent = 'No biometric template enrolled. Student must rely on manual attendance until enrolled.';
         }
+
+        // Live CompreFace Enrollment Status Query
+        try {
+          const bioStatusRes = await API.get('/api/face/status/' + studentId);
+          if (bioStatusRes && bioStatusRes.data && bioStatusRes.data.enrolled) {
+            const b = bioStatusRes.data;
+            bioBadgeEl.innerHTML = `<span class="badge badge-enrolled"><span class="status-dot dot-present"></span> Enrolled (${b.service || 'CompreFace'} • ${b.sample_count || 1} samples)</span>`;
+            bioDesc.innerHTML = `Subject: <code style="font-family:monospace;font-weight:700;">${b.subject || ('SAMS_STUDENT_' + studentId)}</code> &bull; Samples: ${b.sample_count || 1} &bull; Status: ACTIVE`;
+            enrollBtn.textContent = '➕ Add Face Samples';
+            enrollBtn.onclick = () => openFaceEnrollment(s.student_id, s.full_name, s.roll_number, 'add_sample');
+            if (replaceBioBtn) {
+              replaceBioBtn.style.display = 'inline-flex';
+              replaceBioBtn.onclick = () => openFaceEnrollment(s.student_id, s.full_name, s.roll_number, 'replace');
+            }
+            deleteBioBtn.style.display = 'inline-flex';
+          }
+        } catch (bErr) {}
 
         const subContainer = document.getElementById('view-student-subjects');
         if (subjects.length === 0) {
@@ -531,14 +560,18 @@
       }
     }
 
-    function openEnrollmentModalForCurrentStudent() {
+    let currentEnrollmentAction = 'enroll';
+
+    function openEnrollmentModalForCurrentStudent(action = 'enroll') {
       if (!currentViewingStudent) return;
-      openFaceEnrollment(currentViewingStudent.student_id, currentViewingStudent.full_name, currentViewingStudent.roll_number);
+      openFaceEnrollment(currentViewingStudent.student_id, currentViewingStudent.full_name, currentViewingStudent.roll_number, action);
     }
 
-    function openFaceEnrollment(studentId, studentName, rollNumber) {
+    function openFaceEnrollment(studentId, studentName, rollNumber, action = 'enroll') {
+      currentEnrollmentAction = action;
       currentViewingStudent = { student_id: studentId, full_name: studentName, roll_number: rollNumber };
-      document.getElementById('enroll-modal-title').textContent = `Enroll Face: ${studentName} (${rollNumber})`;
+      const actionLabel = action === 'add_sample' ? 'Add Samples' : (action === 'replace' ? 'Replace Enrollment' : 'Enroll Face');
+      document.getElementById('enroll-modal-title').textContent = `${actionLabel}: ${studentName} (${rollNumber})`;
       document.getElementById('enroll-intro-view').style.display = 'block';
       document.getElementById('enroll-camera-view').style.display = 'none';
       document.getElementById('enroll-success-view').style.display = 'none';
@@ -578,8 +611,8 @@
     }
 
     function resetSampleIndicators() {
-      document.getElementById('enroll-sample-text').textContent = 'Samples captured: 0 of 3';
-      for (let i = 1; i <= 3; i++) {
+      document.getElementById('enroll-sample-text').textContent = 'Samples captured: 0 of 4';
+      for (let i = 1; i <= 4; i++) {
         const dot = document.getElementById(`sample-dot-${i}`);
         if (dot) {
           dot.style.background = 'var(--bg-surface-subtle)';
@@ -593,6 +626,13 @@
       const statusPill = document.getElementById('enroll-status-pill');
       const guideOverlay = document.getElementById('enroll-guide-overlay');
 
+      const anglePrompts = [
+        'Sample 1/4: Look straight into the camera (Frontal)',
+        'Sample 2/4: Turn head slightly left (Left Angle)',
+        'Sample 3/4: Turn head slightly right (Right Angle)',
+        'Sample 4/4: Look natural with normal expression (Lighting Variation)'
+      ];
+
       const collectLoop = async () => {
         if (!isEnrolling) return;
 
@@ -600,24 +640,25 @@
           const result = await FaceEngine.processFrame(videoEl);
 
           if (result.status === 'NO_FACE') {
-            statusPill.textContent = 'Face not detected. Please position your face inside the frame.';
+            statusPill.textContent = 'Face not detected. Please position face inside the guide.';
             guideOverlay.className = 'face-guide-overlay';
           } else if (result.status === 'MULTIPLE_FACES') {
             statusPill.textContent = 'Multiple faces detected. Only one person should be visible.';
             guideOverlay.className = 'face-guide-overlay warning';
           } else if (result.status === 'POOR_QUALITY') {
-            statusPill.textContent = 'Face quality is insufficient. Please improve lighting and face the camera.';
+            statusPill.textContent = 'Face quality insufficient. Ensure face is well-lit and not blurry.';
             guideOverlay.className = 'face-guide-overlay warning';
           } else if (result.status === 'FACE_DETECTED') {
+            const currentIdx = enrollmentSamples.length;
             guideOverlay.className = 'face-guide-overlay scanning';
-            statusPill.textContent = 'Please look naturally toward the camera.';
+            statusPill.textContent = anglePrompts[currentIdx] || 'Please look naturally toward the camera.';
 
             // Capture image snapshot from the live video frame
             let sampleFrame = null;
             try {
               const canvas = document.createElement('canvas');
-              canvas.width = videoEl.videoWidth || 640;
-              canvas.height = videoEl.videoHeight || 480;
+              canvas.width = Math.min(videoEl.videoWidth || 640, 640);
+              canvas.height = Math.min(videoEl.videoHeight || 480, 480);
               const ctx = canvas.getContext('2d');
               ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
               sampleFrame = canvas.toDataURL('image/jpeg', 0.88);
@@ -631,23 +672,23 @@
             });
 
             const count = enrollmentSamples.length;
-            document.getElementById('enroll-sample-text').textContent = `Samples captured: ${count} of 3`;
+            document.getElementById('enroll-sample-text').textContent = `Samples captured: ${count} of 4`;
             const dot = document.getElementById(`sample-dot-${count}`);
             if (dot) {
               dot.style.background = 'var(--success)';
               dot.style.color = '#fff';
             }
 
-            if (count >= 3) {
+            if (count >= 4) {
               isEnrolling = false;
               guideOverlay.className = 'face-guide-overlay success';
-              statusPill.textContent = 'Processing biometric template...';
+              statusPill.textContent = 'Uploading samples to CompreFace...';
               await submitEnrollmentTemplate();
               return;
             }
 
-            // Small gap between captures
-            await new Promise(r => setTimeout(r, 650));
+            // Gap between multi-angle captures
+            await new Promise(r => setTimeout(r, 750));
           }
         } catch (e) {
           console.warn('[Enrollment Frame Error]', e);
@@ -678,19 +719,11 @@
           embedding_generated: (isArray && embLen === 128 && allNumeric) ? 'YES' : 'NO',
           embedding_type: isArray ? 'array' : typeof avgVector,
           embedding_length: embLen,
-          contains_nan: hasNaN ? 'YES' : 'NO',
-          contains_null: hasNull ? 'YES' : 'NO',
-          all_numeric: allNumeric ? 'YES' : 'NO',
-          model_version: 'face-api-v1-128d',
-          samples_count: enrollmentSamples.length
+          samples_count: enrollmentSamples.length,
+          action: currentEnrollmentAction || 'enroll'
         });
 
-        // Client-side validation prior to network request
-        if (!isArray || embLen !== 128 || !allNumeric) {
-          throw new Error('Face model failed to generate a valid 128-dimensional embedding. Please reposition and recapture.');
-        }
-
-        // Retrieve frame snapshot from sample 3 or earlier sample
+        // Retrieve frame snapshot from sample 4 or earlier sample
         let frameData = null;
         for (let i = enrollmentSamples.length - 1; i >= 0; i--) {
           if (enrollmentSamples[i].image && enrollmentSamples[i].image.startsWith('data:image/')) {
@@ -720,14 +753,23 @@
           } catch (e) {}
         }
 
+        const frameImages = enrollmentSamples
+          .map(s => s.image)
+          .filter(img => img && typeof img === 'string' && img.startsWith('data:image/'));
+
         const payload = {
           student_id: currentViewingStudent.student_id,
-          embedding: avgVector,
+          action: currentEnrollmentAction || 'enroll',
+          images: frameImages.length > 0 ? frameImages : [frameData],
           image: frameData,
           consent: true,
           quality_score: Math.round(avgScore * 10000) / 10000,
-          model_version: 'face-api-v1-128d'
+          model_version: 'compreface-v1.2'
         };
+
+        if (isArray && embLen === 128 && allNumeric) {
+          payload.embedding = avgVector;
+        }
 
         const res = await API.post('/api/face/enroll', payload);
         if (!res || !res.success) {
