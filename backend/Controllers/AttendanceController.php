@@ -159,40 +159,83 @@ class AttendanceController
             Response::notFound("Attendance session #{$sessionId} not found.");
         }
 
-        // Fetch students in this class with their record if marked
-        $studentsStmt = $pdo->prepare("
-            SELECT 
-                stu.student_id,
-                stu.roll_number,
-                stu.student_uid,
-                stu.full_name,
-                stu.email,
-                stu.face_verification_status,
-                r.record_id,
-                r.status AS attendance_status,
-                r.marked_at,
-                r.verification_method,
-                r.confidence_score
-            FROM students stu
-            LEFT JOIN attendance_records r ON stu.student_id = r.student_id AND r.session_id = :sid
-            WHERE stu.class_id = :cid
-              AND (:did IS NULL OR stu.division_id = :did)
-              AND stu.status = 'ACTIVE'
-            ORDER BY stu.roll_number ASC
-        ");
-        $studentsStmt->execute([
-            ':sid' => $sessionId,
-            ':cid' => $session['class_id'],
-            ':did' => $session['division_id'] ?: null
-        ]);
-        $roster = $studentsStmt->fetchAll();
+        try {
+            $query = "
+                SELECT 
+                    stu.student_id,
+                    stu.roll_number,
+                    stu.student_uid,
+                    stu.full_name,
+                    stu.email,
+                    stu.face_verification_status,
+                    r.record_id,
+                    r.status AS attendance_status,
+                    r.marked_at,
+                    r.verification_method,
+                    r.confidence_score
+                FROM students stu
+                LEFT JOIN attendance_records r ON stu.student_id = r.student_id AND r.session_id = :sid
+                WHERE stu.class_id = :cid
+                  AND stu.status = 'ACTIVE'
+            ";
+            $params = [
+                ':sid' => $sessionId,
+                ':cid' => (int)$session['class_id']
+            ];
 
-        Response::success([
-            'session' => $session,
-            'students' => $roster,
-            'total_students' => count($roster),
-            'marked_count' => count(array_filter($roster, fn($s) => !empty($s['attendance_status'])))
-        ], 'Session roster retrieved.');
+            if (!empty($session['division_id'])) {
+                $query .= " AND stu.division_id = :did";
+                $params[':did'] = (int)$session['division_id'];
+            }
+
+            $query .= " ORDER BY stu.roll_number ASC";
+
+            $studentsStmt = $pdo->prepare($query);
+            $studentsStmt->execute($params);
+            $roster = $studentsStmt->fetchAll();
+
+            // Robust fallback: if a session specifies a division where no students are found,
+            // fall back to all active students in the class so the roster is never empty when students exist.
+            if (empty($roster) && !empty($session['division_id'])) {
+                $fallbackStmt = $pdo->prepare("
+                    SELECT 
+                        stu.student_id,
+                        stu.roll_number,
+                        stu.student_uid,
+                        stu.full_name,
+                        stu.email,
+                        stu.face_verification_status,
+                        r.record_id,
+                        r.status AS attendance_status,
+                        r.marked_at,
+                        r.verification_method,
+                        r.confidence_score
+                    FROM students stu
+                    LEFT JOIN attendance_records r ON stu.student_id = r.student_id AND r.session_id = :sid
+                    WHERE stu.class_id = :cid
+                      AND stu.status = 'ACTIVE'
+                    ORDER BY stu.roll_number ASC
+                ");
+                $fallbackStmt->execute([
+                    ':sid' => $sessionId,
+                    ':cid' => (int)$session['class_id']
+                ]);
+                $fallbackRoster = $fallbackStmt->fetchAll();
+                if (!empty($fallbackRoster)) {
+                    $roster = $fallbackRoster;
+                }
+            }
+
+            Response::success([
+                'session' => $session,
+                'students' => $roster,
+                'total_students' => count($roster),
+                'marked_count' => count(array_filter($roster, fn($s) => !empty($s['attendance_status'])))
+            ], 'Session roster retrieved.');
+        } catch (\Throwable $e) {
+            error_log("[SAMS Roster Error] Session #{$sessionId}: " . $e->getMessage());
+            Response::error("Failed to load session roster: " . $e->getMessage(), 'ROSTER_QUERY_FAILED', 500);
+        }
     }
 
     /**

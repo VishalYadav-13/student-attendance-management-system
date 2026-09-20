@@ -392,9 +392,10 @@
           sessionSelect.appendChild(opt);
         });
 
-        // If no active session was specified in query params, default to first available
+        // If no active session was specified in query params, prefer open session if available
         if (activeSessionId === 0 && sessions.length > 0) {
-          activeSessionId = sessions[0].session_id;
+          const openSession = sessions.find(s => s.status === 'OPEN');
+          activeSessionId = openSession ? openSession.session_id : sessions[0].session_id;
           sessionSelect.value = activeSessionId;
         }
       } catch (err) {
@@ -424,10 +425,20 @@
         activeSession = res.data.session || {};
         rosterStudents = res.data.students || [];
 
+        const isClosed = (activeSession.status === 'CLOSED');
+
         // Update Session Information Header
         document.getElementById('badge-session-id').textContent = `Session #${sessionId}`;
-        document.getElementById('badge-session-status').textContent = activeSession.status || 'OPEN';
-        document.getElementById('session-status-badge').textContent = `Session #${sessionId} • ${activeSession.status || 'OPEN'}`;
+        const badgeStatus = document.getElementById('badge-session-status');
+        if (badgeStatus) {
+          badgeStatus.textContent = activeSession.status || 'OPEN';
+          badgeStatus.className = isClosed ? 'badge badge-absent' : 'badge badge-present';
+        }
+
+        const sessionBadge = document.getElementById('session-status-badge');
+        if (sessionBadge) {
+          sessionBadge.textContent = `Session #${sessionId} • ${activeSession.status || 'OPEN'}${isClosed ? ' (Read-Only)' : ''}`;
+        }
 
         const divText = activeSession.division_name ? ` - Div ${activeSession.division_name}` : '';
         const formattedSubj = formatSubjectDisplay(activeSession.subject_name);
@@ -436,7 +447,26 @@
 
         const sessionDate = activeSession.session_date || 'Today';
         const teacherName = activeSession.teacher_name || currentUser.full_name || 'Faculty';
-        document.getElementById('active-session-meta').textContent = `Lecture Session #${sessionId} • Date: ${sessionDate} • Faculty: ${teacherName}`;
+        const closedNote = isClosed ? ' • Status: CLOSED (Read-Only)' : '';
+        document.getElementById('active-session-meta').textContent = `Lecture Session #${sessionId} • Date: ${sessionDate} • Faculty: ${teacherName}${closedNote}`;
+
+        // Update Save Attendance button state for closed sessions
+        const saveBtn = document.getElementById('save-attendance-btn');
+        if (saveBtn) {
+          if (isClosed) {
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.6';
+            saveBtn.style.cursor = 'not-allowed';
+            saveBtn.textContent = 'Session Closed (Read-Only)';
+            saveBtn.title = 'This attendance session has been closed. Modifications require administrator override.';
+          } else {
+            saveBtn.disabled = false;
+            saveBtn.style.opacity = '1';
+            saveBtn.style.cursor = 'pointer';
+            saveBtn.textContent = 'Save Attendance';
+            saveBtn.title = '';
+          }
+        }
 
         // Update link to Face Studio
         const faceLink = document.getElementById('face-studio-link');
@@ -459,6 +489,9 @@
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:36px; color:var(--text-muted);">No students registered for this class division.</td></tr>`;
         return;
       }
+
+      const isClosed = (activeSession && activeSession.status === 'CLOSED');
+      const disabledAttr = isClosed ? 'disabled style="opacity:0.6; cursor:not-allowed;"' : '';
 
       tbody.innerHTML = rosterStudents.map((s, idx) => {
         const currStatus = s.attendance_status || 'PRESENT';
@@ -491,10 +524,10 @@
             </td>
             <td>
               <div class="status-btn-group" data-student-id="${s.student_id}">
-                <button type="button" class="status-opt-btn ${currStatus === 'PRESENT' ? 'active-prs' : ''}" onclick="setStudentStatus(${s.student_id}, 'PRESENT')">Present</button>
-                <button type="button" class="status-opt-btn ${currStatus === 'LATE' ? 'active-lte' : ''}" onclick="setStudentStatus(${s.student_id}, 'LATE')">Late</button>
-                <button type="button" class="status-opt-btn ${currStatus === 'ABSENT' ? 'active-abs' : ''}" onclick="setStudentStatus(${s.student_id}, 'ABSENT')">Absent</button>
-                <button type="button" class="status-opt-btn ${currStatus === 'EXCUSED' ? 'active-exc' : ''}" onclick="setStudentStatus(${s.student_id}, 'EXCUSED')">Excused</button>
+                <button type="button" ${disabledAttr} class="status-opt-btn ${currStatus === 'PRESENT' ? 'active-prs' : ''}" onclick="setStudentStatus(${s.student_id}, 'PRESENT')">Present</button>
+                <button type="button" ${disabledAttr} class="status-opt-btn ${currStatus === 'LATE' ? 'active-lte' : ''}" onclick="setStudentStatus(${s.student_id}, 'LATE')">Late</button>
+                <button type="button" ${disabledAttr} class="status-opt-btn ${currStatus === 'ABSENT' ? 'active-abs' : ''}" onclick="setStudentStatus(${s.student_id}, 'ABSENT')">Absent</button>
+                <button type="button" ${disabledAttr} class="status-opt-btn ${currStatus === 'EXCUSED' ? 'active-exc' : ''}" onclick="setStudentStatus(${s.student_id}, 'EXCUSED')">Excused</button>
               </div>
             </td>
           </tr>
@@ -504,6 +537,10 @@
 
     // Set individual student status
     function setStudentStatus(studentId, newStatus) {
+      if (activeSession && activeSession.status === 'CLOSED') {
+        UI.toast("This session is closed. Attendance records are locked.", "warning");
+        return;
+      }
       const s = rosterStudents.find(x => x.student_id === studentId);
       if (s) {
         s.attendance_status = newStatus;
@@ -515,6 +552,10 @@
 
     // Bulk set all students status
     function bulkMarkStatus(status) {
+      if (activeSession && activeSession.status === 'CLOSED') {
+        UI.toast("This session is closed. Attendance records are locked.", "warning");
+        return;
+      }
       rosterStudents.forEach(s => {
         s.attendance_status = status;
         s.verification_method = 'MANUAL';
@@ -560,6 +601,11 @@
 
     // Save Attendance to Backend Registry
     function confirmSaveAttendance() {
+      if (activeSession && activeSession.status === 'CLOSED') {
+        UI.toast('This session is closed. Modifications are locked unless reopened by an administrator.', 'warning');
+        return;
+      }
+
       if (!rosterStudents || rosterStudents.length === 0) {
         UI.toast('No student records available to save.', 'warning');
         return;

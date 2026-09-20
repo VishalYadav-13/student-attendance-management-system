@@ -126,19 +126,7 @@ class Database
                 }
             } else {
                 // For existing initialized databases, execute all pending migrations in order
-                $migrationsDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations';
-                if (is_dir($migrationsDir)) {
-                    $files = glob($migrationsDir . DIRECTORY_SEPARATOR . '*.sql');
-                    sort($files);
-                    foreach ($files as $file) {
-                        try {
-                            $migrationSql = file_get_contents($file);
-                            $pdo->exec($migrationSql);
-                        } catch (\Throwable $mEx) {
-                            error_log("[SAMS Migration Error] File " . basename($file) . ": " . $mEx->getMessage());
-                        }
-                    }
-                }
+                self::runPendingMigrations($pdo);
             }
 
             // Ensure single active teacher (Prof. Kalpesh Sir) and admin (Madhura Mam)
@@ -662,8 +650,38 @@ class Database
      * - All legitimate attendance sessions (including Session #25) migrated to Prof. Kalpesh Sir
      * - All other teachers safely deactivated (status = INACTIVE)
      */
+    /**
+     * Run all pending migrations from database/migrations in lexical order
+     */
+    public static function runPendingMigrations(PDO $pdo): array
+    {
+        $executed = [];
+        $errors = [];
+        $migrationsDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations';
+        if (is_dir($migrationsDir)) {
+            $files = glob($migrationsDir . DIRECTORY_SEPARATOR . '*.sql');
+            sort($files);
+            foreach ($files as $file) {
+                $base = basename($file);
+                try {
+                    $migrationSql = file_get_contents($file);
+                    if (!empty($migrationSql)) {
+                        $pdo->exec($migrationSql);
+                        $executed[] = $base;
+                    }
+                } catch (\Throwable $mEx) {
+                    $errors[$base] = $mEx->getMessage();
+                    error_log("[SAMS Migration Error] File {$base}: " . $mEx->getMessage());
+                }
+            }
+        }
+        return ['executed' => $executed, 'errors' => $errors];
+    }
+
     public static function executeSingleTeacherMigration(PDO $pdo): array
     {
+        // First execute pending migrations if any
+        self::runPendingMigrations($pdo);
         // 1. Identify canonical teacher account
         $stmt = $pdo->prepare("
             SELECT t.teacher_id, u.user_id, t.full_name

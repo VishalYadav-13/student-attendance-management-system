@@ -514,24 +514,46 @@ class FaceController
             Response::notFound("Attendance session #{$sessionId} not found.");
         }
 
-        // Count total active students in class/division
-        $totStmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :cid AND (:did IS NULL OR division_id = :did) AND status = 'ACTIVE'");
-        $totStmt->execute([':cid' => $session['class_id'], ':did' => $session['division_id'] ?: null]);
+        // Count total active students in class/division without parameter reuse
+        if (!empty($session['division_id'])) {
+            $totStmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :cid AND division_id = :did AND status = 'ACTIVE'");
+            $totStmt->execute([':cid' => (int)$session['class_id'], ':did' => (int)$session['division_id']]);
+        } else {
+            $totStmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :cid AND status = 'ACTIVE'");
+            $totStmt->execute([':cid' => (int)$session['class_id']]);
+        }
         $totalStudents = (int)$totStmt->fetchColumn();
+
+        // Fallback if 0 found for specific division
+        if ($totalStudents === 0 && !empty($session['division_id'])) {
+            $fbStmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :cid AND status = 'ACTIVE'");
+            $fbStmt->execute([':cid' => (int)$session['class_id']]);
+            $totalStudents = (int)$fbStmt->fetchColumn();
+        }
 
         // Count marked present in session
         $prsStmt = $pdo->prepare("SELECT COUNT(*) FROM attendance_records WHERE session_id = :sid AND status = 'PRESENT'");
         $prsStmt->execute([':sid' => $sessionId]);
         $verifiedCount = (int)$prsStmt->fetchColumn();
 
-        // Count enrolled with face templates
-        $enrStmt = $pdo->prepare("
-            SELECT COUNT(*) 
-            FROM students s 
-            JOIN student_face_templates sft ON s.student_id = sft.student_id 
-            WHERE s.class_id = :cid AND (:did IS NULL OR s.division_id = :did) AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
-        ");
-        $enrStmt->execute([':cid' => $session['class_id'], ':did' => $session['division_id'] ?: null]);
+        // Count enrolled with face templates without parameter reuse
+        if (!empty($session['division_id'])) {
+            $enrStmt = $pdo->prepare("
+                SELECT COUNT(*) 
+                FROM students s 
+                JOIN student_face_templates sft ON s.student_id = sft.student_id 
+                WHERE s.class_id = :cid AND s.division_id = :did AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+            ");
+            $enrStmt->execute([':cid' => (int)$session['class_id'], ':did' => (int)$session['division_id']]);
+        } else {
+            $enrStmt = $pdo->prepare("
+                SELECT COUNT(*) 
+                FROM students s 
+                JOIN student_face_templates sft ON s.student_id = sft.student_id 
+                WHERE s.class_id = :cid AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+            ");
+            $enrStmt->execute([':cid' => (int)$session['class_id']]);
+        }
         $biometricEnrolledCount = (int)$enrStmt->fetchColumn();
 
         Response::success([
