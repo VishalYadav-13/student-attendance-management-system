@@ -115,49 +115,29 @@ INSERT INTO users (user_id, role_id, email, password_hash, status) VALUES
 (4, 2, 'teacher.verma@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'INACTIVE'),
 (5, 2, 'teacher.iyer@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'INACTIVE'),
 (6, 2, 'teacher.deshmukh@sams.edu', '$2y$10$IlX.kOQ3AbLVA4sUJGYNnOR1GvV8T94bqwgurdr3n8U7ZTLZ0AUua', 'INACTIVE'),
--- Students (IDs 7-26)
+-- Students (IDs 7-27: 12 CO, 9 IT)
 (7, 3, 'vishal.yadav@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(8, 3, 'aarav.sharma@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(9, 3, 'ananya.iyer@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(10, 3, 'rohan.joshi@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(11, 3, 'sneha.kulkarni@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(12, 3, 'aditya.chavan@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(13, 3, 'diya.patil@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(14, 3, 'siddharth.nair@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(15, 3, 'tanvi.shinde@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(16, 3, 'rahul.desai@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(17, 3, 'neha.mehta@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(18, 3, 'kunal.singh@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(19, 3, 'pooja.more@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(20, 3, 'varun.rao@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(21, 3, 'ishita.gupta@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(22, 3, 'harsh.sawant@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(23, 3, 'meera.bhatt@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(24, 3, 'aman.khan@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(25, 3, 'sakshi.pawar@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(26, 3, 'pranav.salunkhe@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
--- -- FY CO Students (User IDs 201-210)
-(201, 3, 'aryan.patil@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(202, 3, 'ishaan.deshmukh@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(203, 3, 'riya.sharma@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(204, 3, 'vedant.joshi@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(205, 3, 'tanmay.kulkarni@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(206, 3, 'ananya.more@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(207, 3, 'saurabh.chavan@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(208, 3, 'shreya.jadhav@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(209, 3, 'rohit.sawant@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(210, 3, 'prachi.nair@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
--- TY CO Students (User IDs 211-220)
-(211, 3, 'chinmay.bapat@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(212, 3, 'gaurav.kale@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(213, 3, 'mansi.rane@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(214, 3, 'nikhil.shinde@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(215, 3, 'pallavi.vaidya@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(216, 3, 'ruturaj.thorat@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(217, 3, 'sayali.ghatke@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(218, 3, 'swapnil.mane@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(219, 3, 'tejas.wagh@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
-(220, 3, 'vaishnavi.shete@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE')
+(8, 3, 'rishi.patil@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(9, 3, 'rushikesh.sharma@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(10, 3, 'parth.deshmukh@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(11, 3, 'aditi.kulkarni@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(12, 3, 'pearl.jain@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(13, 3, 'rekha.shinde@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(14, 3, 'roshani.sawant@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(15, 3, 'anjali.mehta@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(16, 3, 'vighnesh.more@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(17, 3, 'mayank.gupta@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(18, 3, 'aryan.c@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+-- IT Students (User IDs 19-27)
+(19, 3, 'nikita.patel@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(20, 3, 'meet.shah@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(21, 3, 'aarya.joshi@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(22, 3, 'nachiket.kulkarni@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(23, 3, 'aryan.verma@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(24, 3, 'vidya.nair@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(25, 3, 'sakshi.deshmukh@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(26, 3, 'srushti.chavan@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE'),
+(27, 3, 'athar.khan@sams.edu', '$2y$10$xcicWEwRIwDYVH8EzbFt/uDv1MEbm.l7xsXCmCBeX28VVsEy0DHna', 'ACTIVE')
 ON CONFLICT (user_id) DO NOTHING;
 
 -- 9. Admin Profile
@@ -174,59 +154,31 @@ INSERT INTO teachers (teacher_id, user_id, employee_id, full_name, phone, depart
 (5, 6, 'EMP-EJ-01', 'Prof. Vikram Deshmukh', '+91 98221 44555', 3, 'Lecturer (Electronics)', 'INACTIVE')
 ON CONFLICT (teacher_id) DO UPDATE SET full_name = EXCLUDED.full_name, status = EXCLUDED.status;
 
--- 11. Student Profiles (20 students in SY CO Division A)
+-- 11. Student Profiles (12 CO Students + 9 IT Students = 21 Enrolled Demo Students)
 INSERT INTO students (student_id, user_id, roll_number, student_uid, full_name, email, phone, date_of_birth, gender, department_id, course_id, class_id, division_id, batch, admission_year, face_verification_status) VALUES
-(1, 7, 'CO-2101', 'UID2026001', 'Vishal Yadav', 'vishal.yadav@sams.edu', '+91 98111 00001', '2005-04-12', 'Male', 1, 1, 1, 1, 'B1', 2024, 'ENROLLED'),
-(2, 8, 'CO-2102', 'UID2026002', 'Aarav Sharma', 'aarav.sharma@sams.edu', '+91 98111 00002', '2005-06-18', 'Male', 1, 1, 1, 1, 'B1', 2024, 'ENROLLED'),
-(3, 9, 'CO-2103', 'UID2026003', 'Ananya Iyer', 'ananya.iyer@sams.edu', '+91 98111 00003', '2005-08-22', 'Female', 1, 1, 1, 1, 'B1', 2024, 'ENROLLED'),
-(4, 10, 'CO-2104', 'UID2026004', 'Rohan Joshi', 'rohan.joshi@sams.edu', '+91 98111 00004', '2005-02-10', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
-(5, 11, 'CO-2105', 'UID2026005', 'Sneha Patil', 'sneha.patil@sams.edu', '+91 98111 00005', '2005-11-05', 'Female', 1, 1, 1, 1, 'B1', 2024, 'ENROLLED'),
-(6, 12, 'CO-2106', 'UID2026006', 'Aditya Kulkarni', 'aditya.kulkarni@sams.edu', '+91 98111 00006', '2005-09-14', 'Male', 1, 1, 1, 1, 'B1', 2024, 'ENROLLED'),
-(7, 13, 'CO-2107', 'UID2026007', 'Pooja Deshmukh', 'pooja.deshmukh@sams.edu', '+91 98111 00007', '2005-07-29', 'Female', 1, 1, 1, 1, 'B2', 2024, 'NOT_ENROLLED'),
-(8, 14, 'CO-2108', 'UID2026008', 'Rahul Shinde', 'rahul.shinde@sams.edu', '+91 98111 00008', '2005-01-19', 'Male', 1, 1, 1, 1, 'B2', 2024, 'ENROLLED'),
-(9, 15, 'CO-2109', 'UID2026009', 'Priya Nair', 'priya.nair@sams.edu', '+91 98111 00009', '2005-12-01', 'Female', 1, 1, 1, 1, 'B2', 2024, 'NOT_ENROLLED'),
-(10, 16, 'CO-2110', 'UID2026010', 'Kunal More', 'kunal.more@sams.edu', '+91 98111 00010', '2005-03-25', 'Male', 1, 1, 1, 1, 'B2', 2024, 'ENROLLED'),
-(11, 17, 'CO-2111', 'UID2026011', 'Tanvi Mehta', 'tanvi.mehta@sams.edu', '+91 98111 00011', '2005-05-15', 'Female', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
-(12, 18, 'CO-2112', 'UID2026012', 'Siddharth Chavan', 'siddharth.chavan@sams.edu', '+91 98111 00012', '2005-10-30', 'Male', 1, 1, 1, 1, 'B1', 2024, 'ENROLLED'),
-(13, 19, 'CO-2113', 'UID2026013', 'Neha Bhosale', 'neha.bhosale@sams.edu', '+91 98111 00013', '2005-02-18', 'Female', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
-(14, 20, 'CO-2114', 'UID2026014', 'Varun Rao', 'varun.rao@sams.edu', '+91 98111 00014', '2005-07-07', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
-(15, 21, 'CO-2115', 'UID2026015', 'Ishita Gupta', 'ishita.gupta@sams.edu', '+91 98111 00015', '2005-08-11', 'Female', 1, 1, 1, 1, 'B1', 2024, 'ENROLLED'),
-(16, 22, 'CO-2116', 'UID2026016', 'Harsh Sawant', 'harsh.sawant@sams.edu', '+91 98111 00016', '2005-04-03', 'Male', 1, 1, 1, 1, 'B2', 2024, 'NOT_ENROLLED'),
-(17, 23, 'CO-2117', 'UID2026017', 'Meera Bhatt', 'meera.bhatt@sams.edu', '+91 98111 00017', '2005-09-22', 'Female', 1, 1, 1, 1, 'B2', 2024, 'NOT_ENROLLED'),
-(18, 24, 'CO-2118', 'UID2026018', 'Aman Khan', 'aman.khan@sams.edu', '+91 98111 00018', '2005-06-05', 'Male', 1, 1, 1, 1, 'B2', 2024, 'NOT_ENROLLED'),
-(19, 25, 'CO-2119', 'UID2026019', 'Sakshi Pawar', 'sakshi.pawar@sams.edu', '+91 98111 00019', '2005-12-14', 'Female', 1, 1, 1, 1, 'B2', 2024, 'NOT_ENROLLED'),
-(20, 26, 'CO-2120', 'UID2026020', 'Pranav Salunkhe', 'pranav.salunkhe@sams.edu', '+91 98111 00020', '2005-03-08', 'Male', 1, 1, 1, 1, 'B2', 2024, 'NOT_ENROLLED'),
--- FY CO Students (Class ID 4, Division ID 5, Student IDs 201-210)
-(201, 201, 'CO-1101', 'UID2026101', 'Aryan Patil', 'aryan.patil@sams.edu', '+91 98111 10001', '2006-04-12', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
-(202, 202, 'CO-1102', 'UID2026102', 'Ishaan Deshmukh', 'ishaan.deshmukh@sams.edu', '+91 98111 10002', '2006-06-18', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
-(203, 203, 'CO-1103', 'UID2026103', 'Riya Sharma', 'riya.sharma@sams.edu', '+91 98111 10003', '2006-08-22', 'Female', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
-(204, 204, 'CO-1104', 'UID2026104', 'Vedant Joshi', 'vedant.joshi@sams.edu', '+91 98111 10004', '2006-02-10', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
-(205, 205, 'CO-1105', 'UID2026105', 'Tanmay Kulkarni', 'tanmay.kulkarni@sams.edu', '+91 98111 10005', '2006-11-05', 'Male', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
-(206, 206, 'CO-1106', 'UID2026106', 'Ananya More', 'ananya.more@sams.edu', '+91 98111 10006', '2006-09-14', 'Female', 1, 1, 4, 5, 'B1', 2026, 'ENROLLED'),
-(207, 207, 'CO-1107', 'UID2026107', 'Saurabh Chavan', 'saurabh.chavan@sams.edu', '+91 98111 10007', '2006-07-29', 'Male', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
-(208, 208, 'CO-1108', 'UID2026108', 'Shreya Jadhav', 'shreya.jadhav@sams.edu', '+91 98111 10008', '2006-01-19', 'Female', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
-(209, 209, 'CO-1109', 'UID2026109', 'Rohit Sawant', 'rohit.sawant@sams.edu', '+91 98111 10009', '2006-12-01', 'Male', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
-(210, 210, 'CO-1110', 'UID2026110', 'Prachi Nair', 'prachi.nair@sams.edu', '+91 98111 10010', '2006-03-25', 'Female', 1, 1, 4, 5, 'B2', 2026, 'ENROLLED'),
--- TY CO Students (Class ID 5, Division ID 6, Student IDs 211-220)
-(211, 211, 'CO-3101', 'UID2026301', 'Chinmay Bapat', 'chinmay.bapat@sams.edu', '+91 98111 30001', '2004-04-12', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
-(212, 212, 'CO-3102', 'UID2026302', 'Gaurav Kale', 'gaurav.kale@sams.edu', '+91 98111 30002', '2004-06-18', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
-(213, 213, 'CO-3103', 'UID2026303', 'Mansi Rane', 'mansi.rane@sams.edu', '+91 98111 30003', '2004-08-22', 'Female', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
-(214, 214, 'CO-3104', 'UID2026304', 'Nikhil Shinde', 'nikhil.shinde@sams.edu', '+91 98111 30004', '2004-02-10', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
-(215, 215, 'CO-3105', 'UID2026305', 'Pallavi Vaidya', 'pallavi.vaidya@sams.edu', '+91 98111 30005', '2004-11-05', 'Female', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
-(216, 216, 'CO-3106', 'UID2026306', 'Ruturaj Thorat', 'ruturaj.thorat@sams.edu', '+91 98111 30006', '2004-09-14', 'Male', 1, 1, 5, 6, 'B1', 2024, 'ENROLLED'),
-(217, 217, 'CO-3107', 'UID2026307', 'Sayali Ghatke', 'sayali.ghatke@sams.edu', '+91 98111 30007', '2004-07-29', 'Female', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
-(218, 218, 'CO-3108', 'UID2026308', 'Swapnil Mane', 'swapnil.mane@sams.edu', '+91 98111 30008', '2004-01-19', 'Male', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
-(219, 219, 'CO-3109', 'UID2026309', 'Tejas Wagh', 'tejas.wagh@sams.edu', '+91 98111 30009', '2004-12-01', 'Male', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED'),
-(220, 220, 'CO-3110', 'UID2026310', 'Vaishnavi Shete', 'vaishnavi.shete@sams.edu', '+91 98111 30010', '2004-03-25', 'Female', 1, 1, 5, 6, 'B2', 2024, 'ENROLLED')
-ON CONFLICT (student_id) DO NOTHING;
-
--- 12. Biometric Profiles (Simulated face feature representations for enrolled students)
-INSERT INTO face_profiles (student_id, status, biometric_hash, feature_vector, samples_count, consent_given) VALUES
-(1, 'ENROLLED', 'sha256_hash_student_01_feature_vec', '{"landmarks":128,"embedding_version":"sams-v1","clarity":0.94}', 3, true),
-(2, 'ENROLLED', 'sha256_hash_student_02_feature_vec', '{"landmarks":128,"embedding_version":"sams-v1","clarity":0.91}', 3, true),
-(3, 'ENROLLED', 'sha256_hash_student_03_feature_vec', '{"landmarks":128,"embedding_version":"sams-v1","clarity":0.96}', 3, true),
-(5, 'ENROLLED', 'sha256_hash_student_05_feature_vec', '{"landmarks":128,"embedding_version":"sams-v1","clarity":0.93}', 3, true),
-(6, 'ENROLLED', 'sha256_hash_student_06_feature_vec', '{"landmarks":128,"embedding_version":"sams-v1","clarity":0.89}', 3, true)
+-- Computer Engineering (CO) Students (Class ID: 1 - SYCO, Division ID: 1 - Div A, Dept ID: 1)
+(1, 7, 'CO-2101', 'UID20260001', 'Vishal', 'vishal.yadav@sams.edu', '+91 98111 00001', '2005-04-12', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(2, 8, 'CO-2102', 'UID20260002', 'Rishi', 'rishi.patil@sams.edu', '+91 98111 00002', '2005-06-18', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(3, 9, 'CO-2103', 'UID20260003', 'Rushikesh', 'rushikesh.sharma@sams.edu', '+91 98111 00003', '2005-08-22', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(4, 10, 'CO-2104', 'UID20260004', 'Parth', 'parth.deshmukh@sams.edu', '+91 98111 00004', '2005-02-10', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(5, 11, 'CO-2105', 'UID20260005', 'Aditi', 'aditi.kulkarni@sams.edu', '+91 98111 00005', '2005-11-05', 'Female', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(6, 12, 'CO-2106', 'UID20260006', 'Pearl', 'pearl.jain@sams.edu', '+91 98111 00006', '2005-09-14', 'Female', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(7, 13, 'CO-2107', 'UID20260007', 'Rekha', 'rekha.shinde@sams.edu', '+91 98111 00007', '2005-07-29', 'Female', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(8, 14, 'CO-2108', 'UID20260008', 'Roshani', 'roshani.sawant@sams.edu', '+91 98111 00008', '2005-01-19', 'Female', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(9, 15, 'CO-2109', 'UID20260009', 'Anjali', 'anjali.mehta@sams.edu', '+91 98111 00009', '2005-12-01', 'Female', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(10, 16, 'CO-2110', 'UID20260010', 'Vighnesh', 'vighnesh.more@sams.edu', '+91 98111 00010', '2005-03-25', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(11, 17, 'CO-2111', 'UID20260011', 'Mayank', 'mayank.gupta@sams.edu', '+91 98111 00011', '2005-05-15', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+(12, 18, 'CO-2112', 'UID20260012', 'Aryan C', 'aryan.c@sams.edu', '+91 98111 00012', '2005-10-30', 'Male', 1, 1, 1, 1, 'B1', 2024, 'NOT_ENROLLED'),
+-- Information Technology (IT) Students (Class ID: 2 - SYIT, Division ID: 3 - Div A, Dept ID: 2)
+(13, 19, 'IT-2101', 'UID20260013', 'Nikita', 'nikita.patel@sams.edu', '+91 98111 00013', '2005-02-18', 'Female', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(14, 20, 'IT-2102', 'UID20260014', 'Meet', 'meet.shah@sams.edu', '+91 98111 00014', '2005-07-07', 'Male', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(15, 21, 'IT-2103', 'UID20260015', 'Aarya', 'aarya.joshi@sams.edu', '+91 98111 00015', '2005-08-11', 'Female', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(16, 22, 'IT-2104', 'UID20260016', 'Nachiket', 'nachiket.kulkarni@sams.edu', '+91 98111 00016', '2005-04-03', 'Male', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(17, 23, 'IT-2105', 'UID20260017', 'Aryan', 'aryan.verma@sams.edu', '+91 98111 00017', '2005-09-22', 'Male', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(18, 24, 'IT-2106', 'UID20260018', 'Vidya', 'vidya.nair@sams.edu', '+91 98111 00018', '2005-06-05', 'Female', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(19, 25, 'IT-2107', 'UID20260019', 'Sakshi', 'sakshi.deshmukh@sams.edu', '+91 98111 00019', '2005-12-14', 'Female', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(20, 26, 'IT-2108', 'UID20260020', 'Srushti', 'srushti.chavan@sams.edu', '+91 98111 00020', '2005-03-08', 'Female', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED'),
+(21, 27, 'IT-2109', 'UID20260021', 'Athar', 'athar.khan@sams.edu', '+91 98111 00021', '2005-05-20', 'Male', 2, 2, 2, 3, 'A1', 2024, 'NOT_ENROLLED')
 ON CONFLICT (student_id) DO NOTHING;
 
 -- 13. Subject Allocations to Teachers (Allocated to Prof. Kalpesh Sir)
