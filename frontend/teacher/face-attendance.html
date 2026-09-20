@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
   <!-- Vintage Academic Typography: Newsreader & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/frontend/assets/css/academic-theme.css?v=2.3.0">
   <link rel="stylesheet" href="/frontend/assets/css/main.css?v=2.3.0">
   <!-- Facial Recognition Engine Dependency -->
@@ -19,11 +22,13 @@
       gap: 28px;
       align-items: start;
     }
+
     @media (max-width: 960px) {
       .face-layout-grid {
         grid-template-columns: 1fr;
       }
     }
+
     .camera-frame-container {
       position: relative;
       width: 100%;
@@ -37,12 +42,15 @@
       box-shadow: 0 8px 24px rgba(47, 53, 50, 0.18);
       border: 1px solid var(--border-subtle);
     }
+
     .camera-frame-container video {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scaleX(-1); /* Mirror view for natural interaction */
+      transform: scaleX(-1);
+      /* Mirror view for natural interaction */
     }
+
     .face-guide-overlay {
       position: absolute;
       width: 220px;
@@ -55,23 +63,30 @@
       align-items: center;
       justify-content: center;
     }
+
     .face-guide-overlay.liveness {
       border: 2.5px solid #6E7F8D;
       box-shadow: 0 0 16px rgba(110, 127, 141, 0.45);
     }
+
     .face-guide-overlay.scanning {
       border: 2.5px solid #6F7F6A;
       box-shadow: 0 0 18px rgba(111, 127, 106, 0.5);
     }
-    .face-guide-overlay.success, .face-guide-overlay.verified {
+
+    .face-guide-overlay.success,
+    .face-guide-overlay.verified {
       border: 3px solid #526B54;
       box-shadow: 0 0 24px rgba(82, 107, 84, 0.7);
       background: rgba(82, 107, 84, 0.08);
     }
-    .face-guide-overlay.warning, .face-guide-overlay.spoof {
+
+    .face-guide-overlay.warning,
+    .face-guide-overlay.spoof {
       border: 2.5px solid #A56B52;
       box-shadow: 0 0 16px rgba(165, 107, 82, 0.5);
     }
+
     .scan-beam {
       position: absolute;
       width: 90%;
@@ -79,11 +94,24 @@
       background: linear-gradient(90deg, transparent, #6F7F6A, transparent);
       animation: scanSweep 2.2s infinite ease-in-out;
     }
+
     @keyframes scanSweep {
-      0% { top: 12%; opacity: 0.2; }
-      50% { top: 85%; opacity: 0.9; }
-      100% { top: 12%; opacity: 0.2; }
+      0% {
+        top: 12%;
+        opacity: 0.2;
+      }
+
+      50% {
+        top: 85%;
+        opacity: 0.9;
+      }
+
+      100% {
+        top: 12%;
+        opacity: 0.2;
+      }
     }
+
     .camera-status-pill {
       position: absolute;
       bottom: 16px;
@@ -104,6 +132,7 @@
       text-align: center;
       z-index: 10;
     }
+
     .verified-student-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
@@ -112,6 +141,7 @@
       box-shadow: var(--shadow-sm);
       margin-bottom: 20px;
     }
+
     .session-info-card {
       background: var(--bg-surface-elevated);
       border: 1px solid var(--border-subtle);
@@ -119,6 +149,7 @@
       padding: 24px;
       box-shadow: var(--shadow-sm);
     }
+
     .info-metric-row {
       display: flex;
       justify-content: space-between;
@@ -127,9 +158,11 @@
       border-bottom: 1px dashed var(--border-subtle);
       font-size: 0.88rem;
     }
+
     .info-metric-row:last-child {
       border-bottom: none;
     }
+
     .stat-pill-big {
       font-size: 1.75rem;
       font-weight: 800;
@@ -137,6 +170,7 @@
       color: var(--primary-accent);
       line-height: 1;
     }
+
     .nested-nav-group {
       margin: 4px 0 8px 12px;
       border-left: 2px solid var(--border-subtle);
@@ -145,6 +179,7 @@
       flex-direction: column;
       gap: 2px;
     }
+
     .nested-nav-link {
       padding: 6px 12px;
       font-size: 0.82rem;
@@ -156,10 +191,12 @@
       gap: 8px;
       transition: all var(--transition-fast);
     }
+
     .nested-nav-link:hover {
       color: var(--sidebar-text);
       background: var(--sidebar-hover);
     }
+
     .nested-nav-link.active {
       color: var(--sidebar-text);
       background: var(--primary-accent);
@@ -175,10 +212,19 @@
       z-index: 10000;
       animation: popupSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     @keyframes popupSlideDown {
-      0% { opacity: 0; transform: translate(-50%, -24px) scale(0.95); }
-      100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -24px) scale(0.95);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+      }
     }
+
     .popup-card {
       background: var(--bg-surface, #FDFCFA);
       border: 2px solid var(--primary-accent, #526B54);
@@ -192,6 +238,7 @@
       flex-direction: column;
       align-items: center;
     }
+
     .popup-icon-badge {
       width: 48px;
       height: 48px;
@@ -206,6 +253,7 @@
       margin-bottom: 10px;
       box-shadow: 0 4px 10px rgba(82, 107, 84, 0.35);
     }
+
     .popup-header-title {
       font-family: 'Newsreader', serif;
       font-size: 1.25rem;
@@ -213,6 +261,7 @@
       color: #526B54;
       margin-bottom: 4px;
     }
+
     .popup-student-name {
       font-size: 1.35rem;
       font-weight: 700;
@@ -220,12 +269,14 @@
       margin-bottom: 2px;
       letter-spacing: -0.01em;
     }
+
     .popup-roll-number {
       font-size: 0.88rem;
       color: var(--text-muted, #6E7F8D);
       margin-bottom: 12px;
       font-weight: 600;
     }
+
     .popup-meta-row {
       display: inline-flex;
       align-items: center;
@@ -237,6 +288,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <!-- Floating Attendance Success Confirmation Popup -->
@@ -267,13 +319,19 @@
       <nav class="sidebar-nav">
         <div class="nav-section-title">Teaching Workflows</div>
         <a href="/frontend/teacher/dashboard.html" class="nav-link">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
           Dashboard
         </a>
 
         <!-- Attendance Group -->
         <div class="nav-link active" style="font-weight: 700; cursor: default;">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
           Attendance
         </div>
         <div class="nested-nav-group">
@@ -286,7 +344,10 @@
         </div>
 
         <a href="/frontend/teacher/reports.html" class="nav-link">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
           Class Reports
         </a>
       </nav>
@@ -299,8 +360,11 @@
             <div id="sidebar-user-role" class="sidebar-user-role">TEACHER</div>
           </div>
         </div>
-        <button onclick="Auth.logout()" title="Sign Out" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 6px;" aria-label="Sign Out">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        <button onclick="Auth.logout()" title="Sign Out"
+          style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 6px;" aria-label="Sign Out">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
         </button>
       </div>
     </aside>
@@ -310,13 +374,16 @@
       <header class="topbar">
         <div class="topbar-left">
           <button class="mobile-menu-btn" aria-label="Toggle Navigation">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
           <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">Face Verification Attendance</div>
         </div>
         <div class="topbar-right">
           <button class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Theme"></button>
-          <span id="topbar-status-badge" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-secondary);">Awaiting Session</span>
+          <span id="topbar-status-badge" class="badge"
+            style="background: var(--bg-surface-subtle); color: var(--text-secondary);">Awaiting Session</span>
         </div>
       </header>
 
@@ -329,7 +396,8 @@
           <div class="page-header" style="margin-bottom: 20px;">
             <div>
               <h1 class="page-title">Start Face Attendance Session</h1>
-              <p class="page-subtitle">Configure lecture parameters and initialize real-time classroom camera verification.</p>
+              <p class="page-subtitle">Configure lecture parameters and initialize real-time classroom camera
+                verification.</p>
             </div>
             <div class="page-actions">
               <a href="/frontend/teacher/attendance.html" class="btn btn-secondary btn-sm">
@@ -354,9 +422,9 @@
                 <div class="form-group">
                   <label class="form-label" for="setup-class">Select Class *</label>
                   <select id="setup-class" class="form-control" required>
-                    <option value="1">Second Year (SY CO)</option>
-                    <option value="2">Third Year (TY CO)</option>
-                    <option value="3">Final Year (BE CO)</option>
+                    <option value="4">First Year (FY CO)</option>
+                    <option value="1" selected>Second Year (SY CO)</option>
+                    <option value="5">Third Year (TY CO)</option>
                   </select>
                 </div>
               </div>
@@ -404,14 +472,16 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label">Session Status</label>
-                  <div style="padding: 10px 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">
+                  <div
+                    style="padding: 10px 14px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">
                     Ready to Initialize
                   </div>
                 </div>
               </div>
 
               <div style="margin-top: 24px; display: flex; gap: 14px; align-items: center;">
-                <button type="submit" id="start-session-submit-btn" class="btn btn-primary" style="padding: 12px 28px; font-size: 0.95rem;">
+                <button type="submit" id="start-session-submit-btn" class="btn btn-primary"
+                  style="padding: 12px 28px; font-size: 0.95rem;">
                   ▶ Start Face Attendance
                 </button>
                 <span style="font-size: 0.8rem; color: var(--text-muted);">
@@ -433,7 +503,8 @@
                 <span class="badge badge-present" style="display: inline-flex; align-items: center; gap: 6px;">
                   <span class="status-dot dot-present"></span> Session Active
                 </span>
-                <span id="active-session-id-pill" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-main);">Session #—</span>
+                <span id="active-session-id-pill" class="badge"
+                  style="background: var(--bg-surface-subtle); color: var(--text-main);">Session #—</span>
               </div>
               <h1 class="page-title" id="active-session-heading">Operating Systems — SY CO Div B</h1>
               <p class="page-subtitle" id="active-session-subheading">19 September 2026 • 10:00 AM • Room 204</p>
@@ -442,25 +513,29 @@
               <a href="/frontend/teacher/attendance.html" class="btn btn-secondary btn-sm" onclick="Camera.stop()">
                 Manual Attendance Fallback
               </a>
-              <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239,68,68,0.3);" onclick="confirmEndSession()">
+              <button class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239,68,68,0.3);"
+                onclick="confirmEndSession()">
                 End Session
               </button>
             </div>
           </div>
 
           <!-- Camera Error Alert Box -->
-          <div id="camera-error-banner" style="display: none; margin-bottom: 20px; padding: 14px 18px; border-radius: var(--radius-md); background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger);">
+          <div id="camera-error-banner"
+            style="display: none; margin-bottom: 20px; padding: 14px 18px; border-radius: var(--radius-md); background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger);">
             <div style="font-weight: 700; margin-bottom: 4px;" id="cam-error-title">Camera Permission Required</div>
-            <div style="font-size: 0.85rem;" id="cam-error-desc">Camera access was denied or device is not detected.</div>
+            <div style="font-size: 0.85rem;" id="cam-error-desc">Camera access was denied or device is not detected.
+            </div>
             <div style="margin-top: 10px;">
               <button class="btn btn-secondary btn-sm" onclick="restartCameraSession()">Retry Camera Access</button>
-              <a href="/frontend/teacher/attendance.html" class="btn btn-primary btn-sm" style="margin-left: 8px;">Use Manual Attendance</a>
+              <a href="/frontend/teacher/attendance.html" class="btn btn-primary btn-sm" style="margin-left: 8px;">Use
+                Manual Attendance</a>
             </div>
           </div>
 
           <!-- Main Layout: Left Camera & Center Frame, Right Session Information -->
           <div class="face-layout-grid">
-            
+
             <!-- LEFT & CENTER: Camera & Face Detection Viewport -->
             <div>
               <div class="camera-frame-container">
@@ -469,7 +544,8 @@
                   <div class="scan-beam"></div>
                 </div>
                 <div class="camera-status-pill">
-                  <span class="status-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#6E7F8D;"></span>
+                  <span class="status-dot"
+                    style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#6E7F8D;"></span>
                   <span>Initializing camera & AI models...</span>
                 </div>
               </div>
@@ -492,7 +568,9 @@
 
               <!-- Privacy Notice -->
               <p style="font-size: 0.76rem; color: var(--text-muted); margin-top: 14px; line-height: 1.4;">
-                🛡️ <strong>Biometric Privacy Notice:</strong> Video frames are processed strictly in browser memory. No photographs are permanently recorded or transmitted over the network in compliance with institutional data governance policies.
+                🛡️ <strong>Biometric Privacy Notice:</strong> Video frames are processed strictly in browser memory. No
+                photographs are permanently recorded or transmitted over the network in compliance with institutional
+                data governance policies.
               </p>
             </div>
 
@@ -501,26 +579,31 @@
               <!-- Latest Verified Student Card -->
               <div class="verified-student-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                  <span style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+                  <span
+                    style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
                     Current Student Result
                   </span>
-                  <span id="verified-result-badge" class="badge" style="background: var(--bg-surface-subtle); color: var(--text-muted);">
+                  <span id="verified-result-badge" class="badge"
+                    style="background: var(--bg-surface-subtle); color: var(--text-muted);">
                     Awaiting Face
                   </span>
                 </div>
 
                 <div id="verified-box" style="text-align: center; padding: 16px 8px;">
-                  <div id="verified-avatar" style="width: 72px; height: 72px; border-radius: 50%; background: var(--border-subtle); color: var(--text-main); font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                  <div id="verified-avatar"
+                    style="width: 72px; height: 72px; border-radius: 50%; background: var(--border-subtle); color: var(--text-main); font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
                     —
                   </div>
-                  <h3 id="verified-name" style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">
+                  <h3 id="verified-name"
+                    style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">
                     Position Face in Frame
                   </h3>
                   <div id="verified-roll" style="color: var(--text-muted); font-size: 0.9rem; font-family: monospace;">
                     Waiting for student...
                   </div>
 
-                  <div id="verified-meta-box" style="display: none; margin-top: 16px; padding: 12px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); text-align: left; font-size: 0.84rem;">
+                  <div id="verified-meta-box"
+                    style="display: none; margin-top: 16px; padding: 12px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); text-align: left; font-size: 0.84rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                       <span style="color: var(--text-secondary);">Attendance:</span>
                       <strong style="color: var(--success);" id="verified-meta-status">PRESENT</strong>
@@ -540,7 +623,8 @@
               <!-- Session Information Card -->
               <div class="session-info-card">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px;">
-                  <h3 style="font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); margin: 0;">
+                  <h3
+                    style="font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); margin: 0;">
                     FACE ATTENDANCE
                   </h3>
                   <span class="badge badge-present" style="font-size: 0.72rem;">Active</span>
@@ -564,19 +648,28 @@
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0 14px;">
-                  <div style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
-                    <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Verified</div>
-                    <div id="stat-verified-num" class="stat-pill-big" style="color: var(--success); margin-top: 4px;">0</div>
+                  <div
+                    style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
+                    <div
+                      style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">
+                      Verified</div>
+                    <div id="stat-verified-num" class="stat-pill-big" style="color: var(--success); margin-top: 4px;">0
+                    </div>
                   </div>
-                  <div style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
-                    <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Remaining</div>
-                    <div id="stat-remaining-num" class="stat-pill-big" style="color: var(--warning); margin-top: 4px;">0</div>
+                  <div
+                    style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); text-align: center;">
+                    <div
+                      style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">
+                      Remaining</div>
+                    <div id="stat-remaining-num" class="stat-pill-big" style="color: var(--warning); margin-top: 4px;">0
+                    </div>
                   </div>
                 </div>
 
                 <!-- Progress Bar -->
                 <div style="margin-top: 10px;">
-                  <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; color: var(--text-secondary);">
+                  <div
+                    style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; color: var(--text-secondary);">
                     <span>Attendance Rate</span>
                     <strong id="progress-pct-text">0%</strong>
                   </div>
@@ -667,6 +760,54 @@
         } catch (err) {
           console.warn('[Auto Face Start Notice]', err);
         }
+      } else {
+        // Populate classes and dynamic subject switching from authorized teacher allocations
+        try {
+          const dashRes = await API.get('/api/teacher/dashboard');
+          if (dashRes && dashRes.data && dashRes.data.class_attendance) {
+            const classAtt = dashRes.data.class_attendance;
+            const classSelect = document.getElementById('setup-class');
+            const subjectSelect = document.getElementById('setup-subject');
+            const allClasses = [
+              ...(classAtt.FY || []),
+              ...(classAtt.SY || []),
+              ...(classAtt.TY || [])
+            ];
+
+            if (allClasses.length > 0) {
+              classSelect.innerHTML = '';
+              allClasses.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.class_id;
+                opt.textContent = `${c.year_category === 'FY' ? 'First Year' : c.year_category === 'SY' ? 'Second Year' : 'Third Year'} (${c.class_code})`;
+                if (c.year_category === 'SY' || c.class_id === 1) opt.selected = true;
+                classSelect.appendChild(opt);
+              });
+
+              const updateSubjectOptions = (selectedClassId) => {
+                const matched = allClasses.find(c => c.class_id == selectedClassId);
+                if (matched && matched.subjects && matched.subjects.length > 0) {
+                  subjectSelect.innerHTML = '';
+                  matched.subjects.forEach((sub, idx) => {
+                    const subOpt = document.createElement('option');
+                    subOpt.value = sub.subject_id;
+                    subOpt.textContent = `${sub.subject_name} (${sub.subject_code})`;
+                    if (idx === 0) subOpt.selected = true;
+                    subjectSelect.appendChild(subOpt);
+                  });
+                }
+              };
+
+              classSelect.addEventListener('change', () => {
+                updateSubjectOptions(classSelect.value);
+              });
+
+              updateSubjectOptions(classSelect.value);
+            }
+          }
+        } catch (err) {
+          console.warn('[Face Setup Dynamic Load Notice]', err);
+        }
       }
     });
 
@@ -744,7 +885,7 @@
           sessionStats = res.data.stats;
           updateStatsDisplay();
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     async function startCameraVerification() {
@@ -900,4 +1041,5 @@
     });
   </script>
 </body>
+
 </html>
