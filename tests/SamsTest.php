@@ -80,14 +80,6 @@ class SamsTest
         $this->failed += $faceResults['failed'];
         $this->failures = array_merge($this->failures, $faceResults['failures']);
 
-        // CompreFace Facial Recognition Integration Tests
-        require_once __DIR__ . '/CompreFaceIntegrationTest.php';
-        $compreFaceSuite = new \CompreFaceIntegrationTest();
-        $compreFaceResults = $compreFaceSuite->run(false);
-        $this->passed += $compreFaceResults['passed'];
-        $this->failed += $compreFaceResults['failed'];
-        $this->failures = array_merge($this->failures, $compreFaceResults['failures']);
-
         // Results Summary
         echo "\n------------------------------------------------------\n";
         echo sprintf("Total Tests: %d | Passed: %d | Failed: %d\n", $this->passed + $this->failed, $this->passed, $this->failed);

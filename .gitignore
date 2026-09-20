@@ -2,7 +2,7 @@
 .env
 .env.*
 !.env.example
-.env.local
+
 
 # Dependency directories
 vendor/
@@ -21,8 +21,6 @@ uploads/biometrics/
 storage/logs/
 
 # IDE and OS
-.vercel
-.vercel/
 .idea/
 .vscode/
 *.suo
@@ -37,6 +35,5 @@ Thumbs.db
 database/*.sqlite
 database/*.sqlite3
 database/*.db
-
 # Scratch diagnostic scripts
 scratch/

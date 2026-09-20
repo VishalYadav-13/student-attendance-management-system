@@ -246,9 +246,7 @@
       <div class="popup-header-title" id="popup-title">Attendance Marked</div>
       <div class="popup-student-name" id="popup-student-name">—</div>
       <div class="popup-roll-number" id="popup-student-roll">—</div>
-      <div id="popup-student-class" style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 3px; font-weight: 500;">—</div>
-      <div id="popup-confidence" style="font-size: 0.80rem; color: var(--primary-accent); margin-top: 4px; font-weight: 600;">—</div>
-      <div class="popup-meta-row" style="margin-top: 10px;">
+      <div class="popup-meta-row">
         <span class="badge badge-present" id="popup-status-badge">PRESENT</span>
         <span class="popup-timestamp" id="popup-timestamp">—</span>
       </div>
@@ -524,16 +522,8 @@
 
                   <div id="verified-meta-box" style="display: none; margin-top: 16px; padding: 12px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); text-align: left; font-size: 0.84rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                      <span style="color: var(--text-secondary);">Status:</span>
+                      <span style="color: var(--text-secondary);">Attendance:</span>
                       <strong style="color: var(--success);" id="verified-meta-status">PRESENT</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                      <span style="color: var(--text-secondary);">Class & Div:</span>
-                      <strong id="verified-meta-class">—</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                      <span style="color: var(--text-secondary);">Confidence:</span>
-                      <strong id="verified-meta-confidence" style="color: var(--primary-accent);">—</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                       <span style="color: var(--text-secondary);">Time:</span>
@@ -541,7 +531,7 @@
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                       <span style="color: var(--text-secondary);">Verification:</span>
-                      <strong id="verified-meta-method">CompreFace AI Confirmed</strong>
+                      <strong id="verified-meta-method">Biometric Match Confirmed</strong>
                     </div>
                   </div>
                 </div>
@@ -748,11 +738,9 @@
 
     function handleStudentVerified(data) {
       const s = data.student || {};
-      const studentName = s.full_name || s.name || data.student_name || 'Student';
+      const studentName = s.full_name || s.name || 'Student';
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const confPct = Math.round((data.similarity || data.confidence || 0.92) * 100);
-      const classStr = `${s.class || s.class_code || ''} Div ${s.division || s.division_name || ''}`.trim();
 
       // Update Latest Verified Card
       const avatarEl = document.getElementById('verified-avatar');
@@ -762,14 +750,12 @@
 
       document.getElementById('verified-name').textContent = studentName;
       document.getElementById('verified-roll').textContent = `Roll No: ${s.roll_number || ''} | UID: ${s.student_uid || ''}`;
-      document.getElementById('verified-result-badge').className = data.already_marked ? 'badge' : 'badge badge-present';
-      document.getElementById('verified-result-badge').textContent = data.already_marked ? 'ALREADY RECORDED' : '✓ ATTENDANCE MARKED';
+      document.getElementById('verified-result-badge').className = 'badge badge-present';
+      document.getElementById('verified-result-badge').textContent = '✓ VERIFIED';
 
       document.getElementById('verified-meta-box').style.display = 'block';
-      document.getElementById('verified-meta-status').textContent = data.already_marked ? 'ALREADY PRESENT' : 'PRESENT';
-      document.getElementById('verified-meta-class').textContent = classStr || 'Enrolled Class';
-      document.getElementById('verified-meta-confidence').textContent = `${confPct}% match`;
       document.getElementById('verified-meta-time').textContent = timeStr;
+      document.getElementById('verified-meta-status').textContent = data.already_marked ? 'ALREADY RECORDED' : 'PRESENT';
 
       // Update counters if newly marked
       if (!data.already_marked) {
@@ -787,24 +773,17 @@
       const titleEl = document.getElementById('popup-title');
       const nameEl = document.getElementById('popup-student-name');
       const rollEl = document.getElementById('popup-student-roll');
-      const classEl = document.getElementById('popup-student-class');
-      const confEl = document.getElementById('popup-confidence');
       const badgeEl = document.getElementById('popup-status-badge');
       const timeEl = document.getElementById('popup-timestamp');
 
-      if (!popup || !data) return;
+      if (!popup || !data || !data.student) return;
 
       const stu = data.student || {};
-      const studentName = stu.full_name || stu.name || data.student_name || 'Student';
-      const confPct = Math.round((data.similarity || data.confidence || 0.92) * 100);
-      const classStr = `${stu.class || stu.class_code || ''} Div ${stu.division || stu.division_name || ''}`.trim();
-
-      titleEl.textContent = data.already_marked ? '✓ Already Present' : '✓ Attendance Marked';
+      const studentName = stu.full_name || stu.name || 'Student';
+      titleEl.textContent = data.already_marked ? 'Already Present' : '✓ Attendance Marked';
       nameEl.textContent = studentName;
-      rollEl.textContent = `Roll No: ${stu.roll_number || '—'}`;
-      if (classEl) classEl.textContent = classStr ? `Class: ${classStr}` : '';
-      if (confEl) confEl.textContent = `Confidence: ${confPct}%`;
-      badgeEl.textContent = 'Status: Present';
+      rollEl.textContent = `Roll No: ${stu.roll_number || ''} | UID: ${stu.student_uid || ''}`;
+      badgeEl.textContent = 'Status: PRESENT';
       badgeEl.className = data.already_marked ? 'badge' : 'badge badge-present';
 
       const now = new Date();
