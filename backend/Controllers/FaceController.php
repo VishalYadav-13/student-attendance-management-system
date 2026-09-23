@@ -93,33 +93,64 @@ class FaceController
             return;
         }
 
-        // Create new session
-        $stmt = $pdo->prepare("
-            INSERT INTO attendance_sessions (class_id, division_id, subject_id, teacher_id, session_date, start_time, lecture_number, status, verification_mode)
-            VALUES (:cid, :did, :sid, :tid, :sdate, :stime, :lec, 'OPEN', 'FACE_AI')
-            RETURNING session_id
-        ");
-        $stmt->execute([
-            ':cid' => $classId,
-            ':did' => $divisionId,
-            ':sid' => $subjectId,
-            ':tid' => $teacherId,
-            ':sdate' => $sessionDate,
-            ':stime' => $startTime,
-            ':lec' => $lectureNum
-        ]);
+        // Create new session with duplicate constraint protection
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO attendance_sessions (class_id, division_id, subject_id, teacher_id, session_date, start_time, lecture_number, status, verification_mode)
+                VALUES (:cid, :did, :sid, :tid, :sdate, :stime, :lec, 'OPEN', 'FACE_AI')
+                RETURNING session_id
+            ");
+            $stmt->execute([
+                ':cid' => $classId,
+                ':did' => $divisionId,
+                ':sid' => $subjectId,
+                ':tid' => $teacherId,
+                ':sdate' => $sessionDate,
+                ':stime' => $startTime,
+                ':lec' => $lectureNum
+            ]);
 
-        $newSessionId = (int)$stmt->fetchColumn() ?: (int)$pdo->lastInsertId();
-        $stmt->closeCursor();
+            $newSessionId = (int)$stmt->fetchColumn() ?: (int)$pdo->lastInsertId();
+            $stmt->closeCursor();
 
-        AuditService::log($user['user_id'], 'FACE_SESSION_STARTED', 'attendance_sessions', (string)$newSessionId, [
-            'class_id' => $classId,
-            'division_id' => $divisionId,
-            'subject_id' => $subjectId,
-            'session_date' => $sessionDate
-        ]);
+            AuditService::log($user['user_id'], 'FACE_SESSION_STARTED', 'attendance_sessions', (string)$newSessionId, [
+                'class_id' => $classId,
+                'division_id' => $divisionId,
+                'subject_id' => $subjectId,
+                'session_date' => $sessionDate
+            ]);
 
-        self::returnSessionDetails($newSessionId, 'Face verification attendance session started successfully.', 201);
+            self::returnSessionDetails($newSessionId, 'Face verification attendance session started successfully.', 201);
+        } catch (\PDOException $pEx) {
+            // Check for unique violation (PostgreSQL 23505 or SQLite 19/2067)
+            if ($pEx->getCode() === '23505' || str_contains($pEx->getMessage(), 'UNIQUE constraint failed') || str_contains($pEx->getMessage(), 'unique constraint')) {
+                // Find existing session for this exact lecture period
+                $chkQuery = $pdo->prepare("
+                    SELECT session_id, status FROM attendance_sessions
+                    WHERE class_id = :cid AND subject_id = :sid AND session_date = :sdate AND lecture_number = :lec
+                    ORDER BY session_id DESC LIMIT 1
+                ");
+                $chkQuery->execute([
+                    ':cid' => $classId,
+                    ':sid' => $subjectId,
+                    ':sdate' => $sessionDate,
+                    ':lec' => $lectureNum
+                ]);
+                $matched = $chkQuery->fetch();
+
+                if ($matched && $matched['status'] === 'OPEN') {
+                    self::returnSessionDetails((int)$matched['session_id'], 'Reconnected to active open attendance session.');
+                    return;
+                }
+
+                $matchedId = $matched ? (int)$matched['session_id'] : 0;
+                Response::conflict("An attendance session (#{$matchedId}) has already been recorded for Lecture Period #{$lectureNum} on {$sessionDate}. Please select another lecture period.", [
+                    'session_id' => $matchedId
+                ]);
+                return;
+            }
+            throw $pEx;
+        }
     }
 
     /**

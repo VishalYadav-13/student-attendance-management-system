@@ -568,7 +568,7 @@ class AttendanceController
             LEFT JOIN divisions d  ON s.division_id = d.division_id
             JOIN subjects sub ON s.subject_id  = sub.subject_id
             JOIN teachers t   ON s.teacher_id  = t.teacher_id
-            JOIN departments dept ON t.department_id = dept.department_id
+            LEFT JOIN departments dept ON t.department_id = dept.department_id
             WHERE {$where}
             ORDER BY s.session_date DESC, s.start_time DESC
             LIMIT {$limit} OFFSET {$offset}

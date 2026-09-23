@@ -207,7 +207,7 @@ if ($requestMethod === 'POST' && $requestUri === '/api/auth/forgot-password') {
 if ($requestMethod === 'GET' && $requestUri === '/api/dashboard/admin') {
     DashboardController::admin();
 }
-if ($requestMethod === 'GET' && $requestUri === '/api/dashboard/teacher') {
+if ($requestMethod === 'GET' && ($requestUri === '/api/dashboard/teacher' || $requestUri === '/api/teacher/dashboard')) {
     DashboardController::teacher();
 }
 if ($requestMethod === 'GET' && $requestUri === '/api/dashboard/student') {

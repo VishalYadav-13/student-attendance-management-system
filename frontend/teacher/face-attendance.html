@@ -771,7 +771,7 @@
       } else {
         // Populate classes and dynamic subject switching from authorized teacher allocations
         try {
-          const dashRes = await API.get('/api/teacher/dashboard');
+          const dashRes = await API.get('/api/dashboard/teacher');
           if (dashRes && dashRes.data && dashRes.data.class_attendance) {
             const classAtt = dashRes.data.class_attendance;
             const classSelect = document.getElementById('setup-class');
@@ -836,9 +836,10 @@
       const submitBtn = document.getElementById('start-session-submit-btn');
       UI.setButtonLoading(submitBtn, true, 'Starting Face Attendance...');
 
+      const divEl = document.getElementById('setup-div');
       const payload = {
         class_id: parseInt(document.getElementById('setup-class').value),
-        division_id: parseInt(document.getElementById('setup-div').value),
+        division_id: (divEl && divEl.value) ? parseInt(divEl.value) : null,
         subject_id: parseInt(document.getElementById('setup-subject').value),
         lecture_number: parseInt(document.getElementById('setup-lecture').value),
         session_date: document.getElementById('setup-date').value,
@@ -859,7 +860,8 @@
         renderActiveSessionInfo();
         await startCameraVerification();
       } catch (err) {
-        UI.toast('Failed to start session: ' + err.message, 'error');
+        const errMsg = (err.data && err.data.message) || err.message || 'Could not start session.';
+        UI.toast('Failed to start session: ' + errMsg, 'error', 6000);
       } finally {
         UI.setButtonLoading(submitBtn, false, '▶ Start Face Attendance');
       }
