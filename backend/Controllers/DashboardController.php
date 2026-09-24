@@ -208,7 +208,7 @@ class DashboardController
             SELECT DISTINCT c.class_id, c.class_name, d.division_name, sub.subject_name, sub.subject_code
             FROM teacher_subjects ts
             JOIN classes c ON ts.class_id = c.class_id
-            JOIN divisions d ON ts.division_id = d.division_id
+            LEFT JOIN divisions d ON ts.division_id = d.division_id
             JOIN subjects sub ON ts.subject_id = sub.subject_id
             WHERE ts.teacher_id = :tid
         ");
@@ -229,7 +229,7 @@ class DashboardController
                    s.subject_id, c.class_id, d.division_id
             FROM timetables t
             JOIN classes c ON t.class_id = c.class_id
-            JOIN divisions d ON t.division_id = d.division_id
+            LEFT JOIN divisions d ON t.division_id = d.division_id
             JOIN subjects s ON t.subject_id = s.subject_id
             WHERE t.teacher_id = :tid AND t.day_of_week = :dow
             ORDER BY t.start_time ASC
@@ -276,7 +276,7 @@ class DashboardController
                 dept.department_name,
                 (SELECT COUNT(*) FROM students stu WHERE stu.class_id = c.class_id AND stu.status = 'ACTIVE') AS student_count
             FROM classes c
-            JOIN departments dept ON c.department_id = dept.department_id
+            LEFT JOIN departments dept ON c.department_id = dept.department_id
             WHERE c.class_id IN (
                 SELECT class_id FROM teacher_subjects WHERE teacher_id = :tid
             )
@@ -286,6 +286,7 @@ class DashboardController
         $authorizedClasses = $classAttendanceStmt->fetchAll();
 
         // Also fetch the subjects taught by this teacher for each class
+        // Note: ORDER BY sub.subject_name ASC ensures PostgreSQL compliance with SELECT DISTINCT
         $classSubjectsStmt = $pdo->prepare("
             SELECT DISTINCT
                 ts.class_id,
@@ -295,15 +296,25 @@ class DashboardController
             FROM teacher_subjects ts
             JOIN subjects sub ON ts.subject_id = sub.subject_id
             WHERE ts.teacher_id = :tid
-            ORDER BY CASE 
-                WHEN sub.subject_name = 'Software Engineering' THEN 1
-                WHEN sub.subject_name = 'Operating Systems' THEN 2
-                WHEN sub.subject_name = 'Advanced Computer Networks' THEN 3
-                ELSE 10
-            END ASC, sub.subject_name ASC
+            ORDER BY sub.subject_name ASC
         ");
         $classSubjectsStmt->execute([':tid' => $teacherId]);
         $classSubjectsRows = $classSubjectsStmt->fetchAll();
+
+        // Sort priority subjects in PHP to ensure strict cross-database compatibility (PostgreSQL & SQLite)
+        usort($classSubjectsRows, function ($a, $b) {
+            $priority = [
+                'Software Engineering' => 1,
+                'Operating Systems' => 2,
+                'Advanced Computer Networks' => 3
+            ];
+            $pA = $priority[$a['subject_name']] ?? 10;
+            $pB = $priority[$b['subject_name']] ?? 10;
+            if ($pA !== $pB) {
+                return $pA <=> $pB;
+            }
+            return strcmp($a['subject_name'], $b['subject_name']);
+        });
 
         $classSubjectsMap = [];
         foreach ($classSubjectsRows as $csRow) {
