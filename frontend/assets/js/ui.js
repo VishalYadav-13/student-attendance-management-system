@@ -266,11 +266,13 @@ const UI = {
       btn.dataset.originalHtml = btn.innerHTML;
       btn.disabled = true;
       btn.classList.add('btn-loading');
-      btn.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span> ${loadingText}`;
+      btn.textContent = loadingText;
     } else {
       btn.disabled = false;
       btn.classList.remove('btn-loading');
-      if (btn.dataset.originalHtml) {
+      if (loadingText && loadingText !== 'Processing...') {
+        btn.innerHTML = loadingText;
+      } else if (btn.dataset.originalHtml) {
         btn.innerHTML = btn.dataset.originalHtml;
       }
     }

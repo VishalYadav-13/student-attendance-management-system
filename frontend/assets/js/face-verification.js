@@ -159,7 +159,6 @@ const FaceVerification = {
       const payload = {
         session_id: this.sessionId,
         embedding: descriptor,
-        image: frameData,
         liveness_passed: true,
         liveness_action: liveness.action || 'frontal_gaze',
         auto_mark: true
@@ -176,6 +175,7 @@ const FaceVerification = {
           match: 'YES',
           student_id: student.student_id,
           name: studentName,
+          result_code: data.result_code || (data.already_marked ? 'ALREADY_MARKED' : 'FACE_RECOGNIZED'),
           attendance: data.already_marked ? 'ALREADY_PRESENT' : 'CREATED',
           class_check: 'PASS'
         });
@@ -184,7 +184,7 @@ const FaceVerification = {
         this.setStatus('Student recognized', 'verified');
         await new Promise(r => setTimeout(r, 450));
 
-        if (data.already_marked) {
+        if (data.already_marked || data.result_code === 'ALREADY_MARKED') {
           this.setStatus('Already Present', 'verified');
           UI.toast(`Already Present: ${studentName}`, 'info');
         } else {
@@ -207,7 +207,7 @@ const FaceVerification = {
         this.setStatus('Camera ready — looking for face...', 'scanning');
       }
     } catch (err) {
-      console.warn('[SAMS Face Cycle Notice]', err.message);
+      console.warn('[SAMS Face Cycle Notice]', err.message, err.data);
       const code = (err.data && err.data.error && err.data.error.code) ||
                    (err.data && err.data.result_code) || 
                    (err.data && err.data.code) || 
@@ -217,20 +217,31 @@ const FaceVerification = {
         this.setStatus('Face verification timed out. Please try again.', 'warning');
         UI.toast('Face verification timed out. Please try again.', 'error');
         await new Promise(r => setTimeout(r, 3000));
+      } else if (code === 'SESSION_NOT_FOUND' || (err.status === 404 && err.message && err.message.toLowerCase().includes('session'))) {
+        this.setStatus('Attendance session not found.', 'error');
+        UI.toast('Attendance session #' + this.sessionId + ' not found or closed. Please select an active session.', 'error', 5000);
+        this.stopContinuousScan();
+        return;
+      } else if (code === 'SESSION_CLOSED') {
+        this.setStatus('Attendance session has been closed.', 'warning');
+        UI.toast('This attendance session has been closed.', 'warning', 5000);
+        this.stopContinuousScan();
+        return;
       } else if (code === 'WRONG_CLASS' || code === 'CLASS_MISMATCH') {
         this.setStatus('Student belongs to another class/division.', 'warning');
         UI.toast('Student belongs to another class/division.', 'error');
         await new Promise(r => setTimeout(r, 3000));
-      } else if (code === 'NO_ENROLLED_STUDENTS' || code === 'FACE_NOT_ENROLLED') {
+      } else if (code === 'NO_ENROLLED_STUDENTS' || code === 'NO_ENROLLED_FACE' || code === 'FACE_NOT_ENROLLED') {
         this.setStatus('No enrolled face found for this student/class.', 'warning');
-        UI.toast('No enrolled face profiles found for this class and division.', 'warning');
-        await new Promise(r => setTimeout(r, 2500));
+        UI.toast('No enrolled face profiles found for this class and division. Admin must enroll students first.', 'warning', 4000);
+        await new Promise(r => setTimeout(r, 3000));
       } else if (code === 'LIVENESS_FAILED') {
-        this.setStatus('Liveness verification failed. Please try again.', 'warning');
+        this.setStatus('Liveness check failed. Please look at the camera.', 'warning');
         await new Promise(r => setTimeout(r, 2000));
       } else if (code === 'FACE_NOT_RECOGNIZED' || code === 'VERIFICATION_FAILED' || (err.message && (err.message.includes('not recognized') || err.message.includes('not be verified')))) {
-        this.setStatus('Face not recognized', 'warning');
-        await new Promise(r => setTimeout(r, 2000));
+        this.setStatus('Face not recognized — please look directly at camera', 'warning');
+        UI.toast('Face not recognized. Ensure student is enrolled by Admin.', 'warning', 3000);
+        await new Promise(r => setTimeout(r, 2500));
       } else {
         const displayMsg = err.message || 'Face verification error. Please try again.';
         this.setStatus(displayMsg, 'warning');

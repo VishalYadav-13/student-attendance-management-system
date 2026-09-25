@@ -659,15 +659,71 @@ class Database
         $errors = [];
         $migrationsDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations';
         if (is_dir($migrationsDir)) {
+            $alreadyRan = [];
+            try {
+                $driver = self::getActiveDriver();
+                if ($driver === 'pgsql') {
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(255) PRIMARY KEY, executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP)");
+                } else {
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, executed_at DATETIME DEFAULT CURRENT_TIMESTAMP)");
+                }
+                $existingStmt = $pdo->query("SELECT version FROM schema_migrations");
+                $alreadyRan = $existingStmt ? $existingStmt->fetchAll(PDO::FETCH_COLUMN) : [];
+
+                // SAFETY VERIFICATION FOR EXISTING PRODUCTION / LOCAL DATABASES:
+                // If schema_migrations was just created (empty), detect existing baseline migrations
+                // so destructive statements in 004 (e.g. DELETE FROM student_face_templates) NEVER re-run!
+                if (empty($alreadyRan)) {
+                    $hasExistingRoster = false;
+                    try {
+                        $chk = $pdo->query("SELECT 1 FROM students WHERE roll_number = 'CO-2101' LIMIT 1");
+                        $hasExistingRoster = $chk && $chk->fetch();
+                    } catch (\Throwable $e) {}
+
+                    if ($hasExistingRoster) {
+                        $baselineMigrations = [
+                            '003_simplify_to_single_teacher.sql',
+                            '004_replace_demo_students_with_co_and_it_roster.sql',
+                            '005_enforce_single_division_a.sql',
+                            'add_student_face_templates.sql'
+                        ];
+                        foreach ($baselineMigrations as $b) {
+                            try {
+                                if ($driver === 'pgsql') {
+                                    $pdo->exec("INSERT INTO schema_migrations (version) VALUES ('{$b}') ON CONFLICT (version) DO NOTHING");
+                                } else {
+                                    $pdo->exec("INSERT OR IGNORE INTO schema_migrations (version) VALUES ('{$b}')");
+                                }
+                                $alreadyRan[] = $b;
+                            } catch (\Throwable $se) {}
+                        }
+                    }
+                }
+            } catch (\Throwable $t) {
+                $alreadyRan = [];
+            }
+
             $files = glob($migrationsDir . DIRECTORY_SEPARATOR . '*.sql');
             sort($files);
             foreach ($files as $file) {
                 $base = basename($file);
+                if (in_array($base, $alreadyRan, true)) {
+                    continue; // Skip already executed migration
+                }
                 try {
                     $migrationSql = file_get_contents($file);
                     if (!empty($migrationSql)) {
                         $pdo->exec($migrationSql);
                         $executed[] = $base;
+                        try {
+                            $driver = self::getActiveDriver();
+                            if ($driver === 'pgsql') {
+                                $insStmt = $pdo->prepare("INSERT INTO schema_migrations (version) VALUES (:v) ON CONFLICT (version) DO NOTHING");
+                            } else {
+                                $insStmt = $pdo->prepare("INSERT OR IGNORE INTO schema_migrations (version) VALUES (:v)");
+                            }
+                            $insStmt->execute([':v' => $base]);
+                        } catch (\Throwable $iEx) {}
                     }
                 } catch (\Throwable $mEx) {
                     $errors[$base] = $mEx->getMessage();
