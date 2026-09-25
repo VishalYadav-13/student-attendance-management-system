@@ -990,6 +990,12 @@
           sessionId: activeSession.session_id,
           onStudentVerified: (data) => {
             handleStudentVerified(data);
+          },
+          onVerificationFailed: (err) => {
+            handleVerificationFailed(err);
+          },
+          onResetCard: () => {
+            resetVerifiedCard();
           }
         });
 
@@ -1001,6 +1007,64 @@
         document.getElementById('camera-error-banner').style.display = 'block';
         document.getElementById('cam-error-title').textContent = 'Camera Unavailable';
         document.getElementById('cam-error-desc').textContent = err.message || 'Unable to access camera device.';
+      }
+    }
+
+    function handleVerificationFailed(err) {
+      const avatarEl = document.getElementById('verified-avatar');
+      if (avatarEl) {
+        avatarEl.textContent = '✕';
+        avatarEl.style.background = '#8B3A3A';
+        avatarEl.style.color = '#fff';
+      }
+      const nameEl = document.getElementById('verified-name');
+      if (nameEl) {
+        nameEl.textContent = 'Face Not Recognized';
+        nameEl.style.color = '#C97A7E';
+      }
+      const rollEl = document.getElementById('verified-roll');
+      if (rollEl) {
+        rollEl.textContent = 'No matching enrolled student in this class';
+      }
+      const badgeEl = document.getElementById('verified-result-badge');
+      if (badgeEl) {
+        badgeEl.className = 'badge';
+        badgeEl.style.background = '#8B3A3A';
+        badgeEl.style.color = '#fff';
+        badgeEl.textContent = '✕ NOT RECOGNIZED';
+      }
+      const metaBox = document.getElementById('verified-meta-box');
+      if (metaBox) {
+        metaBox.style.display = 'none';
+      }
+    }
+
+    function resetVerifiedCard() {
+      const avatarEl = document.getElementById('verified-avatar');
+      if (avatarEl) {
+        avatarEl.textContent = '—';
+        avatarEl.style.background = 'var(--border-subtle)';
+        avatarEl.style.color = 'var(--text-main)';
+      }
+      const nameEl = document.getElementById('verified-name');
+      if (nameEl) {
+        nameEl.textContent = 'Position Face in Frame';
+        nameEl.style.color = 'var(--text-main)';
+      }
+      const rollEl = document.getElementById('verified-roll');
+      if (rollEl) {
+        rollEl.textContent = 'Waiting for student...';
+      }
+      const badgeEl = document.getElementById('verified-result-badge');
+      if (badgeEl) {
+        badgeEl.className = 'badge';
+        badgeEl.style.background = 'var(--bg-surface-subtle)';
+        badgeEl.style.color = 'var(--text-muted)';
+        badgeEl.textContent = 'Awaiting Face';
+      }
+      const metaBox = document.getElementById('verified-meta-box');
+      if (metaBox) {
+        metaBox.style.display = 'none';
       }
     }
 
@@ -1017,13 +1081,17 @@
       avatarEl.style.color = '#fff';
 
       document.getElementById('verified-name').textContent = studentName;
+      document.getElementById('verified-name').style.color = 'var(--text-main)';
       document.getElementById('verified-roll').textContent = `Roll No: ${s.roll_number || ''} | UID: ${s.student_uid || ''}`;
       document.getElementById('verified-result-badge').className = 'badge badge-present';
+      document.getElementById('verified-result-badge').style.background = '';
+      document.getElementById('verified-result-badge').style.color = '';
       document.getElementById('verified-result-badge').textContent = '✓ VERIFIED';
 
       document.getElementById('verified-meta-box').style.display = 'block';
       document.getElementById('verified-meta-time').textContent = timeStr;
       document.getElementById('verified-meta-status').textContent = data.already_marked ? 'ALREADY RECORDED' : 'PRESENT';
+      document.getElementById('verified-meta-method').textContent = 'Biometric Match Confirmed (High Accuracy)';
 
       // Update counters if newly marked
       if (!data.already_marked) {

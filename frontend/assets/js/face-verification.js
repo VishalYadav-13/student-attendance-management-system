@@ -13,6 +13,8 @@ const FaceVerification = {
   statusPillEl: null,
   onStudentVerified: null,
   onStatsUpdated: null,
+  onVerificationFailed: null,
+  onResetCard: null,
 
   init(options = {}) {
     this.sessionId = options.sessionId;
@@ -20,6 +22,8 @@ const FaceVerification = {
     this.statusPillEl = document.getElementById('camera-status-pill') || document.querySelector('.camera-status-pill');
     this.onStudentVerified = options.onStudentVerified || null;
     this.onStatsUpdated = options.onStatsUpdated || null;
+    this.onVerificationFailed = options.onVerificationFailed || null;
+    this.onResetCard = options.onResetCard || null;
 
     if (options.sessionId && typeof FaceEngine !== 'undefined') {
       FaceEngine.resetLiveness();
@@ -205,6 +209,9 @@ const FaceVerification = {
           FaceEngine.resetLiveness();
         }
         this.setStatus('Camera ready — looking for face...', 'scanning');
+        if (typeof this.onResetCard === 'function') {
+          this.onResetCard();
+        }
       }
     } catch (err) {
       console.warn('[SAMS Face Cycle Notice]', err.message, err.data);
@@ -239,7 +246,10 @@ const FaceVerification = {
         this.setStatus('Liveness check failed. Please look at the camera.', 'warning');
         await new Promise(r => setTimeout(r, 2000));
       } else if (code === 'FACE_NOT_RECOGNIZED' || code === 'VERIFICATION_FAILED' || (err.message && (err.message.includes('not recognized') || err.message.includes('not be verified')))) {
-        this.setStatus('Face not recognized — please look directly at camera', 'warning');
+        this.setStatus('Face not recognized — not enrolled', 'warning');
+        if (typeof this.onVerificationFailed === 'function') {
+          this.onVerificationFailed(err.data || err);
+        }
         UI.toast('Face not recognized. Ensure student is enrolled by Admin.', 'warning', 3000);
         await new Promise(r => setTimeout(r, 2500));
       } else {

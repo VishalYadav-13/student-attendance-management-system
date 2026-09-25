@@ -16,7 +16,8 @@ use Exception;
 class FaceVerificationService
 {
     public const DEFAULT_MODEL_VERSION = 'face-api-v1-128d';
-    public const DEFAULT_SIMILARITY_THRESHOLD = 0.55; // Standard Euclidean distance for face-api.js embeddings (lower is stricter)
+    public const DEFAULT_SIMILARITY_THRESHOLD = 0.38; // Strict Euclidean distance ceiling for 128D embeddings (prevents proxy attendance)
+    public const MIN_COSINE_SIMILARITY = 0.92; // Minimum 92% directional feature alignment required for genuine match
 
     /**
      * Enroll face embedding vector for a student
@@ -464,8 +465,9 @@ class FaceVerificationService
             ];
         }
 
-        // 6. Compute Euclidean Distance across enrolled class templates
+        // 6. Compute Euclidean Distance & Cosine Similarity across enrolled class templates
         $bestDistance = INF;
+        $bestCosine = -1.0;
         $bestStudent = null;
 
         foreach ($enrolledList as $candidate) {
@@ -475,21 +477,27 @@ class FaceVerificationService
             }
 
             $dist = self::euclideanDistance($probeEmbedding, $enrolledVector);
+            $cosine = self::cosineSimilarity($probeEmbedding, $enrolledVector);
+
             if ($dist < $bestDistance) {
                 $bestDistance = $dist;
+                $bestCosine = $cosine;
                 $bestStudent = $candidate;
             }
         }
 
         // Convert distance to standard normalized confidence score (0.0000 - 1.0000)
-        // At distance 0.0 -> 0.9999 confidence; at threshold 0.60 -> ~0.76 confidence
         $confidence = round(max(0.5000, min(0.9999, 1.0 - ($bestDistance * 0.40))), 4);
 
-        // 7. Check if best match meets threshold
-        if ($bestStudent === null || $bestDistance > $threshold) {
-            self::logVerificationAttempt(null, $sessionId, 'FAILED', $confidence, 0.9, "Unknown face, best distance: " . round($bestDistance, 4));
+        // 7. Check if best match meets strict dual threshold (Euclidean <= threshold AND Cosine >= 0.92)
+        // Strict dual verification prevents proxy attendance from different individuals
+        $isMatch = ($bestStudent !== null && $bestDistance <= $threshold && $bestCosine >= self::MIN_COSINE_SIMILARITY);
+
+        if (!$isMatch) {
+            self::logVerificationAttempt(null, $sessionId, 'FAILED', $confidence, 0.9, "Unknown face, best distance: " . round($bestDistance, 4) . ", cosine: " . round($bestCosine, 4));
             AuditService::log($actorUserId, 'FACE_VERIFY_FAILED', 'attendance_sessions', (string)$sessionId, [
                 'best_distance' => round($bestDistance, 4),
+                'best_cosine' => round($bestCosine, 4),
                 'threshold' => $threshold
             ]);
 
@@ -498,6 +506,7 @@ class FaceVerificationService
                 'result_code' => 'FACE_NOT_RECOGNIZED',
                 'code' => 'FACE_NOT_RECOGNIZED',
                 'best_distance' => round($bestDistance, 4),
+                'cosine_similarity' => round($bestCosine, 4),
                 'threshold' => $threshold,
                 'message' => 'Face not recognized'
             ];
@@ -640,6 +649,28 @@ class FaceVerificationService
     }
 
     /**
+     * Compute Cosine Similarity between two 128-dimensional vectors (-1.0 to 1.0)
+     */
+    public static function cosineSimilarity(array $v1, array $v2): float
+    {
+        $dot = 0.0;
+        $norm1 = 0.0;
+        $norm2 = 0.0;
+        $len = min(count($v1), count($v2));
+        for ($i = 0; $i < $len; $i++) {
+            $val1 = (float)$v1[$i];
+            $val2 = (float)$v2[$i];
+            $dot += $val1 * $val2;
+            $norm1 += $val1 * $val1;
+            $norm2 += $val2 * $val2;
+        }
+        if ($norm1 <= 0.0 || $norm2 <= 0.0) {
+            return 0.0;
+        }
+        return $dot / (sqrt($norm1) * sqrt($norm2));
+    }
+
+    /**
      * Retrieve configured Euclidean distance threshold from system settings
      */
     public static function getConfiguredThreshold(): float
@@ -650,7 +681,8 @@ class FaceVerificationService
             $stmt->execute();
             $val = $stmt->fetchColumn();
             if ($val !== false && is_numeric($val)) {
-                return (float)$val;
+                // Strict safety ceiling of 0.38 prevents proxy attendance even if database setting is loose
+                return min(self::DEFAULT_SIMILARITY_THRESHOLD, (float)$val);
             }
         } catch (\Throwable $e) {}
 
