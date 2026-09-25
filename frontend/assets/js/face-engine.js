@@ -147,10 +147,10 @@ const FaceEngine = {
       };
     }
 
-    // Requirement 5 & 6: Balanced threshold (0.40) and input size (320) for reliable detection
+    // Requirement 5 & 6: Higher precision detector options for HD video frames
     const detectorOptions = new window.faceapi.TinyFaceDetectorOptions({
-      inputSize: 320,
-      scoreThreshold: 0.40
+      inputSize: 416,
+      scoreThreshold: 0.35
     });
 
     // Detect all faces with landmarks and 128D descriptors in a single forward pass

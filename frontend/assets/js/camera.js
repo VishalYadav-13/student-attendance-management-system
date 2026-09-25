@@ -24,16 +24,41 @@ const Camera = {
     this.stop();
 
     try {
-      const constraints = {
+      // Prioritize high-definition video constraints (1080p Full HD -> 720p HD)
+      let constraints = {
         video: {
           facingMode: this.facingMode,
-          width: { ideal: 640 },
-          height: { ideal: 480 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
         },
         audio: false
       };
 
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (hdErr) {
+        console.warn("[SAMS Camera] HD constraint fallback:", hdErr.message);
+        // Fallback to 720p HD if 1080p not supported
+        constraints = {
+          video: {
+            facingMode: this.facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (subErr) {
+          console.warn("[SAMS Camera] Standard fallback:", subErr.message);
+          this.stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: this.facingMode },
+            audio: false
+          });
+        }
+      }
+
       this.videoEl.srcObject = this.stream;
 
       // Ensure video metadata and dimensions are populated before resolving
@@ -91,10 +116,13 @@ const Camera = {
     }
 
     const canvas = document.createElement('canvas');
-    canvas.width = this.videoEl.videoWidth || 640;
-    canvas.height = this.videoEl.videoHeight || 480;
+    canvas.width = this.videoEl.videoWidth || 1280;
+    canvas.height = this.videoEl.videoHeight || 720;
 
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     // Mirror the frame horizontally to match standard selfie preview
     if (this.facingMode === 'user') {
       ctx.translate(canvas.width, 0);
@@ -102,7 +130,7 @@ const Camera = {
     }
     ctx.drawImage(this.videoEl, 0, 0, canvas.width, canvas.height);
 
-    return canvas.toDataURL('image/jpeg', 0.88);
+    return canvas.toDataURL('image/jpeg', 0.92);
   },
 
   /**

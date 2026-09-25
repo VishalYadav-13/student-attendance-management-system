@@ -1,0 +1,13 @@
+warning: in the working copy of 'frontend/assets/js/face-engine.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/FaceVerificationTest.php', LF will be replaced by CRLF the next time Git touches it
+ backend/Controllers/DashboardController.php  |  25 [32m++++[m[31m-[m
+ backend/Controllers/FaceController.php       |  33 [32m++++++[m[31m-[m
+ backend/Services/FaceVerificationService.php | 140 [32m+++++++++++++++++++++[m[31m------[m
+ database/seed.sql                            |   1 [31m-[m
+ frontend/admin/students.html                 |  52 [32m++++++++[m[31m--[m
+ frontend/assets/js/camera.js                 |  42 [32m++++++[m[31m--[m
+ frontend/assets/js/face-engine.js            |   6 [32m+[m[31m-[m
+ frontend/assets/js/face-verification.js      |   8 [32m+[m[31m-[m
+ frontend/teacher/face-attendance.html        |  71 [32m++++++++++++[m[31m--[m
+ tests/FaceVerificationTest.php               |  18 [32m++[m[31m--[m
+ 10 files changed, 324 insertions(+), 72 deletions(-)

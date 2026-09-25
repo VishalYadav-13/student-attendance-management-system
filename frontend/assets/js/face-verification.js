@@ -146,11 +146,13 @@ const FaceVerification = {
         // Fallback frame capture via canvas
         try {
           const canvas = document.createElement('canvas');
-          canvas.width = videoEl.videoWidth || 640;
-          canvas.height = videoEl.videoHeight || 480;
+          canvas.width = videoEl.videoWidth || 1280;
+          canvas.height = videoEl.videoHeight || 720;
           const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-          frameData = canvas.toDataURL('image/jpeg', 0.85);
+          frameData = canvas.toDataURL('image/jpeg', 0.92);
         } catch (cvErr) {}
       }
 

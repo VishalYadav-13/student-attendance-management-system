@@ -329,6 +329,28 @@ class DashboardController
             ];
         }
 
+        // Fetch divisions for classes with student counts
+        $divStmt = $pdo->prepare("
+            SELECT d.division_id, d.class_id, d.division_name,
+                   (SELECT COUNT(*) FROM students stu WHERE stu.class_id = d.class_id AND stu.division_id = d.division_id AND stu.status = 'ACTIVE') AS student_count
+            FROM divisions d
+            ORDER BY d.division_name ASC
+        ");
+        $divStmt->execute();
+        $divRows = $divStmt->fetchAll();
+        $classDivisionsMap = [];
+        foreach ($divRows as $dRow) {
+            $cId = (int)$dRow['class_id'];
+            if (!isset($classDivisionsMap[$cId])) {
+                $classDivisionsMap[$cId] = [];
+            }
+            $classDivisionsMap[$cId][] = [
+                'division_id' => (int)$dRow['division_id'],
+                'division_name' => $dRow['division_name'],
+                'student_count' => (int)$dRow['student_count']
+            ];
+        }
+
         // Group into FY, SY, TY categories
         $classAttendance = [
             'FY' => [],
@@ -358,7 +380,8 @@ class DashboardController
                     'branch_code' => $ac['department_code'],
                     'branch_name' => $ac['department_name'],
                     'student_count' => (int)$ac['student_count'],
-                    'subjects' => $classSubjectsMap[$cid] ?? []
+                    'subjects' => $classSubjectsMap[$cid] ?? [],
+                    'divisions' => $classDivisionsMap[$cid] ?? []
                 ];
             }
         }

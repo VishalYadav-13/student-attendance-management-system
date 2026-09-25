@@ -187,8 +187,9 @@
             <div class="form-group">
               <label class="form-label" for="add-class">Class & Division *</label>
               <select id="add-class" class="form-control" required>
-                <option value="1">SY CO - Division A</option>
-                <option value="2">SY CO - Division B</option>
+                <option value="1" data-class-id="1" data-div-id="1">SY CO - Division A</option>
+                <option value="4" data-class-id="4" data-div-id="5">FY CO - Division A</option>
+                <option value="5" data-class-id="5" data-div-id="6">TY CO - Division A</option>
               </select>
             </div>
           </div>
@@ -616,11 +617,13 @@
             let sampleFrame = null;
             try {
               const canvas = document.createElement('canvas');
-              canvas.width = videoEl.videoWidth || 640;
-              canvas.height = videoEl.videoHeight || 480;
+              canvas.width = videoEl.videoWidth || 1280;
+              canvas.height = videoEl.videoHeight || 720;
               const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
               ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-              sampleFrame = canvas.toDataURL('image/jpeg', 0.88);
+              sampleFrame = canvas.toDataURL('image/jpeg', 0.92);
             } catch (snapErr) {}
 
             // Collect sample descriptor and frame snapshot
@@ -711,11 +714,13 @@
             const videoEl = document.getElementById('enroll-video');
             if (videoEl) {
               const canvas = document.createElement('canvas');
-              canvas.width = videoEl.videoWidth || 640;
-              canvas.height = videoEl.videoHeight || 480;
+              canvas.width = videoEl.videoWidth || 1280;
+              canvas.height = videoEl.videoHeight || 720;
               const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
               ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-              frameData = canvas.toDataURL('image/jpeg', 0.88);
+              frameData = canvas.toDataURL('image/jpeg', 0.92);
             }
           } catch (e) {}
         }
@@ -826,20 +831,47 @@
       });
     }
 
+    const deptClasses = {
+      1: [
+        { class_id: 1, div_id: 1, name: 'SY CO - Division A' },
+        { class_id: 4, div_id: 5, name: 'FY CO - Division A' },
+        { class_id: 5, div_id: 6, name: 'TY CO - Division A' }
+      ],
+      2: [
+        { class_id: 2, div_id: 3, name: 'SY IT - Division A' },
+        { class_id: 6, div_id: 7, name: 'FY IT - Division A' },
+        { class_id: 7, div_id: 8, name: 'TY IT - Division A' }
+      ],
+      3: [
+        { class_id: 3, div_id: 4, name: 'SY EJ - Division A' },
+        { class_id: 8, div_id: 9, name: 'FY EJ - Division A' },
+        { class_id: 9, div_id: 10, name: 'TY EJ - Division A' }
+      ]
+    };
+
+    function updateAddClassOptions() {
+      const deptId = document.getElementById('add-dept').value;
+      const classSelect = document.getElementById('add-class');
+      const list = deptClasses[deptId] || deptClasses[1];
+      classSelect.innerHTML = list.map(c => `<option value="${c.class_id}" data-class-id="${c.class_id}" data-div-id="${c.div_id}">${c.name}</option>`).join('');
+    }
+    document.getElementById('add-dept').addEventListener('change', updateAddClassOptions);
+
     // Add Student Form
     document.getElementById('add-student-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const submitBtn = document.getElementById('add-student-submit-btn');
       UI.setButtonLoading(submitBtn, true, 'Enrolling Student...');
 
+      const classOpt = document.getElementById('add-class').selectedOptions[0];
       const payload = {
         full_name: document.getElementById('add-name').value.trim(),
         email: document.getElementById('add-email').value.trim(),
         roll_number: document.getElementById('add-roll').value.trim(),
         student_uid: document.getElementById('add-uid').value.trim(),
         department_id: parseInt(document.getElementById('add-dept').value),
-        class_id: 1, // SY CO
-        division_id: parseInt(document.getElementById('add-class').value)
+        class_id: parseInt(classOpt.dataset.classId || classOpt.value || 1),
+        division_id: parseInt(classOpt.dataset.divId || 1)
       };
 
       try {

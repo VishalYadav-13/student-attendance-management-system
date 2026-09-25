@@ -370,32 +370,89 @@ class FaceVerificationService
 
         // 5. Query all enrolled face templates for this session's class and division
         $classId = (int)$session['class_id'];
-        $divisionId = (int)$session['division_id'];
+        $divisionId = !empty($session['division_id']) ? (int)$session['division_id'] : null;
 
-        $enrolledStmt = $pdo->prepare("
-            SELECT 
-                s.student_id,
-                s.roll_number,
-                s.student_uid,
-                s.full_name,
-                s.email,
-                s.profile_photo,
-                s.class_id,
-                s.division_id,
-                sft.embedding,
-                sft.model_version,
-                (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = :sess AND r.student_id = s.student_id) AS is_marked
-            FROM students s
-            JOIN student_face_templates sft ON s.student_id = sft.student_id
-            WHERE s.class_id = :cid AND s.division_id = :did AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
-            ORDER BY s.roll_number ASC
-        ");
-        $enrolledStmt->execute([
-            ':sess' => $sessionId,
-            ':cid' => $classId,
-            ':did' => $divisionId
-        ]);
-        $enrolledList = $enrolledStmt->fetchAll();
+        $enrolledList = [];
+
+        // Check specific class & division first if division is specified
+        if ($divisionId !== null && $divisionId > 0) {
+            $enrolledStmt = $pdo->prepare("
+                SELECT 
+                    s.student_id,
+                    s.roll_number,
+                    s.student_uid,
+                    s.full_name,
+                    s.email,
+                    s.profile_photo,
+                    s.class_id,
+                    s.division_id,
+                    sft.embedding,
+                    sft.model_version,
+                    (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = :sess AND r.student_id = s.student_id) AS is_marked
+                FROM students s
+                JOIN student_face_templates sft ON s.student_id = sft.student_id
+                WHERE s.class_id = :cid AND s.division_id = :did AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+                ORDER BY s.roll_number ASC
+            ");
+            $enrolledStmt->execute([
+                ':sess' => $sessionId,
+                ':cid' => $classId,
+                ':did' => $divisionId
+            ]);
+            $enrolledList = $enrolledStmt->fetchAll();
+        }
+
+        // If no division was specified or no enrolled templates found in division, search class templates
+        if (empty($enrolledList)) {
+            $classStmt = $pdo->prepare("
+                SELECT 
+                    s.student_id,
+                    s.roll_number,
+                    s.student_uid,
+                    s.full_name,
+                    s.email,
+                    s.profile_photo,
+                    s.class_id,
+                    s.division_id,
+                    sft.embedding,
+                    sft.model_version,
+                    (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = :sess AND r.student_id = s.student_id) AS is_marked
+                FROM students s
+                JOIN student_face_templates sft ON s.student_id = sft.student_id
+                WHERE s.class_id = :cid AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+                ORDER BY s.roll_number ASC
+            ");
+            $classStmt->execute([
+                ':sess' => $sessionId,
+                ':cid' => $classId
+            ]);
+            $enrolledList = $classStmt->fetchAll();
+        }
+
+        // If still empty, search all active enrolled templates across the institution
+        // so cross-class attempts can be accurately identified rather than failing with generic empty roster
+        if (empty($enrolledList)) {
+            $allStmt = $pdo->prepare("
+                SELECT 
+                    s.student_id,
+                    s.roll_number,
+                    s.student_uid,
+                    s.full_name,
+                    s.email,
+                    s.profile_photo,
+                    s.class_id,
+                    s.division_id,
+                    sft.embedding,
+                    sft.model_version,
+                    (SELECT COUNT(*) FROM attendance_records r WHERE r.session_id = :sess AND r.student_id = s.student_id) AS is_marked
+                FROM students s
+                JOIN student_face_templates sft ON s.student_id = sft.student_id
+                WHERE s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+                ORDER BY s.roll_number ASC
+            ");
+            $allStmt->execute([':sess' => $sessionId]);
+            $enrolledList = $allStmt->fetchAll();
+        }
 
         if (empty($enrolledList)) {
             self::logVerificationAttempt(null, $sessionId, 'NO_ENROLLED_STUDENTS', 0.0, 0.0, 'No enrolled face profiles in class');
@@ -425,7 +482,7 @@ class FaceVerificationService
         }
 
         // Convert distance to standard normalized confidence score (0.0000 - 1.0000)
-        // At distance 0.0 -> 0.9999 confidence; at threshold 0.55 -> ~0.80 confidence
+        // At distance 0.0 -> 0.9999 confidence; at threshold 0.60 -> ~0.76 confidence
         $confidence = round(max(0.5000, min(0.9999, 1.0 - ($bestDistance * 0.40))), 4);
 
         // 7. Check if best match meets threshold
@@ -448,11 +505,36 @@ class FaceVerificationService
 
         // 8. Server-Side Class Restriction: Confirm student belongs to session's class & division
         $matchedStudentId = (int)$bestStudent['student_id'];
-        if ((int)$bestStudent['class_id'] !== $classId || (int)$bestStudent['division_id'] !== $divisionId) {
+        $studentClassId = (int)$bestStudent['class_id'];
+        $studentDivId = !empty($bestStudent['division_id']) ? (int)$bestStudent['division_id'] : null;
+
+        if ($studentClassId !== $classId) {
+            self::logVerificationAttempt($matchedStudentId, $sessionId, 'WRONG_CLASS', $confidence, 0.9, 'Student belongs to different class');
+            AuditService::log($actorUserId, 'FACE_WRONG_CLASS_ATTEMPT', 'students', (string)$matchedStudentId, [
+                'session_id' => $sessionId,
+                'student_id' => $matchedStudentId,
+                'student_name' => $bestStudent['full_name'],
+                'student_class_id' => $studentClassId,
+                'session_class_id' => $classId
+            ]);
+
+            return [
+                'verified' => false,
+                'result_code' => 'WRONG_CLASS',
+                'code' => 'WRONG_CLASS',
+                'message' => 'Student belongs to another class/division.'
+            ];
+        }
+
+        // Confirm division restriction if session has a specific division and student has a different division
+        if ($divisionId !== null && $divisionId > 0 && $studentDivId !== null && $studentDivId > 0 && $studentDivId !== $divisionId) {
             self::logVerificationAttempt($matchedStudentId, $sessionId, 'WRONG_CLASS', $confidence, 0.9, 'Student belongs to different division');
             AuditService::log($actorUserId, 'FACE_WRONG_CLASS_ATTEMPT', 'students', (string)$matchedStudentId, [
                 'session_id' => $sessionId,
-                'required_class' => "{$session['class_name']} Div {$session['division_name']}"
+                'student_id' => $matchedStudentId,
+                'student_name' => $bestStudent['full_name'],
+                'student_division_id' => $studentDivId,
+                'session_division_id' => $divisionId
             ]);
 
             return [

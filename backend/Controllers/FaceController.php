@@ -54,6 +54,20 @@ class FaceController
         }
         $classId = (int)$input['class_id'];
         $divisionId = !empty($input['division_id']) ? (int)$input['division_id'] : null;
+
+        // Ensure division exists for this class, otherwise resolve the class's Division A
+        $validDiv = false;
+        if ($divisionId !== null && $divisionId > 0) {
+            $chkStmt = $pdo->prepare("SELECT division_id FROM divisions WHERE division_id = :did AND class_id = :cid");
+            $chkStmt->execute([':did' => $divisionId, ':cid' => $classId]);
+            $validDiv = (bool)$chkStmt->fetchColumn();
+        }
+        if (!$validDiv) {
+            $divStmt = $pdo->prepare("SELECT division_id FROM divisions WHERE class_id = :cid AND division_name = 'A' LIMIT 1");
+            $divStmt->execute([':cid' => $classId]);
+            $resolvedDiv = (int)$divStmt->fetchColumn();
+            $divisionId = $resolvedDiv > 0 ? $resolvedDiv : 1;
+        }
         $subjectId = (int)$input['subject_id'];
         $sessionDate = (string)$input['session_date'];
         $startTime = (string)$input['start_time'];
@@ -378,9 +392,10 @@ class FaceController
             return;
         }
 
-        // RBAC: Student can only enroll themselves; Admin & Teacher can enroll students
-        if ($user['role_name'] === 'STUDENT' && (int)($user['student_id'] ?? 0) !== $studentId) {
-            Response::forbidden("Access denied: Students may only enroll their own face profile.");
+        // RBAC: Admin is the ONLY role allowed to enroll student faces.
+        // Teachers and students are strictly forbidden from face enrollment (HTTP 403).
+        if ($user['role_name'] !== 'ADMIN') {
+            Response::forbidden("Access denied: Only Administrators are authorized to enroll student facial biometrics.");
             return;
         }
 
@@ -586,6 +601,18 @@ class FaceController
             $enrStmt->execute([':cid' => (int)$session['class_id']]);
         }
         $biometricEnrolledCount = (int)$enrStmt->fetchColumn();
+
+        // Fallback to class-level enrolled count if division has 0 enrolled templates
+        if ($biometricEnrolledCount === 0 && !empty($session['division_id'])) {
+            $enrFbStmt = $pdo->prepare("
+                SELECT COUNT(*) 
+                FROM students s 
+                JOIN student_face_templates sft ON s.student_id = sft.student_id 
+                WHERE s.class_id = :cid AND s.status = 'ACTIVE' AND sft.status = 'ACTIVE'
+            ");
+            $enrFbStmt->execute([':cid' => (int)$session['class_id']]);
+            $biometricEnrolledCount = (int)$enrFbStmt->fetchColumn();
+        }
 
         Response::success([
             'session' => $session,

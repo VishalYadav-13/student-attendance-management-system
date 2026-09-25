@@ -70,7 +70,6 @@ ON CONFLICT (class_id) DO NOTHING;
 
 INSERT INTO divisions (division_id, class_id, division_name, max_capacity) VALUES
 (1, 1, 'A', 60),
-(2, 1, 'B', 60),
 (3, 2, 'A', 60),
 (4, 3, 'A', 60),
 (5, 4, 'A', 60),

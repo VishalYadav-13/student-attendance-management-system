@@ -364,7 +364,7 @@ class FaceVerificationTest
     {
         echo "\n[4] Class Restriction & Duplicate Attendance Protection Tests\n";
 
-        // Teacher 1 opens session for Class 1, Division 2 (Div B)
+        // Teacher 1 opens session for Class 2 (SY IT - Division A, div_id 3)
         AuthMiddleware::setAuthenticatedUser([
             'user_id' => 2,
             'teacher_id' => 1,
@@ -373,9 +373,9 @@ class FaceVerificationTest
         ]);
 
         $_POST = [
-            'class_id' => 1,
-            'division_id' => 2,
-            'subject_id' => 2,
+            'class_id' => 2,
+            'division_id' => 3,
+            'subject_id' => 4,
             'session_date' => date('Y-m-d'),
             'start_time' => '11:00',
             'lecture_number' => 2
@@ -384,11 +384,11 @@ class FaceVerificationTest
         $sessResp = Response::getLastResponse();
         $sessionId = (int)($sessResp['data']['session']['session_id'] ?? 2);
 
-        // Enroll Student 1 who belongs to Division 1 (Div A)
+        // Enroll Student 1 who belongs to Class 1 (SY CO - Div A)
         $student1Vector = $this->generateSyntheticVector(3.1415);
         FaceVerificationService::enroll(1, $student1Vector, 1, true);
 
-        // Verify Student 1 probe in Division B session
+        // Verify Student 1 probe in SY IT session
         $_POST = [
             'session_id' => $sessionId,
             'embedding' => $student1Vector,
@@ -397,12 +397,12 @@ class FaceVerificationTest
         FaceController::verify();
         $resp = Response::getLastResponse();
 
-        // Student 1 does not belong to Div B session; query filters by Div B so no match or wrong class
+        // Student 1 does not belong to Class 2 session; blocked with 422 wrong class
         $this->assert("Student from Div A blocked from marking attendance in Div B session", ($resp['status_code'] ?? 0) === 422);
 
         // Now test Duplicate Attendance Protection in Session 1 (where Student 1 is already PRESENT)
-        // Find session for Div A
-        $stmt = $this->pdo->query("SELECT session_id FROM attendance_sessions WHERE class_id = 1 AND division_id = 1 AND status = 'OPEN' ORDER BY session_id DESC LIMIT 1");
+        // Find session for Div A where Student 1 was marked
+        $stmt = $this->pdo->query("SELECT s.session_id FROM attendance_sessions s JOIN attendance_records r ON s.session_id = r.session_id WHERE s.class_id = 1 AND r.student_id = 1 AND s.status = 'OPEN' ORDER BY s.session_id DESC LIMIT 1");
         $divASessionId = (int)$stmt->fetchColumn();
 
         if ($divASessionId) {
